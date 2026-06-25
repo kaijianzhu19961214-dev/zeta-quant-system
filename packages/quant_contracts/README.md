@@ -35,6 +35,10 @@ tests/
 - `MarketBarsMeta`
 - `MarketBarsResponse`
 - `QfqBatch`
+- `FactorDailyValue`
+- `FactorCalculationRequest`
+- `FactorCalculationMeta`
+- `FactorCalculationResponse`
 - `TaskRun`
 - `TaskArtifact`
 - `PriceMode`

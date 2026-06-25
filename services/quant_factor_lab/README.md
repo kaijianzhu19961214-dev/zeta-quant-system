@@ -11,6 +11,52 @@
 - 生成因子值、因子元数据和计算产物 manifest。
 - 将因子产物交给 MinIO 或后续统一 artifact 存储。
 
+## 当前 MVP / Current MVP
+
+当前已落地最小 FastAPI 服务：
+
+```text
+GET  /health
+POST /api/v1/factors/calculate
+```
+
+第一批只实现：
+
+```text
+momentum_*d = close_price / close_price.shift(N) - 1
+```
+
+示例：
+
+```bash
+curl -sS http://127.0.0.1:18010/health
+```
+
+```bash
+curl -sS http://127.0.0.1:18010/api/v1/factors/calculate \
+  -H 'content-type: application/json' \
+  -d '{
+    "factor_name": "momentum_20d",
+    "symbols": ["000001.SZ"],
+    "start": "2026-01-01",
+    "end": "2026-03-13",
+    "lookback_window": 20
+  }'
+```
+
+运行测试：
+
+```bash
+make test-quant-factor-lab
+```
+
+启动容器：
+
+```bash
+make quant-factor-lab-up
+make quant-factor-lab-check
+```
+
 ## 第三方原始数据兼容 / Third-Party Raw Data Compatibility
 
 允许兼容读取第三方原始数据，但必须满足：
@@ -25,4 +71,3 @@
 - 不负责长期保存原始行情数据。
 - 不绕过数据协议直接写入 ClickHouse。
 - 不承担因子有效性统计和报告生成；这部分属于 `quant_factor_validation`。
-

@@ -1,7 +1,7 @@
 PYTHON ?= python3
 PYTHON_IMAGE ?= python:3.12.13-slim
 
-.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset remote-101-clickhouse-tunnel remote-101-clickhouse-tunnel-status quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check smoke-quant-data-hub-101 test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test-quant-data-sdk test-quant-data-sdk-local test-quant-data-sdk-container test
+.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset remote-101-clickhouse-tunnel remote-101-clickhouse-tunnel-status quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check quant-factor-lab-build quant-factor-lab-up quant-factor-lab-down quant-factor-lab-logs quant-factor-lab-check smoke-quant-data-hub-101 test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test-quant-data-sdk test-quant-data-sdk-local test-quant-data-sdk-container test-quant-factor-lab test-quant-factor-lab-local test-quant-factor-lab-container test
 
 infra-up:
 	docker compose up -d postgres redis
@@ -47,6 +47,21 @@ quant-data-hub-logs:
 quant-data-hub-check:
 	curl -sS -m 10 http://127.0.0.1:$${QUANT_DATA_HUB_PORT:-18000}/health
 
+quant-factor-lab-build:
+	docker compose build quant_factor_lab
+
+quant-factor-lab-up:
+	docker compose up -d quant_factor_lab
+
+quant-factor-lab-down:
+	docker compose stop quant_factor_lab
+
+quant-factor-lab-logs:
+	docker compose logs -f quant_factor_lab
+
+quant-factor-lab-check:
+	curl -sS -m 10 http://127.0.0.1:$${QUANT_FACTOR_LAB_PORT:-18010}/health
+
 smoke-quant-data-hub-101:
 	$(PYTHON) scripts/smoke_quant_data_hub_101.py
 
@@ -74,4 +89,12 @@ test-quant-data-sdk-local:
 test-quant-data-sdk-container:
 	docker run --rm -e PIP_DISABLE_PIP_VERSION_CHECK=1 -e PIP_ROOT_USER_ACTION=ignore -v "$(CURDIR):/workspace" -w /workspace $(PYTHON_IMAGE) sh -c "python -m pip install -e packages/quant_contracts -e 'clients/quant_data_sdk[test]' && python -m unittest discover clients/quant_data_sdk/tests"
 
-test: test-quant-contracts test-quant-data-hub test-quant-data-sdk
+test-quant-factor-lab: test-quant-factor-lab-container
+
+test-quant-factor-lab-local:
+	PYTHONPATH=packages/quant_contracts/src:clients/quant_data_sdk/src:services/quant_factor_lab/src $(PYTHON) -m unittest discover services/quant_factor_lab/tests
+
+test-quant-factor-lab-container:
+	docker run --rm -e PIP_DISABLE_PIP_VERSION_CHECK=1 -e PIP_ROOT_USER_ACTION=ignore -v "$(CURDIR):/workspace" -w /workspace $(PYTHON_IMAGE) sh -c "python -m pip install -e packages/quant_contracts -e clients/quant_data_sdk -e 'services/quant_factor_lab[test]' && python -m unittest discover services/quant_factor_lab/tests"
+
+test: test-quant-contracts test-quant-data-hub test-quant-data-sdk test-quant-factor-lab

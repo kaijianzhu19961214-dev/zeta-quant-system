@@ -1,4 +1,10 @@
 from quant_contracts.schemas.adjustment import QfqBatch
+from quant_contracts.schemas.factor import (
+    FactorCalculationMeta,
+    FactorCalculationRequest,
+    FactorCalculationResponse,
+    FactorDailyValue,
+)
 from quant_contracts.schemas.lineage import TaskArtifact, TaskRun
 from quant_contracts.schemas.market_data import MarketBar
 from quant_contracts.schemas.market_query import (
@@ -8,6 +14,10 @@ from quant_contracts.schemas.market_query import (
 )
 
 __all__ = [
+    "FactorCalculationMeta",
+    "FactorCalculationRequest",
+    "FactorCalculationResponse",
+    "FactorDailyValue",
     "MarketBar",
     "MarketBarsMeta",
     "MarketBarsQuery",
@@ -16,4 +26,3 @@ __all__ = [
     "TaskArtifact",
     "TaskRun",
 ]
-
