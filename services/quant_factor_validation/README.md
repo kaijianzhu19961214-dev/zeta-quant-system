@@ -51,6 +51,16 @@ IC std
 ICIR
 coverage_ratio
 missing_ratio
+validation report summary
+```
+
+结构化审核摘要包含：
+
+```text
+decision: insufficient_data | review_required | candidate_pass | candidate_reject
+summary
+findings
+recommended_actions
 ```
 
 示例：
@@ -95,4 +105,5 @@ make quant-factor-validation-check
 
 - 验证逻辑必须可复现：同一输入、同一配置、同一代码版本应得到一致结果。
 - 指标模型和报告摘要字段必须复用 `quant_contracts`。
+- 自动决策只能作为候选审核状态，不能替代研究员对样本、股票池、成本和稳定性的人工复核。
 - 当前在线接口只做只读验证计算，不保存报告、不写生产表。

@@ -59,6 +59,7 @@ class FactorValidationServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.metrics.effective_sample_count, 3)
         self.assertEqual(response.metrics.dataset_code, "a_share_1d")
         self.assertEqual(response.ic_series[0].rank_ic, 1.0)
+        self.assertEqual(response.report.decision, "review_required")
 
 
 if __name__ == "__main__":

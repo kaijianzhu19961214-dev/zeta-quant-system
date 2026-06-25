@@ -16,7 +16,7 @@ quant_data_sdk
 quant_factor_lab
   ↓ 因子值
 quant_factor_validation
-  ↓ IC / Rank IC 验证摘要
+  ↓ IC / Rank IC 验证摘要与候选审核状态
 ```
 
 当前因子计算服务不直接读取 101 节点数据库，也不直接调用第三方数据源。所有行情输入默认来自 `quant_data_hub` 的标准行情接口。
@@ -32,6 +32,11 @@ FactorCalculationRequest
 FactorDailyValue
 FactorCalculationMeta
 FactorCalculationResponse
+FactorValidationRequest
+FactorValidationMetric
+FactorValidationReport
+FactorValidationFinding
+FactorValidationResponse
 ```
 
 研究员需要关注的输入字段：
@@ -147,6 +152,18 @@ IC std
 ICIR
 coverage_ratio
 missing_ratio
+report.decision
+report.findings
+report.recommended_actions
+```
+
+当前 `report.decision` 只作为研究审核辅助状态，不等同于生产准入结论：
+
+```text
+insufficient_data
+review_required
+candidate_pass
+candidate_reject
 ```
 
 ---
@@ -171,7 +188,7 @@ missing_ratio
 建议下一步不要直接扩展大量因子，而是先补齐：
 
 ```text
-quant_factor_validation 报告输出与分组收益
+quant_factor_validation 持久化报告输出与分组收益
 FactorDailyValue 的持久化或 artifact 输出规范
 固定样本验证报告
 研究员确认后的因子审核清单

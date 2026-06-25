@@ -101,7 +101,7 @@ Factor Lab
   因子计算 run_id、factor_name、样本区间、行数、状态
 
 Factor Validation
-  验证报告、IC / Rank IC 摘要、报告产物链接
+  验证报告、decision、findings、IC / Rank IC 摘要、报告产物链接
 
 Artifacts
   MinIO manifest、latest.json、报告文件索引
@@ -165,4 +165,3 @@ quant_ops_web
 ```
 
 它可以从第一版开始预留目录和约束，但不应阻塞核心数据、因子和验证闭环。
-

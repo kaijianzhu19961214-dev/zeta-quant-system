@@ -1,5 +1,6 @@
 from datetime import date, datetime
 from decimal import Decimal
+from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
@@ -188,6 +189,25 @@ class FactorValidationMetric(ContractModel):
     run_id: str | None = None
 
 
+class FactorValidationFinding(ContractModel):
+    severity: Literal["info", "warning", "error"] = "info"
+    code: str = Field(min_length=1, max_length=64)
+    message: str = Field(min_length=1, max_length=256)
+
+
+class FactorValidationReport(ContractModel):
+    decision: Literal[
+        "insufficient_data",
+        "review_required",
+        "candidate_pass",
+        "candidate_reject",
+    ]
+    summary: str = Field(min_length=1, max_length=512)
+    findings: list[FactorValidationFinding] = Field(default_factory=list)
+    recommended_actions: list[str] = Field(default_factory=list)
+
+
 class FactorValidationResponse(ContractModel):
     metrics: FactorValidationMetric
     ic_series: list[FactorIcPoint] = Field(default_factory=list)
+    report: FactorValidationReport | None = None

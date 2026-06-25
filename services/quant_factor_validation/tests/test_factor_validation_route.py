@@ -69,6 +69,7 @@ class FactorValidationRouteTest(unittest.TestCase):
         self.assertEqual(payload["metrics"]["factor_name"], "momentum_1d")
         self.assertEqual(payload["metrics"]["effective_sample_count"], 2)
         self.assertEqual(payload["ic_series"][0]["rank_ic"], 1.0)
+        self.assertEqual(payload["report"]["decision"], "review_required")
 
     def test_should_return_validation_error_when_factor_names_mismatch(self) -> None:
         response = self.client.post(

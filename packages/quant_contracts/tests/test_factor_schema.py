@@ -1,7 +1,15 @@
 import unittest
 
 from pydantic import ValidationError
-from quant_contracts import FactorCalculationRequest, FactorDailyValue, FactorValidationRequest, PriceMode, Timeframe
+from quant_contracts import (
+    FactorCalculationRequest,
+    FactorDailyValue,
+    FactorValidationFinding,
+    FactorValidationReport,
+    FactorValidationRequest,
+    PriceMode,
+    Timeframe,
+)
 
 
 class FactorSchemaTest(unittest.TestCase):
@@ -81,6 +89,23 @@ class FactorSchemaTest(unittest.TestCase):
                 market_start="2026-03-13",
                 market_end="2026-03-16",
             )
+
+    def test_should_accept_factor_validation_report_when_payload_is_valid(self) -> None:
+        report = FactorValidationReport(
+            decision="review_required",
+            summary="Manual review is required.",
+            findings=[
+                FactorValidationFinding(
+                    severity="info",
+                    code="manual_review_required",
+                    message="Sample size is not enough for an automatic decision.",
+                )
+            ],
+            recommended_actions=["Expand the validation sample."],
+        )
+
+        self.assertEqual(report.decision, "review_required")
+        self.assertEqual(report.findings[0].code, "manual_review_required")
 
 
 if __name__ == "__main__":
