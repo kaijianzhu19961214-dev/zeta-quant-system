@@ -56,14 +56,17 @@ services/
 clients/
   quant_data_sdk/               # Python SDK for market data and research artifacts
 
+apps/
+  quant_ops_web/                # operations dashboard and monitoring UI
+
 infra/
   local/                        # local development infrastructure
   remote_101/                   # 101 data node deployment templates
 ```
 
-当前仓库已建立 monorepo 目录骨架，并已落地 `quant_contracts` 公共协议包、`quant_data_hub` 第一批行情查询服务代码和 `quant_data_sdk` Python 客户端。业务服务代码会继续分阶段迁入。
+当前仓库已建立 monorepo 目录骨架，并已落地 `quant_contracts` 公共协议包、`quant_data_hub` 第一批行情查询服务代码、`quant_data_sdk` Python 客户端和 `quant_factor_lab` MVP 因子计算服务。业务服务代码会继续分阶段迁入。
 
-The repository now includes the monorepo directory scaffold, `quant_contracts`, the first `quant_data_hub` market-query service code, the `quant_data_sdk` Python client, local container infrastructure, and reference materials from the existing 101 data-ingestion project. Service code will continue to be migrated in phases.
+The repository now includes the monorepo directory scaffold, `quant_contracts`, the first `quant_data_hub` market-query service code, the `quant_data_sdk` Python client, the `quant_factor_lab` MVP factor service, local container infrastructure, and reference materials from the existing 101 data-ingestion project. Service code will continue to be migrated in phases.
 
 ---
 
@@ -122,6 +125,15 @@ make quant-data-hub-up
 make quant-data-hub-check
 ```
 
+启动 `quant_factor_lab` 服务容器：
+
+Start the `quant_factor_lab` service container:
+
+```bash
+make quant-factor-lab-up
+make quant-factor-lab-check
+```
+
 停止本地基础设施：
 
 Stop local infrastructure:
@@ -138,6 +150,7 @@ Current local Compose services:
 PostgreSQL 16
 Redis 7
 quant_data_hub, optional service container
+quant_factor_lab, optional service container
 ```
 
 大规模 PostgreSQL、ClickHouse、MinIO 和真实行情数据继续留在 101 节点。
@@ -185,6 +198,8 @@ Core documents:
 - [容器部署与服务编排方案](docs/container_deployment_and_orchestration.md)
 - [公共 GitHub 仓库治理方案](docs/github_repository_governance.md)
 - [Python 运行时策略](docs/python_runtime_policy.md)
+- [Web UI 与监控需求](docs/web_ui_and_monitoring_requirements.md)
+- [因子处理与审核流程现状说明](docs/factor_processing_researcher_review.md)
 - [101 只读 Smoke Test](docs/remote_101_smoke_test.md)
 - [101 旧数据接入项目重合分析与迁移清单](docs/legacy_data_ingestion_overlap_and_migration.md)
 - [quant_contracts 与 101 旧数据接入项目协议映射](docs/quant_contracts_legacy_mapping.md)
@@ -259,6 +274,7 @@ Phase 1:
 2. migrate 101 data-ingestion code into services/quant_data_hub
 3. extract quant_data_sdk into clients/quant_data_sdk
 4. keep real data on 101 and use API / read-only access for validation
+5. reserve quant_ops_web for read-only monitoring and artifact visibility
 ```
 
 第二阶段：
@@ -266,7 +282,7 @@ Phase 1:
 Phase 2:
 
 ```text
-1. implement quant_factor_lab
+1. extend quant_factor_lab factor coverage
 2. implement quant_factor_validation
 3. generate factor validation reports
 4. add controlled remote smoke tests against 101
