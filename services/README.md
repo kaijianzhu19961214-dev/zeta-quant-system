@@ -10,6 +10,7 @@
 quant_data_hub/              # data ingestion, storage, query, lineage
 quant_factor_lab/            # factor calculation
 quant_factor_validation/     # factor validation and reports
+quant_ops_api/               # read-only operations aggregation API
 ```
 
 ## 后续服务 / Later Services
@@ -28,4 +29,3 @@ quant_execution_gateway/
 - FastAPI 服务使用 Pydantic v2、SQLAlchemy 2.0、异步 I/O 和生命周期上下文管理器。
 - 路由层只做参数校验和响应编排，业务逻辑下沉到 service/repository 层。
 - 真实数据、大文件、密钥和生产 `.env` 不进入仓库。
-

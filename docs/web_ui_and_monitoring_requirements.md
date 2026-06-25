@@ -10,15 +10,17 @@
 
 ```text
 apps/quant_ops_web
+services/quant_ops_api
 ```
 
 定位：
 
 ```text
 quant_ops_web = 只读优先的运营 Dashboard / Monitoring UI
+quant_ops_api = 只读优先的运营聚合 API / BFF
 ```
 
-它不替代 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation`，也不直接承担数据接入、因子计算或因子验证逻辑。
+它们不替代 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation`，也不直接承担数据接入、因子计算或因子验证逻辑。
 
 ---
 
@@ -57,6 +59,7 @@ MVP 阶段先做只读展示：
 quant_data_hub HTTP API
 quant_factor_lab HTTP API
 quant_factor_validation HTTP API
+quant_ops_api HTTP API
 后续 task/artifact API
 MinIO 中的 manifest / latest.json 只读对象
 101 节点只读巡检 API 或 smoke test 输出
@@ -131,10 +134,10 @@ MVP 推荐方案 B：
 
 ```text
 apps/quant_ops_web      # 前端 UI
-services/quant_ops_api  # 可选，只读聚合 API，后续再加
+services/quant_ops_api  # 只读聚合 API，当前已落地 /api/v1/overview
 ```
 
-如果短期只做本地开发，也可以先让 `quant_ops_web` 直接调用 `quant_data_hub` 和 `quant_factor_lab` 的只读接口。
+短期本地开发优先让 `quant_ops_web` 调用 `quant_ops_api`，只有调试单服务时才直接调用业务服务只读接口。
 
 ---
 
@@ -158,10 +161,12 @@ quant_factor_validation
 
 ```text
 quant_ops_web
+  ↓
+quant_ops_api
   ├── 读取 quant_data_hub 状态
   ├── 读取 quant_factor_lab 状态
   ├── 读取 quant_factor_validation 报告
   └── 读取 artifact / manifest 索引
 ```
 
-它可以从第一版开始预留目录和约束，但不应阻塞核心数据、因子和验证闭环。
+它们可以从第一版开始预留目录和约束，但不应阻塞核心数据、因子和验证闭环。

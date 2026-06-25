@@ -147,6 +147,44 @@ services:
     networks:
       - quant_backend
 
+  quant_ops_api:
+    build:
+      context: .
+      dockerfile: services/quant_ops_api/Dockerfile
+    container_name: quant_system_quant_ops_api
+    restart: unless-stopped
+    environment:
+      APP_NAME: quant-ops-api
+      APP_ENV: ${APP_ENV:-development}
+      QUANT_DATA_HUB_BASE_URL: ${QUANT_DATA_HUB_BASE_URL:-http://quant_data_hub:8000}
+      QUANT_FACTOR_LAB_BASE_URL: ${QUANT_FACTOR_LAB_BASE_URL:-http://quant_factor_lab:8000}
+      QUANT_FACTOR_VALIDATION_BASE_URL: ${QUANT_FACTOR_VALIDATION_BASE_URL:-http://quant_factor_validation:8000}
+      SERVICE_HEALTH_TIMEOUT_SECONDS: ${SERVICE_HEALTH_TIMEOUT_SECONDS:-5}
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "${QUANT_OPS_API_PORT:-18030}:8000"
+    depends_on:
+      quant_data_hub:
+        condition: service_healthy
+      quant_factor_lab:
+        condition: service_healthy
+      quant_factor_validation:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - quant_backend
+
 networks:
   quant_backend:
     name: quant_system_backend
