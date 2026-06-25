@@ -6,6 +6,7 @@ from pydantic import Field, field_validator, model_validator
 
 from quant_contracts.enums import PriceMode, Timeframe
 from quant_contracts.schemas.common import ContractModel
+from quant_contracts.schemas.lineage import TaskArtifact, TaskRun
 
 
 class FactorCalculationRequest(ContractModel):
@@ -207,7 +208,17 @@ class FactorValidationReport(ContractModel):
     recommended_actions: list[str] = Field(default_factory=list)
 
 
+class FactorValidationManifest(ContractModel):
+    manifest_id: str = Field(min_length=1, max_length=128)
+    schema_version: str = Field(default="factor_validation_manifest.v1", min_length=1, max_length=64)
+    task_run: TaskRun
+    artifacts: list[TaskArtifact] = Field(default_factory=list)
+    persistence_status: Literal["not_persisted", "persisted"] = "not_persisted"
+    created_at: datetime | None = None
+
+
 class FactorValidationResponse(ContractModel):
     metrics: FactorValidationMetric
     ic_series: list[FactorIcPoint] = Field(default_factory=list)
     report: FactorValidationReport | None = None
+    manifest: FactorValidationManifest | None = None

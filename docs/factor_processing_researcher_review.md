@@ -36,6 +36,7 @@ FactorValidationRequest
 FactorValidationMetric
 FactorValidationReport
 FactorValidationFinding
+FactorValidationManifest
 FactorValidationResponse
 ```
 
@@ -155,6 +156,9 @@ missing_ratio
 report.decision
 report.findings
 report.recommended_actions
+manifest.task_run
+manifest.artifacts
+manifest.persistence_status
 ```
 
 当前 `report.decision` 只作为研究审核辅助状态，不等同于生产准入结论：
@@ -165,6 +169,8 @@ review_required
 candidate_pass
 candidate_reject
 ```
+
+当前 `manifest.persistence_status = not_persisted`，表示接口已经给出任务血缘和产物路径预览，但还没有写入 PostgreSQL、MinIO 或其他生产存储。
 
 ---
 
@@ -188,7 +194,7 @@ candidate_reject
 建议下一步不要直接扩展大量因子，而是先补齐：
 
 ```text
-quant_factor_validation 持久化报告输出与分组收益
+quant_factor_validation manifest 持久化与分组收益
 FactorDailyValue 的持久化或 artifact 输出规范
 固定样本验证报告
 研究员确认后的因子审核清单

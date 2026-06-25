@@ -43,6 +43,7 @@ tests/
 - `FactorValidationMetric`
 - `FactorValidationFinding`
 - `FactorValidationReport`
+- `FactorValidationManifest`
 - `FactorValidationResponse`
 - `FactorIcPoint`
 - `TaskRun`

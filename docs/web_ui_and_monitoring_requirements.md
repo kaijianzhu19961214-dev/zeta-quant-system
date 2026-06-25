@@ -101,10 +101,10 @@ Factor Lab
   因子计算 run_id、factor_name、样本区间、行数、状态
 
 Factor Validation
-  验证报告、decision、findings、IC / Rank IC 摘要、报告产物链接
+  验证报告、decision、findings、IC / Rank IC 摘要、manifest preview、报告产物链接
 
 Artifacts
-  MinIO manifest、latest.json、报告文件索引
+  manifest preview、MinIO persisted manifest、latest.json、报告文件索引
 
 System
   版本、配置摘要、容器状态、只读巡检结果

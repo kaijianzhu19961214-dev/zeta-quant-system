@@ -60,6 +60,12 @@ class FactorValidationServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.metrics.dataset_code, "a_share_1d")
         self.assertEqual(response.ic_series[0].rank_ic, 1.0)
         self.assertEqual(response.report.decision, "review_required")
+        self.assertEqual(response.manifest.persistence_status, "not_persisted")
+        self.assertEqual(response.manifest.task_run.task_type, "factor_validation")
+        self.assertEqual(
+            response.manifest.artifacts[0].object_key,
+            "factor_validation/momentum_1d/run_validation_test/validation_report.json",
+        )
 
 
 if __name__ == "__main__":

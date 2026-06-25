@@ -13,6 +13,7 @@ from quant_factor_validation.metrics import (
     standard_deviation,
 )
 from quant_factor_validation.repositories.market_data_reader import MarketDataReader
+from quant_factor_validation.services.validation_manifest import build_validation_manifest
 from quant_factor_validation.services.validation_report import build_validation_report
 
 
@@ -74,10 +75,18 @@ class FactorValidationService:
             run_id=request.run_id,
         )
 
+        report = build_validation_report(metrics=metrics)
+
         return FactorValidationResponse(
             metrics=metrics,
             ic_series=ic_series,
-            report=build_validation_report(metrics=metrics),
+            report=report,
+            manifest=build_validation_manifest(
+                request=request,
+                metrics=metrics,
+                report=report,
+                ic_series=ic_series,
+            ),
         )
 
 

@@ -2,12 +2,17 @@ import unittest
 
 from pydantic import ValidationError
 from quant_contracts import (
+    ArtifactType,
     FactorCalculationRequest,
     FactorDailyValue,
     FactorValidationFinding,
+    FactorValidationManifest,
     FactorValidationReport,
     FactorValidationRequest,
     PriceMode,
+    TaskArtifact,
+    TaskRun,
+    TaskStatus,
     Timeframe,
 )
 
@@ -106,6 +111,29 @@ class FactorSchemaTest(unittest.TestCase):
 
         self.assertEqual(report.decision, "review_required")
         self.assertEqual(report.findings[0].code, "manual_review_required")
+
+    def test_should_accept_factor_validation_manifest_when_payload_is_valid(self) -> None:
+        manifest = FactorValidationManifest(
+            manifest_id="manifest_run_1",
+            task_run=TaskRun(
+                task_id="run_1",
+                task_type="factor_validation",
+                task_name="momentum_20d_validation",
+                status=TaskStatus.SUCCEEDED,
+            ),
+            artifacts=[
+                TaskArtifact(
+                    artifact_id="artifact_report_1",
+                    task_id="run_1",
+                    artifact_type=ArtifactType.VALIDATION_REPORT,
+                    object_key="factor_validation/momentum_20d/run_1/validation_report.json",
+                    metadata={"decision": "review_required"},
+                )
+            ],
+        )
+
+        self.assertEqual(manifest.persistence_status, "not_persisted")
+        self.assertEqual(manifest.artifacts[0].artifact_type, ArtifactType.VALIDATION_REPORT)
 
 
 if __name__ == "__main__":
