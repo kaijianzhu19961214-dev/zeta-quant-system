@@ -61,9 +61,9 @@ infra/
   remote_101/                   # 101 data node deployment templates
 ```
 
-当前仓库先保存架构文档、容器基础设施和 101 旧项目参考材料。业务服务代码会分阶段迁入。
+当前仓库已建立 monorepo 目录骨架，并先保存架构文档、容器基础设施和 101 旧项目参考材料。业务服务代码会分阶段迁入。
 
-The repository currently contains architecture documents, local container infrastructure, and reference materials from the existing 101 data-ingestion project. Service code will be migrated in phases.
+The repository now includes the monorepo directory scaffold, architecture documents, local container infrastructure, and reference materials from the existing 101 data-ingestion project. Service code will be migrated in phases.
 
 ---
 
@@ -243,7 +243,7 @@ Business service code has not been migrated yet, so Python tests and ruff checks
 Phase 1:
 
 ```text
-1. create packages/quant_contracts
+1. implement shared schemas in packages/quant_contracts
 2. migrate 101 data-ingestion code into services/quant_data_hub
 3. extract quant_data_sdk into clients/quant_data_sdk
 4. keep real data on 101 and use API / read-only access for validation
@@ -278,4 +278,3 @@ execution gateway
 待定。
 
 To be decided.
-

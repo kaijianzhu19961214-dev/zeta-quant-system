@@ -65,6 +65,8 @@ Quant-System/
 - `infra/remote_101` 只放部署样例和 systemd/docker compose 模板，不放真实 `.env`。
 - `docs/references/legacy_data_ingestion` 保存旧项目文档、DDL 和 migration 参考。
 
+当前目录骨架已经创建；后续迭代应优先在既有目录内补实现、测试和配置样例，避免重新拆分第一版服务边界。
+
 ---
 
 ## 3. 允许提交
@@ -235,4 +237,3 @@ MINIO_SECRET_KEY=replace_with_secret
 远程 smoke test 只读或 dry-run
 真实数据仍保留在 101
 ```
-
