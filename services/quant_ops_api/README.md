@@ -19,6 +19,7 @@
 GET /health
 GET /api/v1/overview
 GET /api/v1/factor-validation/review
+GET /api/v1/artifacts/ledger
 ```
 
 `/api/v1/overview` 当前聚合：
@@ -52,6 +53,20 @@ limitations
 ```
 
 该接口只暴露因子验证审核摘要和 manifest preview，不代表报告已写入 PostgreSQL、MinIO 或生产 artifact 表。
+
+`/api/v1/artifacts/ledger` 当前返回：
+
+```text
+tasks[]
+artifacts[]
+task_count
+artifact_count
+source
+persistence_status
+limitations
+```
+
+该接口把当前因子验证 manifest preview 映射成只读任务/产物账本形态，用于 Web UI 先展示 `task_runs` / `task_artifacts` 结构。当前 `persistence_status = not_persisted`，不代表已经接入 101 节点 PostgreSQL 或生产 MinIO。后续正式版本应通过只读 API、只读视图或受控 manifest 对象接入真实账本。
 
 ## 约束 / Rules
 

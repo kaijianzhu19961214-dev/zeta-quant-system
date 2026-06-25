@@ -27,9 +27,10 @@ quant_ops_api = 只读优先的运营聚合 API / BFF
 ```text
 GET /api/v1/overview
 GET /api/v1/factor-validation/review
+GET /api/v1/artifacts/ledger
 ```
 
-`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、因子验证 decision、IC / Rank IC 摘要、findings 和 manifest artifact preview。
+`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview，以及任务/产物账本预览。
 
 ---
 
@@ -143,7 +144,7 @@ MVP 推荐方案 B：
 
 ```text
 apps/quant_ops_web      # 前端 UI
-services/quant_ops_api  # 只读聚合 API，当前已落地 /api/v1/overview 和 /api/v1/factor-validation/review
+services/quant_ops_api  # 只读聚合 API，当前已落地 overview、factor-validation review 和 artifact ledger
 ```
 
 短期本地开发优先让 `quant_ops_web` 调用 `quant_ops_api`，只有调试单服务时才直接调用业务服务只读接口。
@@ -188,7 +189,9 @@ quant_ops_api
   ├── 读取 quant_data_hub 状态
   ├── 读取 quant_factor_lab 状态
   ├── 读取 quant_factor_validation 报告
-  └── 读取 artifact / manifest 索引
+  └── 读取 artifact / manifest / task ledger 索引
 ```
 
 它们可以从第一版开始预留目录和约束，但不应阻塞核心数据、因子和验证闭环。
+
+当前 Artifacts 页和 `/api/v1/artifacts/ledger` 只是 `not_persisted` 预览：数据来自因子验证 manifest preview，用来提前固定 task/artifact 展示协议。生产阶段应接入 PostgreSQL `task_runs` / `task_artifacts` 的只读视图、只读 API，或 MinIO 中受控的 `latest.json` / manifest 对象；Web UI 不应直接持有数据库写权限或 MinIO access key。

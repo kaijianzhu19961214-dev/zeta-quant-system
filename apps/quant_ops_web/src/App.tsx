@@ -1,7 +1,9 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { fetchFactorValidationReview, fetchOverview } from "./api";
+import { fetchArtifactLedger, fetchFactorValidationReview, fetchOverview } from "./api";
 import type {
+  ArtifactLedgerItem,
+  ArtifactLedgerResponse,
   FactorValidationArtifactSummary,
   FactorValidationReviewResponse,
   OpsOverviewResponse,
@@ -11,10 +13,10 @@ import type {
 } from "./types";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
-type DashboardView = "overview" | "factor-validation";
+type DashboardView = "overview" | "factor-validation" | "artifacts";
 
 interface NavItem {
-  id: DashboardView | "data-hub" | "factor-lab" | "artifacts";
+  id: DashboardView | "data-hub" | "factor-lab";
   label: string;
   is_enabled: boolean;
 }
@@ -43,7 +45,7 @@ const NAV_ITEMS: NavItem[] = [
   { id: "data-hub", label: "Data Hub", is_enabled: false },
   { id: "factor-lab", label: "Factor Lab", is_enabled: false },
   { id: "factor-validation", label: "Validation", is_enabled: true },
-  { id: "artifacts", label: "Artifacts", is_enabled: false },
+  { id: "artifacts", label: "Artifacts", is_enabled: true },
 ];
 
 export function App() {
@@ -55,6 +57,9 @@ export function App() {
   const [validationReview, setValidationReview] = useState<FactorValidationReviewResponse | null>(null);
   const [validationLoadState, setValidationLoadState] = useState<LoadState>("idle");
   const [validationErrorMessage, setValidationErrorMessage] = useState<string | null>(null);
+  const [artifactLedger, setArtifactLedger] = useState<ArtifactLedgerResponse | null>(null);
+  const [artifactLoadState, setArtifactLoadState] = useState<LoadState>("idle");
+  const [artifactErrorMessage, setArtifactErrorMessage] = useState<string | null>(null);
 
   const loadOverview = useCallback(async () => {
     setLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
@@ -97,11 +102,36 @@ export function App() {
     void loadFactorValidationReview();
   }, [activeView, loadFactorValidationReview, validationReview]);
 
+  const loadArtifactLedger = useCallback(async () => {
+    setArtifactLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setArtifactErrorMessage(null);
+
+    try {
+      const response = await fetchArtifactLedger();
+      setArtifactLedger(response);
+      setArtifactLoadState("ready");
+    } catch (error) {
+      setArtifactErrorMessage(error instanceof Error ? error.message : "artifact ledger request failed");
+      setArtifactLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "artifacts") return;
+    if (artifactLedger !== null) return;
+    void loadArtifactLedger();
+  }, [activeView, artifactLedger, loadArtifactLedger]);
+
   const primaryStatus = overview?.status ?? "down";
   const generatedAt = overview ? formatDateTime(overview.generated_at) : "等待数据";
   const updatedAt = lastLoadedAt ? formatTime(lastLoadedAt.toISOString()) : "未刷新";
-  const refreshActiveView = activeView === "overview" ? loadOverview : loadFactorValidationReview;
-  const pageTitle = activeView === "overview" ? "核心量化服务状态" : "因子验证审核视图";
+  const refreshActiveView = resolveRefreshHandler({
+    activeView,
+    loadArtifactLedger,
+    loadFactorValidationReview,
+    loadOverview,
+  });
+  const pageTitle = resolvePageTitle(activeView);
 
   return (
     <main className="shell">
@@ -179,12 +209,20 @@ export function App() {
               <ServiceTable services={overview?.services ?? []} />
             </section>
           </>
-        ) : (
+        ) : activeView === "factor-validation" ? (
           <section className="validation-view">
             <FactorValidationReviewPanel
               errorMessage={validationErrorMessage}
               loadState={validationLoadState}
               review={validationReview}
+            />
+          </section>
+        ) : (
+          <section className="validation-view">
+            <ArtifactLedgerPanel
+              errorMessage={artifactErrorMessage}
+              ledger={artifactLedger}
+              loadState={artifactLoadState}
             />
           </section>
         )}
@@ -400,6 +438,174 @@ function ArtifactTable({ artifacts }: { artifacts: FactorValidationArtifactSumma
       ))}
     </div>
   );
+}
+
+function ArtifactLedgerPanel({
+  ledger,
+  loadState,
+  errorMessage,
+}: {
+  ledger: ArtifactLedgerResponse | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+}) {
+  if (loadState === "error") {
+    return (
+      <section className="notice error" role="alert">
+        <strong>Artifact ledger 暂时不可用</strong>
+        <span>{errorMessage}</span>
+      </section>
+    );
+  }
+
+  if (ledger === null) {
+    return (
+      <section className="notice">
+        <strong>正在读取任务与产物账本</strong>
+        <span>连接 quant_ops_api</span>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="validation-hero">
+        <div>
+          <p className="eyebrow">Task artifact ledger</p>
+          <h3>{ledger.source}</h3>
+          <span className="muted">{formatDateTime(ledger.generated_at)}</span>
+        </div>
+        <div className="decision-block">
+          <span>持久化状态</span>
+          <strong>{ledger.persistence_status}</strong>
+        </div>
+        <div className="metric-grid compact">
+          <MetricTile label="任务数" value={String(ledger.task_count)} />
+          <MetricTile label="产物数" value={String(ledger.artifact_count)} />
+          <MetricTile label="任务类型" value={ledger.tasks[0]?.task_type ?? "--"} />
+          <MetricTile label="存储类型" value={ledger.artifacts[0]?.storage_type ?? "--"} />
+        </div>
+      </section>
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Task runs</p>
+            <h3>任务账本</h3>
+          </div>
+          <span className="status-pill pill-degraded">{ledger.persistence_status}</span>
+        </div>
+        <TaskLedgerTable ledger={ledger} />
+      </section>
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Task artifacts</p>
+            <h3>产物账本</h3>
+          </div>
+        </div>
+        <ArtifactLedgerTable artifacts={ledger.artifacts} />
+      </section>
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Ledger limitations</p>
+            <h3>接入边界</h3>
+          </div>
+        </div>
+        <div className="action-list">
+          {ledger.limitations.map((limitation) => (
+            <span key={limitation}>{limitation}</span>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function TaskLedgerTable({ ledger }: { ledger: ArtifactLedgerResponse }) {
+  if (ledger.tasks.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>暂无任务</strong>
+        <span>等待 task_runs 只读视图返回任务。</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="artifact-table">
+      <div className="task-row header">
+        <span>任务</span>
+        <span>状态</span>
+        <span>产物数</span>
+        <span>完成时间</span>
+      </div>
+      {ledger.tasks.map((task) => (
+        <div className="task-row" key={task.task_id}>
+          <div>
+            <strong>{task.task_name}</strong>
+            <span>{task.task_id}</span>
+          </div>
+          <span className="status-pill pill-ok">{task.status}</span>
+          <span>{task.artifact_count}</span>
+          <span>{task.finished_at ? formatDateTime(task.finished_at) : "--"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function ArtifactLedgerTable({ artifacts }: { artifacts: ArtifactLedgerItem[] }) {
+  if (artifacts.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>暂无产物</strong>
+        <span>等待 task_artifacts 只读视图返回产物。</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="artifact-table">
+      <div className="artifact-row header">
+        <span>类型</span>
+        <span>Storage</span>
+        <span>Object key</span>
+      </div>
+      {artifacts.map((artifact) => (
+        <div className="artifact-row" key={artifact.artifact_id}>
+          <strong>{artifact.artifact_type}</strong>
+          <span>{artifact.storage_type}</span>
+          <span>{artifact.object_key ?? artifact.uri ?? "--"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function resolveRefreshHandler({
+  activeView,
+  loadArtifactLedger,
+  loadFactorValidationReview,
+  loadOverview,
+}: {
+  activeView: DashboardView;
+  loadArtifactLedger: () => void;
+  loadFactorValidationReview: () => void;
+  loadOverview: () => void;
+}) {
+  if (activeView === "overview") return loadOverview;
+  if (activeView === "factor-validation") return loadFactorValidationReview;
+  return loadArtifactLedger;
+}
+
+function resolvePageTitle(activeView: DashboardView): string {
+  if (activeView === "overview") return "核心量化服务状态";
+  if (activeView === "factor-validation") return "因子验证审核视图";
+  return "任务与产物账本";
 }
 
 function resolveOverviewLabel(status: ServiceStatus): string {

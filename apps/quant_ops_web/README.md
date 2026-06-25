@@ -37,9 +37,12 @@ System
 - 展示 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation` 的状态表。
 - 通过 `quant_ops_api /api/v1/factor-validation/review` 展示因子验证审核摘要。
 - 展示 `decision`、IC / Rank IC 摘要、findings、recommended actions 和 manifest artifact preview。
+- 通过 `quant_ops_api /api/v1/artifacts/ledger` 展示任务账本和产物账本预览。
 - 提供加载、刷新和错误态，保持只读边界。
 
 当前 Factor Validation 页仍是 `not_persisted` 预览，不表示报告已经入库或上传 MinIO。
+
+当前 Artifacts 页同样是 `not_persisted` 预览：它展示的是由因子验证 manifest 映射出的 task/artifact ledger 形态，用于提前固定 Web UI 和 API 协议。后续接入 101 节点 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后，才能作为正式产物账本使用。
 
 ## 本地运行
 

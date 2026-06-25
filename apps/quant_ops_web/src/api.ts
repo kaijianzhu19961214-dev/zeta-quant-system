@@ -1,4 +1,4 @@
-import type { FactorValidationReviewResponse, OpsOverviewResponse } from "./types";
+import type { ArtifactLedgerResponse, FactorValidationReviewResponse, OpsOverviewResponse } from "./types";
 
 const API_BASE_PATH = import.meta.env.VITE_QUANT_OPS_API_BASE_PATH || "/ops-api";
 
@@ -28,4 +28,18 @@ export async function fetchFactorValidationReview(): Promise<FactorValidationRev
   }
 
   return (await response.json()) as FactorValidationReviewResponse;
+}
+
+export async function fetchArtifactLedger(): Promise<ArtifactLedgerResponse> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/artifacts/ledger`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`artifact ledger request failed with status ${response.status}`);
+  }
+
+  return (await response.json()) as ArtifactLedgerResponse;
 }

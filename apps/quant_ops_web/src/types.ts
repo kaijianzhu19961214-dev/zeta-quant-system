@@ -79,3 +79,52 @@ export interface FactorValidationReviewResponse {
   manifest: FactorValidationManifestSummary;
   limitations: string[];
 }
+
+export type TaskLedgerStatus =
+  | "created"
+  | "pending"
+  | "running"
+  | "succeeded"
+  | "failed"
+  | "cancelled"
+  | "canceled";
+
+export interface TaskLedgerItem {
+  task_id: string;
+  task_type: string;
+  task_name: string;
+  owner: string | null;
+  status: TaskLedgerStatus;
+  input_params: Record<string, unknown>;
+  output_summary: Record<string, unknown>;
+  error_message: string | null;
+  created_at: string | null;
+  started_at: string | null;
+  finished_at: string | null;
+  artifact_count: number;
+}
+
+export interface ArtifactLedgerItem {
+  artifact_id: string;
+  task_id: string;
+  artifact_type: string;
+  storage_type: string;
+  bucket_name: string | null;
+  object_key: string | null;
+  uri: string | null;
+  file_size_bytes: number | null;
+  schema_version: string | null;
+  metadata: Record<string, unknown>;
+  created_at: string | null;
+}
+
+export interface ArtifactLedgerResponse {
+  generated_at: string;
+  source: string;
+  persistence_status: PersistenceStatus;
+  task_count: number;
+  artifact_count: number;
+  tasks: TaskLedgerItem[];
+  artifacts: ArtifactLedgerItem[];
+  limitations: string[];
+}

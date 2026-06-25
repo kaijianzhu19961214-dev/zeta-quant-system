@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from quant_ops_api.clients import ServiceHealthClient
 from quant_ops_api.core.config import get_settings
-from quant_ops_api.services import FactorValidationReviewService, OverviewService
+from quant_ops_api.services import ArtifactLedgerService, FactorValidationReviewService, OverviewService
 
 
 @lru_cache
@@ -21,6 +21,10 @@ def get_overview_service() -> OverviewService:
 
 def get_factor_validation_review_service() -> FactorValidationReviewService:
     return FactorValidationReviewService()
+
+
+def get_artifact_ledger_service() -> ArtifactLedgerService:
+    return ArtifactLedgerService(validation_review_service=get_factor_validation_review_service())
 
 
 def reset_dependencies() -> None:

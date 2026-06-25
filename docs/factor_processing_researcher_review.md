@@ -187,6 +187,20 @@ manifest.persistence_status
 
 该页面通过 `quant_ops_api /api/v1/factor-validation/review` 读取审核摘要。现阶段展示的是 MVP manifest preview，后续应接入 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后再作为正式审核账本。
 
+当前 `quant_ops_web` 也已提供 Artifacts 只读展示页：
+
+```text
+task_count / artifact_count
+task_id / task_name / task_status
+artifact_type
+storage_type
+object_key / uri
+persistence_status
+ledger limitations
+```
+
+该页面通过 `quant_ops_api /api/v1/artifacts/ledger` 读取任务/产物账本预览。现阶段该账本由 `quant_factor_validation` 的 manifest preview 映射而来，目的是让研究员提前确认任务血缘、产物分类和审核入口是否够用；它还不是生产持久化账本。
+
 ---
 
 ## 6. 研究员建议重点确认
@@ -213,7 +227,7 @@ quant_factor_validation manifest 持久化与分组收益
 FactorDailyValue 的持久化或 artifact 输出规范
 固定样本验证报告
 研究员确认后的因子审核清单
-Web UI 中的因子运行列表、正式验证报告列表和产物链接
+Web UI 中的因子运行列表、正式验证报告列表和真实产物链接
 ```
 
 这样可以先形成：
