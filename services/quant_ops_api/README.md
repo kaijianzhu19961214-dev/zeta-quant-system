@@ -18,6 +18,7 @@
 ```text
 GET /health
 GET /api/v1/overview
+GET /api/v1/factor-validation/review
 ```
 
 `/api/v1/overview` 当前聚合：
@@ -39,6 +40,18 @@ healthy_count
 degraded_count
 down_count
 ```
+
+`/api/v1/factor-validation/review` 当前返回：
+
+```text
+latest_metric
+findings
+recommended_actions
+manifest
+limitations
+```
+
+该接口只暴露因子验证审核摘要和 manifest preview，不代表报告已写入 PostgreSQL、MinIO 或生产 artifact 表。
 
 ## 约束 / Rules
 

@@ -172,6 +172,21 @@ candidate_reject
 
 当前 `manifest.persistence_status = not_persisted`，表示接口已经给出任务血缘和产物路径预览，但还没有写入 PostgreSQL、MinIO 或其他生产存储。
 
+当前 `quant_ops_web` 已提供 Factor Validation 只读展示页：
+
+```text
+decision
+effective_sample_count / sample_count
+coverage_ratio
+IC / Rank IC
+report.findings
+report.recommended_actions
+manifest.artifacts
+manifest.persistence_status
+```
+
+该页面通过 `quant_ops_api /api/v1/factor-validation/review` 读取审核摘要。现阶段展示的是 MVP manifest preview，后续应接入 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后再作为正式审核账本。
+
 ---
 
 ## 6. 研究员建议重点确认
@@ -185,7 +200,7 @@ candidate_reject
 5. 因子值是否需要在计算阶段就做去极值、标准化、中性化？
 6. `run_id`、`data_version`、`factor_version` 是否满足研究复现要求？
 7. 第一批因子的优先级是否仍然是：动量、反转、波动率、量比、价量相关？
-8. 因子审核通过后，是否需要进入统一 artifact manifest 和 Web UI 展示？
+8. 因子审核通过后，Web UI 中的 `candidate_pass` 是否需要触发单独的生产准入流程？
 
 ---
 
@@ -198,7 +213,7 @@ quant_factor_validation manifest 持久化与分组收益
 FactorDailyValue 的持久化或 artifact 输出规范
 固定样本验证报告
 研究员确认后的因子审核清单
-Web UI 中的因子运行和验证报告展示
+Web UI 中的因子运行列表、正式验证报告列表和产物链接
 ```
 
 这样可以先形成：

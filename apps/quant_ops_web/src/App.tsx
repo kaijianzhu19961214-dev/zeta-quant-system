@@ -1,9 +1,23 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { fetchOverview } from "./api";
-import type { OpsOverviewResponse, ServiceHealth, ServiceStatus } from "./types";
+import { fetchFactorValidationReview, fetchOverview } from "./api";
+import type {
+  FactorValidationArtifactSummary,
+  FactorValidationReviewResponse,
+  OpsOverviewResponse,
+  ServiceHealth,
+  ServiceStatus,
+  ValidationDecision,
+} from "./types";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
+type DashboardView = "overview" | "factor-validation";
+
+interface NavItem {
+  id: DashboardView | "data-hub" | "factor-lab" | "artifacts";
+  label: string;
+  is_enabled: boolean;
+}
 
 const SERVICE_LABELS: Record<string, string> = {
   quant_data_hub: "Data Hub",
@@ -17,11 +31,30 @@ const STATUS_LABELS: Record<ServiceStatus, string> = {
   down: "不可用",
 };
 
+const DECISION_LABELS: Record<ValidationDecision, string> = {
+  insufficient_data: "样本不足",
+  review_required: "需要审核",
+  candidate_pass: "候选通过",
+  candidate_reject: "候选拒绝",
+};
+
+const NAV_ITEMS: NavItem[] = [
+  { id: "overview", label: "Overview", is_enabled: true },
+  { id: "data-hub", label: "Data Hub", is_enabled: false },
+  { id: "factor-lab", label: "Factor Lab", is_enabled: false },
+  { id: "factor-validation", label: "Validation", is_enabled: true },
+  { id: "artifacts", label: "Artifacts", is_enabled: false },
+];
+
 export function App() {
+  const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [overview, setOverview] = useState<OpsOverviewResponse | null>(null);
   const [loadState, setLoadState] = useState<LoadState>("idle");
   const [errorMessage, setErrorMessage] = useState<string | null>(null);
   const [lastLoadedAt, setLastLoadedAt] = useState<Date | null>(null);
+  const [validationReview, setValidationReview] = useState<FactorValidationReviewResponse | null>(null);
+  const [validationLoadState, setValidationLoadState] = useState<LoadState>("idle");
+  const [validationErrorMessage, setValidationErrorMessage] = useState<string | null>(null);
 
   const loadOverview = useCallback(async () => {
     setLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
@@ -42,9 +75,33 @@ export function App() {
     void loadOverview();
   }, [loadOverview]);
 
+  const loadFactorValidationReview = useCallback(async () => {
+    setValidationLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setValidationErrorMessage(null);
+
+    try {
+      const response = await fetchFactorValidationReview();
+      setValidationReview(response);
+      setValidationLoadState("ready");
+    } catch (error) {
+      setValidationErrorMessage(
+        error instanceof Error ? error.message : "factor validation review request failed",
+      );
+      setValidationLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "factor-validation") return;
+    if (validationReview !== null) return;
+    void loadFactorValidationReview();
+  }, [activeView, loadFactorValidationReview, validationReview]);
+
   const primaryStatus = overview?.status ?? "down";
   const generatedAt = overview ? formatDateTime(overview.generated_at) : "等待数据";
   const updatedAt = lastLoadedAt ? formatTime(lastLoadedAt.toISOString()) : "未刷新";
+  const refreshActiveView = activeView === "overview" ? loadOverview : loadFactorValidationReview;
+  const pageTitle = activeView === "overview" ? "核心量化服务状态" : "因子验证审核视图";
 
   return (
     <main className="shell">
@@ -57,11 +114,20 @@ export function App() {
           </div>
         </div>
         <nav className="rail-nav" aria-label="Primary">
-          <span className="rail-nav-item active">Overview</span>
-          <span className="rail-nav-item">Data Hub</span>
-          <span className="rail-nav-item">Factor Lab</span>
-          <span className="rail-nav-item">Validation</span>
-          <span className="rail-nav-item">Artifacts</span>
+          {NAV_ITEMS.map((item) => (
+            <button
+              className={`rail-nav-item ${activeView === item.id ? "active" : ""}`}
+              disabled={!item.is_enabled}
+              key={item.id}
+              type="button"
+              onClick={() => {
+                if (!item.is_enabled) return;
+                setActiveView(item.id as DashboardView);
+              }}
+            >
+              {item.label}
+            </button>
+          ))}
         </nav>
       </aside>
 
@@ -69,47 +135,59 @@ export function App() {
         <header className="topbar">
           <div>
             <p className="eyebrow">运行总览</p>
-            <h2>核心量化服务状态</h2>
+            <h2>{pageTitle}</h2>
           </div>
-          <button className="refresh-button" type="button" onClick={loadOverview}>
+          <button className="refresh-button" type="button" onClick={refreshActiveView}>
             刷新状态
           </button>
         </header>
 
-        <section className={`status-band status-${primaryStatus}`}>
-          <StatusSpine services={overview?.services ?? []} fallbackStatus={primaryStatus} />
-          <div className="status-copy">
-            <span className="status-kicker">Pipeline status</span>
-            <strong>{resolveOverviewLabel(primaryStatus)}</strong>
-            <span>生成时间 {generatedAt}</span>
-          </div>
-          <MetricsStrip overview={overview} />
-        </section>
+        {activeView === "overview" ? (
+          <>
+            <section className={`status-band status-${primaryStatus}`}>
+              <StatusSpine services={overview?.services ?? []} fallbackStatus={primaryStatus} />
+              <div className="status-copy">
+                <span className="status-kicker">Pipeline status</span>
+                <strong>{resolveOverviewLabel(primaryStatus)}</strong>
+                <span>生成时间 {generatedAt}</span>
+              </div>
+              <MetricsStrip overview={overview} />
+            </section>
 
-        {loadState === "error" ? (
-          <section className="notice error" role="alert">
-            <strong>Overview API 暂时不可用</strong>
-            <span>{errorMessage}</span>
+            {loadState === "error" ? (
+              <section className="notice error" role="alert">
+                <strong>Overview API 暂时不可用</strong>
+                <span>{errorMessage}</span>
+              </section>
+            ) : null}
+
+            {loadState === "loading" && overview === null ? (
+              <section className="notice">
+                <strong>正在读取服务状态</strong>
+                <span>连接 quant_ops_api</span>
+              </section>
+            ) : null}
+
+            <section className="service-panel">
+              <div className="section-heading">
+                <div>
+                  <p className="eyebrow">Service checks</p>
+                  <h3>服务健康</h3>
+                </div>
+                <span className="muted">本地更新时间 {updatedAt}</span>
+              </div>
+              <ServiceTable services={overview?.services ?? []} />
+            </section>
+          </>
+        ) : (
+          <section className="validation-view">
+            <FactorValidationReviewPanel
+              errorMessage={validationErrorMessage}
+              loadState={validationLoadState}
+              review={validationReview}
+            />
           </section>
-        ) : null}
-
-        {loadState === "loading" && overview === null ? (
-          <section className="notice">
-            <strong>正在读取服务状态</strong>
-            <span>连接 quant_ops_api</span>
-          </section>
-        ) : null}
-
-        <section className="service-panel">
-          <div className="section-heading">
-            <div>
-              <p className="eyebrow">Service checks</p>
-              <h3>服务健康</h3>
-            </div>
-            <span className="muted">本地更新时间 {updatedAt}</span>
-          </div>
-          <ServiceTable services={overview?.services ?? []} />
-        </section>
+        )}
       </section>
     </main>
   );
@@ -192,6 +270,138 @@ function ServiceTable({ services }: { services: ServiceHealth[] }) {
   );
 }
 
+function FactorValidationReviewPanel({
+  review,
+  loadState,
+  errorMessage,
+}: {
+  review: FactorValidationReviewResponse | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+}) {
+  if (loadState === "error") {
+    return (
+      <section className="notice error" role="alert">
+        <strong>因子验证审核摘要暂时不可用</strong>
+        <span>{errorMessage}</span>
+      </section>
+    );
+  }
+
+  if (review === null) {
+    return (
+      <section className="notice">
+        <strong>正在读取因子验证审核摘要</strong>
+        <span>连接 quant_ops_api</span>
+      </section>
+    );
+  }
+
+  const metric = review.latest_metric;
+
+  return (
+    <>
+      <section className={`validation-hero decision-${metric.decision}`}>
+        <div>
+          <p className="eyebrow">Factor validation</p>
+          <h3>{metric.factor_name}</h3>
+          <span className="muted">{metric.run_id}</span>
+        </div>
+        <div className="decision-block">
+          <span>审核状态</span>
+          <strong>{DECISION_LABELS[metric.decision]}</strong>
+        </div>
+        <div className="metric-grid compact">
+          <MetricTile label="样本" value={`${metric.effective_sample_count}/${metric.sample_count}`} />
+          <MetricTile label="覆盖率" value={formatRatio(metric.coverage_ratio)} />
+          <MetricTile label="IC" value={formatNumber(metric.ic_mean)} />
+          <MetricTile label="Rank IC" value={formatNumber(metric.rank_ic_mean)} />
+        </div>
+      </section>
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Review findings</p>
+            <h3>审核发现</h3>
+          </div>
+          <span className="status-pill pill-degraded">{review.persistence_status}</span>
+        </div>
+        <div className="finding-list">
+          {review.findings.map((finding) => (
+            <div className={`finding-item severity-${finding.severity}`} key={finding.code}>
+              <strong>{finding.code}</strong>
+              <span>{finding.message}</span>
+            </div>
+          ))}
+        </div>
+      </section>
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Manifest preview</p>
+            <h3>{review.manifest.manifest_id}</h3>
+          </div>
+          <span className="muted">{formatDateTime(review.generated_at)}</span>
+        </div>
+        <ArtifactTable artifacts={review.manifest.artifacts} />
+      </section>
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Next review actions</p>
+            <h3>后续动作</h3>
+          </div>
+        </div>
+        <div className="action-list">
+          {[...review.recommended_actions, ...review.limitations].map((action) => (
+            <span key={action}>{action}</span>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function MetricTile({ label, value }: { label: string; value: string }) {
+  return (
+    <div className="metric">
+      <span>{label}</span>
+      <strong>{value}</strong>
+    </div>
+  );
+}
+
+function ArtifactTable({ artifacts }: { artifacts: FactorValidationArtifactSummary[] }) {
+  if (artifacts.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>暂无产物</strong>
+        <span>等待 manifest 返回 artifact 列表。</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="artifact-table">
+      <div className="artifact-row header">
+        <span>类型</span>
+        <span>Schema</span>
+        <span>Object key</span>
+      </div>
+      {artifacts.map((artifact) => (
+        <div className="artifact-row" key={artifact.artifact_id}>
+          <strong>{artifact.artifact_type}</strong>
+          <span>{artifact.schema_version}</span>
+          <span>{artifact.object_key ?? "--"}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
 function resolveOverviewLabel(status: ServiceStatus): string {
   if (status === "ok") return "主链路健康";
   if (status === "degraded") return "部分服务需关注";
@@ -225,4 +435,14 @@ function formatTime(value: string): string {
     minute: "2-digit",
     second: "2-digit",
   });
+}
+
+function formatRatio(value: number | null): string {
+  if (value === null) return "--";
+  return `${(value * 100).toFixed(1)}%`;
+}
+
+function formatNumber(value: number | null): string {
+  if (value === null) return "--";
+  return value.toFixed(3);
 }

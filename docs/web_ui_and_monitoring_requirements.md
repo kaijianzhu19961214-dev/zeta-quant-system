@@ -22,7 +22,14 @@ quant_ops_api = 只读优先的运营聚合 API / BFF
 
 它们不替代 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation`，也不直接承担数据接入、因子计算或因子验证逻辑。
 
-当前已落地第一版 Overview 页面：`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api /api/v1/overview`，展示整体状态、服务健康表和刷新状态。
+当前已落地第一版 Overview 与 Factor Validation 页面：
+
+```text
+GET /api/v1/overview
+GET /api/v1/factor-validation/review
+```
+
+`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、因子验证 decision、IC / Rank IC 摘要、findings 和 manifest artifact preview。
 
 ---
 
@@ -136,7 +143,7 @@ MVP 推荐方案 B：
 
 ```text
 apps/quant_ops_web      # 前端 UI
-services/quant_ops_api  # 只读聚合 API，当前已落地 /api/v1/overview
+services/quant_ops_api  # 只读聚合 API，当前已落地 /api/v1/overview 和 /api/v1/factor-validation/review
 ```
 
 短期本地开发优先让 `quant_ops_web` 调用 `quant_ops_api`，只有调试单服务时才直接调用业务服务只读接口。

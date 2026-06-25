@@ -30,12 +30,16 @@ System
 
 ## 当前状态
 
-当前已落地 MVP Overview 页面：
+当前已落地 MVP 页面：
 
 - 通过 Vite 代理 `/ops-api` 读取 `quant_ops_api /api/v1/overview`。
 - 展示整体状态、最后刷新时间、健康服务数量、异常服务数量。
 - 展示 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation` 的状态表。
+- 通过 `quant_ops_api /api/v1/factor-validation/review` 展示因子验证审核摘要。
+- 展示 `decision`、IC / Rank IC 摘要、findings、recommended actions 和 manifest artifact preview。
 - 提供加载、刷新和错误态，保持只读边界。
+
+当前 Factor Validation 页仍是 `not_persisted` 预览，不表示报告已经入库或上传 MinIO。
 
 ## 本地运行
 

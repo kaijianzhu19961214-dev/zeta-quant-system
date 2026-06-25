@@ -1,4 +1,4 @@
-import type { OpsOverviewResponse } from "./types";
+import type { FactorValidationReviewResponse, OpsOverviewResponse } from "./types";
 
 const API_BASE_PATH = import.meta.env.VITE_QUANT_OPS_API_BASE_PATH || "/ops-api";
 
@@ -14,4 +14,18 @@ export async function fetchOverview(): Promise<OpsOverviewResponse> {
   }
 
   return (await response.json()) as OpsOverviewResponse;
+}
+
+export async function fetchFactorValidationReview(): Promise<FactorValidationReviewResponse> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/factor-validation/review`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(`factor validation review request failed with status ${response.status}`);
+  }
+
+  return (await response.json()) as FactorValidationReviewResponse;
 }

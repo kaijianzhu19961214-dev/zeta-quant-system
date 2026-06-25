@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from quant_ops_api.clients import ServiceHealthClient
 from quant_ops_api.core.config import get_settings
-from quant_ops_api.services import OverviewService
+from quant_ops_api.services import FactorValidationReviewService, OverviewService
 
 
 @lru_cache
@@ -17,6 +17,10 @@ def get_overview_service() -> OverviewService:
         endpoints=settings.service_endpoints(),
         health_client=get_service_health_client(),
     )
+
+
+def get_factor_validation_review_service() -> FactorValidationReviewService:
+    return FactorValidationReviewService()
 
 
 def reset_dependencies() -> None:
