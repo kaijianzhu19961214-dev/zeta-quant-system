@@ -81,6 +81,14 @@ class FactorDailyValue(ContractModel):
             return normalized_value
         raise ValueError("symbol must not be blank")
 
+    @field_validator("factor_name")
+    @classmethod
+    def normalize_factor_name(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
+            return normalized_value
+        raise ValueError("factor_name must use lowercase letters, numbers, and underscores")
+
 
 class FactorCalculationMeta(ContractModel):
     factor_name: str
@@ -100,3 +108,86 @@ class FactorCalculationMeta(ContractModel):
 class FactorCalculationResponse(ContractModel):
     meta: FactorCalculationMeta
     rows: list[FactorDailyValue] = Field(default_factory=list)
+
+
+class FactorValidationRequest(ContractModel):
+    factor_name: str = Field(min_length=1, max_length=128)
+    factor_values: list[FactorDailyValue] = Field(min_length=1)
+    market_start: date | str
+    market_end: date | str
+    forward_days: int = Field(default=1, ge=1, le=60)
+    timeframe: Timeframe = Timeframe.DAY_1
+    price_mode: PriceMode = PriceMode.RAW
+    dataset_code: str | None = Field(default=None, max_length=128)
+    batch_id: str | None = Field(default=None, max_length=128)
+    universe_name: str = Field(default="default", min_length=1, max_length=128)
+    validation_version: str = Field(default="v1", min_length=1, max_length=64)
+    run_id: str | None = Field(default=None, max_length=128)
+    limit: int = Field(default=100000, ge=1, le=100000)
+
+    @field_validator("factor_name", "universe_name", "validation_version", "run_id")
+    @classmethod
+    def normalize_validation_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.strip()
+        if normalized_value:
+            return normalized_value
+        raise ValueError("value must not be blank")
+
+    @field_validator("factor_name")
+    @classmethod
+    def validate_validation_factor_name(cls, value: str) -> str:
+        normalized_value = value.lower()
+        if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
+            return normalized_value
+        raise ValueError("factor_name must use lowercase letters, numbers, and underscores")
+
+    @model_validator(mode="after")
+    def validate_validation_request(self) -> "FactorValidationRequest":
+        if self.timeframe != Timeframe.DAY_1:
+            raise ValueError("MVP factor validation only supports 1d timeframe")
+        if self.price_mode == PriceMode.QFQ and not self.batch_id:
+            raise ValueError("batch_id is required when price_mode is qfq")
+
+        invalid_factor_names = [
+            value.factor_name for value in self.factor_values if value.factor_name != self.factor_name
+        ]
+        if invalid_factor_names:
+            raise ValueError("all factor_values must match factor_name")
+
+        return self
+
+
+class FactorIcPoint(ContractModel):
+    trade_date: date
+    sample_size: int = Field(ge=0)
+    ic: float | None = None
+    rank_ic: float | None = None
+
+
+class FactorValidationMetric(ContractModel):
+    factor_name: str
+    start_date: date
+    end_date: date
+    forward_days: int = Field(ge=1)
+    sample_count: int = Field(ge=0)
+    effective_sample_count: int = Field(ge=0)
+    coverage_ratio: float | None = None
+    missing_ratio: float | None = None
+    ic_mean: float | None = None
+    rank_ic_mean: float | None = None
+    ic_std: float | None = None
+    ic_ir: float | None = None
+    universe_name: str = "default"
+    price_mode: PriceMode = PriceMode.RAW
+    dataset_code: str | None = None
+    batch_id: str | None = None
+    validation_version: str = "v1"
+    run_id: str | None = None
+
+
+class FactorValidationResponse(ContractModel):
+    metrics: FactorValidationMetric
+    ic_series: list[FactorIcPoint] = Field(default_factory=list)

@@ -23,12 +23,13 @@ postgres
 redis
 quant_data_hub
 quant_factor_lab
+quant_factor_validation
 ```
 
 第二阶段随着 MVP 服务生成，再逐步加入：
 
 ```text
-quant_factor_validation
+quant_ops_web
 ```
 
 `quant_contracts` 是公共 Python 包，不作为常驻服务运行。
@@ -153,6 +154,7 @@ alembic.ini
 ```text
 services/quant_data_hub/Dockerfile
 services/quant_factor_lab/Dockerfile
+services/quant_factor_validation/Dockerfile
 ```
 
 ---
@@ -177,6 +179,7 @@ REDIS_HOST
 REDIS_PORT
 QUANT_DATA_HUB_PORT
 QUANT_FACTOR_LAB_PORT
+QUANT_FACTOR_VALIDATION_PORT
 QUANT_DATA_HUB_BASE_URL
 CLICKHOUSE_HTTP_URL
 CLICKHOUSE_DATABASE
@@ -206,6 +209,13 @@ make quant-data-hub-check
 ```bash
 make quant-factor-lab-up
 make quant-factor-lab-check
+```
+
+启动 `quant_factor_validation`：
+
+```bash
+make quant-factor-validation-up
+make quant-factor-validation-check
 ```
 
 查看服务状态：
@@ -292,11 +302,12 @@ python:3.12.13-slim
 ```
 
 `quant_data_hub` 当前已经按这个结构构建镜像，启动入口为：
-`quant_factor_lab` 也按同一结构构建镜像。两个服务启动入口分别为：
+`quant_factor_lab` 和 `quant_factor_validation` 也按同一结构构建镜像。三个服务启动入口分别为：
 
 ```text
 python -m uvicorn quant_data_hub.main:app --host 0.0.0.0 --port 8000
 python -m uvicorn quant_factor_lab.main:app --host 0.0.0.0 --port 8000
+python -m uvicorn quant_factor_validation.main:app --host 0.0.0.0 --port 8000
 ```
 
 ---

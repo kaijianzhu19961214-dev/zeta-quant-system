@@ -64,9 +64,9 @@ infra/
   remote_101/                   # 101 data node deployment templates
 ```
 
-当前仓库已建立 monorepo 目录骨架，并已落地 `quant_contracts` 公共协议包、`quant_data_hub` 第一批行情查询服务代码、`quant_data_sdk` Python 客户端和 `quant_factor_lab` MVP 因子计算服务。业务服务代码会继续分阶段迁入。
+当前仓库已建立 monorepo 目录骨架，并已落地 `quant_contracts` 公共协议包、`quant_data_hub` 第一批行情查询服务代码、`quant_data_sdk` Python 客户端、`quant_factor_lab` MVP 因子计算服务和 `quant_factor_validation` MVP 验证服务。业务服务代码会继续分阶段迁入。
 
-The repository now includes the monorepo directory scaffold, `quant_contracts`, the first `quant_data_hub` market-query service code, the `quant_data_sdk` Python client, the `quant_factor_lab` MVP factor service, local container infrastructure, and reference materials from the existing 101 data-ingestion project. Service code will continue to be migrated in phases.
+The repository now includes the monorepo directory scaffold, `quant_contracts`, the first `quant_data_hub` market-query service code, the `quant_data_sdk` Python client, the `quant_factor_lab` MVP factor service, the `quant_factor_validation` MVP validation service, local container infrastructure, and reference materials from the existing 101 data-ingestion project. Service code will continue to be migrated in phases.
 
 ---
 
@@ -134,6 +134,15 @@ make quant-factor-lab-up
 make quant-factor-lab-check
 ```
 
+启动 `quant_factor_validation` 服务容器：
+
+Start the `quant_factor_validation` service container:
+
+```bash
+make quant-factor-validation-up
+make quant-factor-validation-check
+```
+
 停止本地基础设施：
 
 Stop local infrastructure:
@@ -151,6 +160,7 @@ PostgreSQL 16
 Redis 7
 quant_data_hub, optional service container
 quant_factor_lab, optional service container
+quant_factor_validation, optional service container
 ```
 
 大规模 PostgreSQL、ClickHouse、MinIO 和真实行情数据继续留在 101 节点。
@@ -283,7 +293,7 @@ Phase 2:
 
 ```text
 1. extend quant_factor_lab factor coverage
-2. implement quant_factor_validation
+2. extend quant_factor_validation reports and grouping metrics
 3. generate factor validation reports
 4. add controlled remote smoke tests against 101
 ```

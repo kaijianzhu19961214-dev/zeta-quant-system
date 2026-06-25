@@ -1,7 +1,7 @@
 import unittest
 
 from pydantic import ValidationError
-from quant_contracts import FactorCalculationRequest, FactorDailyValue, PriceMode, Timeframe
+from quant_contracts import FactorCalculationRequest, FactorDailyValue, FactorValidationRequest, PriceMode, Timeframe
 
 
 class FactorSchemaTest(unittest.TestCase):
@@ -47,6 +47,40 @@ class FactorSchemaTest(unittest.TestCase):
 
         self.assertEqual(value.symbol, "000001.SZ")
         self.assertEqual(str(value.factor_value), "0.15")
+
+    def test_should_accept_factor_validation_request_when_factor_values_match(self) -> None:
+        request = FactorValidationRequest(
+            factor_name="momentum_20d",
+            factor_values=[
+                FactorDailyValue(
+                    symbol="000001.SZ",
+                    trade_date="2026-03-13",
+                    factor_name="momentum_20d",
+                    factor_value="0.15",
+                )
+            ],
+            market_start="2026-03-13",
+            market_end="2026-03-16",
+        )
+
+        self.assertEqual(request.forward_days, 1)
+        self.assertEqual(request.timeframe, Timeframe.DAY_1)
+
+    def test_should_reject_factor_validation_request_when_factor_name_mismatches(self) -> None:
+        with self.assertRaises(ValidationError):
+            FactorValidationRequest(
+                factor_name="momentum_20d",
+                factor_values=[
+                    FactorDailyValue(
+                        symbol="000001.SZ",
+                        trade_date="2026-03-13",
+                        factor_name="reversal_5d",
+                        factor_value="0.15",
+                    )
+                ],
+                market_start="2026-03-13",
+                market_end="2026-03-16",
+            )
 
 
 if __name__ == "__main__":

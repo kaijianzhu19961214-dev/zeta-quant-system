@@ -39,6 +39,10 @@ tests/
 - `FactorCalculationRequest`
 - `FactorCalculationMeta`
 - `FactorCalculationResponse`
+- `FactorValidationRequest`
+- `FactorValidationMetric`
+- `FactorValidationResponse`
+- `FactorIcPoint`
 - `TaskRun`
 - `TaskArtifact`
 - `PriceMode`

@@ -7,6 +7,10 @@ from quant_contracts.schemas.factor import (
     FactorCalculationRequest,
     FactorCalculationResponse,
     FactorDailyValue,
+    FactorIcPoint,
+    FactorValidationMetric,
+    FactorValidationRequest,
+    FactorValidationResponse,
 )
 from quant_contracts.schemas.lineage import TaskArtifact, TaskRun
 from quant_contracts.schemas.market_data import MarketBar
@@ -22,6 +26,10 @@ __all__ = [
     "FactorCalculationRequest",
     "FactorCalculationResponse",
     "FactorDailyValue",
+    "FactorIcPoint",
+    "FactorValidationMetric",
+    "FactorValidationRequest",
+    "FactorValidationResponse",
     "MarketBar",
     "MarketBarsMeta",
     "MarketBarsQuery",

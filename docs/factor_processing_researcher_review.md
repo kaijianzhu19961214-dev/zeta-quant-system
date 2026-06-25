@@ -16,7 +16,7 @@ quant_data_sdk
 quant_factor_lab
   ↓ 因子值
 quant_factor_validation
-  ↓ 因子验证报告，待实现
+  ↓ IC / Rank IC 验证摘要
 ```
 
 当前因子计算服务不直接读取 101 节点数据库，也不直接调用第三方数据源。所有行情输入默认来自 `quant_data_hub` 的标准行情接口。
@@ -135,6 +135,20 @@ quant_factor_lab 通过 quant_data_sdk 读取标准行情
 
 当前测试重点是确定性和边界条件，还没有覆盖真实大样本统计稳定性。
 
+当前 `quant_factor_validation` MVP 已支持：
+
+```text
+forward_return_n
+按交易日横截面计算 IC
+按交易日横截面计算 Rank IC
+IC mean
+Rank IC mean
+IC std
+ICIR
+coverage_ratio
+missing_ratio
+```
+
 ---
 
 ## 6. 研究员建议重点确认
@@ -157,7 +171,7 @@ quant_factor_lab 通过 quant_data_sdk 读取标准行情
 建议下一步不要直接扩展大量因子，而是先补齐：
 
 ```text
-quant_factor_validation 最小验证流程
+quant_factor_validation 报告输出与分组收益
 FactorDailyValue 的持久化或 artifact 输出规范
 固定样本验证报告
 研究员确认后的因子审核清单
@@ -171,4 +185,3 @@ Web UI 中的因子运行和验证报告展示
 ```
 
 的闭环。
-
