@@ -113,6 +113,15 @@ Check service status:
 make infra-ps
 ```
 
+启动 `quant_data_hub` 服务容器：
+
+Start the `quant_data_hub` service container:
+
+```bash
+make quant-data-hub-up
+make quant-data-hub-check
+```
+
 停止本地基础设施：
 
 Stop local infrastructure:
@@ -128,6 +137,7 @@ Current local Compose services:
 ```text
 PostgreSQL 16
 Redis 7
+quant_data_hub, optional service container
 ```
 
 大规模 PostgreSQL、ClickHouse、MinIO 和真实行情数据继续留在 101 节点。

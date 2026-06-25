@@ -20,7 +20,7 @@ class ClickHouseReader(Protocol):
 
 def build_clickhouse_headers(settings: ClickHouseConnectionSettings) -> dict[str, str]:
     headers = {"Content-Type": "text/plain"}
-    if settings.password is None:
+    if not settings.password:
         return headers
 
     token = f"{settings.user}:{settings.password}".encode("utf-8")
@@ -46,4 +46,3 @@ class ClickHouseHttpClient:
             return response.json()
 
         raise RuntimeError(f"ClickHouse HTTP {response.status_code}: {response.text}")
-

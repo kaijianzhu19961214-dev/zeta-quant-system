@@ -48,6 +48,39 @@ services:
     networks:
       - quant_backend
 
+  quant_data_hub:
+    build:
+      context: .
+      dockerfile: services/quant_data_hub/Dockerfile
+    container_name: quant_system_quant_data_hub
+    restart: unless-stopped
+    environment:
+      APP_NAME: quant-data-hub
+      APP_ENV: ${APP_ENV:-development}
+      CLICKHOUSE_HTTP_URL: ${CLICKHOUSE_HTTP_URL:-http://host.docker.internal:18123}
+      CLICKHOUSE_DATABASE: ${CLICKHOUSE_DATABASE:-quant_market}
+      CLICKHOUSE_USER: ${CLICKHOUSE_USER:-quant}
+      CLICKHOUSE_PASSWORD: ${CLICKHOUSE_PASSWORD:-}
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "${QUANT_DATA_HUB_PORT:-18000}:8000"
+    extra_hosts:
+      - "host.docker.internal:host-gateway"
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "python",
+          "-c",
+          "import urllib.request; urllib.request.urlopen('http://127.0.0.1:8000/health', timeout=2).read()",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 10s
+    networks:
+      - quant_backend
+
 networks:
   quant_backend:
     name: quant_system_backend

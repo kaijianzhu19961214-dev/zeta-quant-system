@@ -16,17 +16,17 @@ docker compose
 PostgreSQL / Redis / 各 Python 服务
 ```
 
-第一阶段先容器化基础依赖：
+第一阶段先容器化基础依赖和已落地服务：
 
 ```text
 postgres
 redis
+quant_data_hub
 ```
 
 第二阶段随着 MVP 服务生成，再逐步加入：
 
 ```text
-quant_data_hub
 quant_factor_lab
 quant_factor_validation
 ```
@@ -93,14 +93,13 @@ quant_factor_validation       # 因子验证服务库
 
 ### 3.2 后续服务编排
 
-后续每个服务独立镜像、独立启动命令、独立健康检查：
+每个服务独立镜像、独立启动命令、独立健康检查：
 
 ```text
 quant_data_hub:
-  build: ./quant_data_hub
-  depends_on:
-    postgres:
-      condition: service_healthy
+  build: ./services/quant_data_hub/Dockerfile
+  healthcheck: GET /health
+  clickhouse: external URL by CLICKHOUSE_HTTP_URL
 
 quant_factor_lab:
   build: ./quant_factor_lab
@@ -149,6 +148,12 @@ alembic/
 alembic.ini
 ```
 
+当前已落地：
+
+```text
+services/quant_data_hub/Dockerfile
+```
+
 ---
 
 ## 5. 配置约束
@@ -169,6 +174,11 @@ POSTGRES_PASSWORD
 POSTGRES_DB
 REDIS_HOST
 REDIS_PORT
+QUANT_DATA_HUB_PORT
+CLICKHOUSE_HTTP_URL
+CLICKHOUSE_DATABASE
+CLICKHOUSE_USER
+CLICKHOUSE_PASSWORD
 ```
 
 ---
@@ -179,6 +189,13 @@ REDIS_PORT
 
 ```bash
 docker compose up -d postgres redis
+```
+
+启动 `quant_data_hub`：
+
+```bash
+make quant-data-hub-up
+make quant-data-hub-check
 ```
 
 查看服务状态：
@@ -264,6 +281,12 @@ python:3.12.13-slim
 启动 FastAPI 或批处理入口
 ```
 
+`quant_data_hub` 当前已经按这个结构构建镜像，启动入口为：
+
+```text
+python -m uvicorn quant_data_hub.main:app --host 0.0.0.0 --port 8000
+```
+
 ---
 
 ## 9. 数据与迁移约束
@@ -346,6 +369,7 @@ docker compose down -v
 docker compose config 可以通过
 postgres 容器状态为 healthy
 redis 容器状态为 healthy
+quant_data_hub /health 返回 ok
 quant_data_hub / quant_factor_lab / quant_factor_validation 数据库已创建
 pg_isready 返回 accepting connections
 redis-cli ping 返回 PONG

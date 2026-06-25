@@ -1,7 +1,7 @@
 PYTHON ?= python3
 PYTHON_IMAGE ?= python:3.12.13-slim
 
-.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test
+.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test
 
 infra-up:
 	docker compose up -d postgres redis
@@ -25,6 +25,21 @@ infra-restart:
 
 infra-reset:
 	docker compose down -v
+
+quant-data-hub-build:
+	docker compose build quant_data_hub
+
+quant-data-hub-up:
+	docker compose up -d quant_data_hub
+
+quant-data-hub-down:
+	docker compose stop quant_data_hub
+
+quant-data-hub-logs:
+	docker compose logs -f quant_data_hub
+
+quant-data-hub-check:
+	curl -sS -m 10 http://127.0.0.1:$${QUANT_DATA_HUB_PORT:-18000}/health
 
 test-quant-contracts: test-quant-contracts-container
 
