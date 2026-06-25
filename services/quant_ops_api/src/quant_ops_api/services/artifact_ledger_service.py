@@ -55,6 +55,8 @@ def _build_validation_task(*, validation_review: FactorValidationReviewResponse)
             "coverage_ratio": metric.coverage_ratio,
             "ic_mean": metric.ic_mean,
             "rank_ic_mean": metric.rank_ic_mean,
+            "group_count": metric.group_count,
+            "group_return_spread_mean": metric.group_return_spread_mean,
             "artifact_count": manifest.artifact_count,
         },
         finished_at=validation_review.generated_at,

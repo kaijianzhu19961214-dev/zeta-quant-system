@@ -5,6 +5,7 @@ from quant_contracts import (
     ArtifactType,
     FactorCalculationRequest,
     FactorDailyValue,
+    FactorGroupReturnPoint,
     FactorValidationFinding,
     FactorValidationManifest,
     FactorValidationReport,
@@ -77,7 +78,21 @@ class FactorSchemaTest(unittest.TestCase):
         )
 
         self.assertEqual(request.forward_days, 1)
+        self.assertEqual(request.group_count, 5)
         self.assertEqual(request.timeframe, Timeframe.DAY_1)
+
+    def test_should_accept_factor_group_return_point_when_payload_is_valid(self) -> None:
+        point = FactorGroupReturnPoint(
+            trade_date="2026-03-13",
+            group_index=5,
+            group_count=5,
+            sample_size=20,
+            average_forward_return=0.032,
+        )
+
+        self.assertEqual(point.group_index, 5)
+        self.assertEqual(point.group_count, 5)
+        self.assertEqual(point.sample_size, 20)
 
     def test_should_reject_factor_validation_request_when_factor_name_mismatches(self) -> None:
         with self.assertRaises(ValidationError):

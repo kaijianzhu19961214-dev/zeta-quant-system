@@ -60,6 +60,7 @@ class FactorValidationRouteTest(unittest.TestCase):
                 "market_start": "2026-03-13",
                 "market_end": "2026-03-16",
                 "forward_days": 1,
+                "group_count": 2,
             },
         )
 
@@ -68,6 +69,8 @@ class FactorValidationRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["metrics"]["factor_name"], "momentum_1d")
         self.assertEqual(payload["metrics"]["effective_sample_count"], 2)
+        self.assertEqual(payload["metrics"]["group_count"], 2)
+        self.assertEqual(len(payload["group_returns"]), 2)
         self.assertEqual(payload["ic_series"][0]["rank_ic"], 1.0)
         self.assertEqual(payload["report"]["decision"], "review_required")
         self.assertEqual(payload["manifest"]["persistence_status"], "not_persisted")

@@ -354,6 +354,8 @@ function FactorValidationReviewPanel({
           <MetricTile label="覆盖率" value={formatRatio(metric.coverage_ratio)} />
           <MetricTile label="IC" value={formatNumber(metric.ic_mean)} />
           <MetricTile label="Rank IC" value={formatNumber(metric.rank_ic_mean)} />
+          <MetricTile label="分组数" value={String(metric.group_count)} />
+          <MetricTile label="分组差" value={formatNumber(metric.group_return_spread_mean)} />
         </div>
       </section>
 

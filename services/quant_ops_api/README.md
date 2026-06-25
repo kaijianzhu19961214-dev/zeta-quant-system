@@ -52,7 +52,7 @@ manifest
 limitations
 ```
 
-该接口只暴露因子验证审核摘要和 manifest preview，不代表报告已写入 PostgreSQL、MinIO 或生产 artifact 表。
+该接口只暴露因子验证审核摘要和 manifest preview。当前 `latest_metric` 包含 IC、Rank IC、分组数和高低分组收益差均值；manifest preview 包含 report、metrics、ic_series、group_returns 四类产物，不代表报告已写入 PostgreSQL、MinIO 或生产 artifact 表。
 
 `/api/v1/artifacts/ledger` 当前返回：
 

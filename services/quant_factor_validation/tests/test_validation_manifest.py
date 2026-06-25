@@ -4,6 +4,7 @@ import unittest
 from quant_contracts import (
     ArtifactType,
     FactorDailyValue,
+    FactorGroupReturnPoint,
     FactorIcPoint,
     FactorValidationFinding,
     FactorValidationMetric,
@@ -44,17 +45,31 @@ class ValidationManifestTest(unittest.TestCase):
                     rank_ic=0.2,
                 )
             ],
+            group_returns=[
+                FactorGroupReturnPoint(
+                    trade_date=date(2026, 3, 13),
+                    group_index=1,
+                    group_count=5,
+                    sample_size=10,
+                    average_forward_return=0.01,
+                )
+            ],
         )
 
         self.assertEqual(manifest.persistence_status, "not_persisted")
         self.assertEqual(manifest.task_run.task_type, "factor_validation")
         self.assertEqual(manifest.task_run.output_summary["decision"], "review_required")
+        self.assertEqual(manifest.task_run.output_summary["group_count"], 5)
         self.assertEqual(manifest.artifacts[0].artifact_type, ArtifactType.VALIDATION_REPORT)
         self.assertEqual(
             manifest.artifacts[0].object_key,
             "factor_validation/momentum_20d/validation_run_1/validation_report.json",
         )
         self.assertEqual(manifest.artifacts[2].metadata["row_count"], 1)
+        self.assertEqual(
+            manifest.artifacts[3].object_key,
+            "factor_validation/momentum_20d/validation_run_1/group_returns.json",
+        )
 
 
 def _make_factor_value_stub() -> FactorDailyValue:
@@ -79,6 +94,8 @@ def _make_metrics() -> FactorValidationMetric:
         ic_mean=0.02,
         rank_ic_mean=0.04,
         ic_ir=0.2,
+        group_count=5,
+        group_return_spread_mean=0.03,
         universe_name="all_a",
         price_mode=PriceMode.QFQ,
         dataset_code="a_share_1d",

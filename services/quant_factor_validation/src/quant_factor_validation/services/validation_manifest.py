@@ -2,6 +2,7 @@ from datetime import datetime, timezone
 
 from quant_contracts import (
     ArtifactType,
+    FactorGroupReturnPoint,
     FactorIcPoint,
     FactorValidationManifest,
     FactorValidationMetric,
@@ -19,6 +20,7 @@ def build_validation_manifest(
     metrics: FactorValidationMetric,
     report: FactorValidationReport,
     ic_series: list[FactorIcPoint],
+    group_returns: list[FactorGroupReturnPoint],
 ) -> FactorValidationManifest:
     run_id = _resolve_run_id(request=request, metrics=metrics)
     safe_factor_name = _safe_path_part(metrics.factor_name)
@@ -50,6 +52,8 @@ def build_validation_manifest(
             "ic_mean": metrics.ic_mean,
             "rank_ic_mean": metrics.rank_ic_mean,
             "ic_ir": metrics.ic_ir,
+            "group_count": metrics.group_count,
+            "group_return_spread_mean": metrics.group_return_spread_mean,
             "decision": report.decision,
         },
         finished_at=datetime.now(timezone.utc),
@@ -73,6 +77,11 @@ def build_validation_manifest(
                 run_id=run_id,
                 object_prefix=object_prefix,
                 ic_series=ic_series,
+            ),
+            _build_group_returns_artifact(
+                run_id=run_id,
+                object_prefix=object_prefix,
+                group_returns=group_returns,
             ),
         ],
         persistence_status="not_persisted",
@@ -136,6 +145,25 @@ def _build_ic_series_artifact(
         metadata={
             "row_count": len(ic_series),
             "schema_version": "factor_ic_series.v1",
+            "persistence_status": "not_persisted",
+        },
+    )
+
+
+def _build_group_returns_artifact(
+    *,
+    run_id: str,
+    object_prefix: str,
+    group_returns: list[FactorGroupReturnPoint],
+) -> TaskArtifact:
+    return TaskArtifact(
+        artifact_id=f"{_safe_path_part(run_id)}_group_returns",
+        task_id=run_id,
+        artifact_type=ArtifactType.METRICS_TABLE,
+        object_key=f"{object_prefix}/group_returns.json",
+        metadata={
+            "row_count": len(group_returns),
+            "schema_version": "factor_group_returns.v1",
             "persistence_status": "not_persisted",
         },
     )

@@ -42,6 +42,8 @@ export interface FactorValidationMetricSummary {
   ic_mean: number | null;
   rank_ic_mean: number | null;
   ic_ir: number | null;
+  group_count: number;
+  group_return_spread_mean: number | null;
   decision: ValidationDecision;
 }
 

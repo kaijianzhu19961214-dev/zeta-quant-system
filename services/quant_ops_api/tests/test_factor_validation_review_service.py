@@ -12,9 +12,12 @@ class FactorValidationReviewServiceTest(unittest.TestCase):
         self.assertEqual(response.persistence_status, "not_persisted")
         self.assertEqual(response.latest_metric.factor_name, "momentum_1d")
         self.assertEqual(response.latest_metric.decision, "review_required")
+        self.assertEqual(response.latest_metric.group_count, 2)
+        self.assertEqual(response.latest_metric.group_return_spread_mean, 0.1)
         self.assertEqual(response.manifest.task_type, "factor_validation")
-        self.assertEqual(response.manifest.artifact_count, 3)
+        self.assertEqual(response.manifest.artifact_count, 4)
         self.assertEqual(response.manifest.artifacts[0].artifact_type, "validation_report")
+        self.assertEqual(response.manifest.artifacts[3].schema_version, "factor_group_returns.v1")
         self.assertTrue(response.limitations)
 
 

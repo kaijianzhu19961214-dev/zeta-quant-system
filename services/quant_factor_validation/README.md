@@ -49,6 +49,8 @@ IC mean
 Rank IC mean
 IC std
 ICIR
+group_returns
+group_return_spread_mean
 coverage_ratio
 missing_ratio
 validation report summary

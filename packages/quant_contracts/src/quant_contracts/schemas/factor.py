@@ -118,6 +118,7 @@ class FactorValidationRequest(ContractModel):
     market_start: date | str
     market_end: date | str
     forward_days: int = Field(default=1, ge=1, le=60)
+    group_count: int = Field(default=5, ge=2, le=20)
     timeframe: Timeframe = Timeframe.DAY_1
     price_mode: PriceMode = PriceMode.RAW
     dataset_code: str | None = Field(default=None, max_length=128)
@@ -169,6 +170,14 @@ class FactorIcPoint(ContractModel):
     rank_ic: float | None = None
 
 
+class FactorGroupReturnPoint(ContractModel):
+    trade_date: date
+    group_index: int = Field(ge=1)
+    group_count: int = Field(ge=1)
+    sample_size: int = Field(ge=0)
+    average_forward_return: float | None = None
+
+
 class FactorValidationMetric(ContractModel):
     factor_name: str
     start_date: date
@@ -182,6 +191,8 @@ class FactorValidationMetric(ContractModel):
     rank_ic_mean: float | None = None
     ic_std: float | None = None
     ic_ir: float | None = None
+    group_count: int = Field(default=5, ge=2, le=20)
+    group_return_spread_mean: float | None = None
     universe_name: str = "default"
     price_mode: PriceMode = PriceMode.RAW
     dataset_code: str | None = None
@@ -220,5 +231,6 @@ class FactorValidationManifest(ContractModel):
 class FactorValidationResponse(ContractModel):
     metrics: FactorValidationMetric
     ic_series: list[FactorIcPoint] = Field(default_factory=list)
+    group_returns: list[FactorGroupReturnPoint] = Field(default_factory=list)
     report: FactorValidationReport | None = None
     manifest: FactorValidationManifest | None = None

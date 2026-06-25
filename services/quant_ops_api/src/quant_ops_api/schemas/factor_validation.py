@@ -26,6 +26,8 @@ class FactorValidationMetricSummary(BaseModel):
     ic_mean: float | None = None
     rank_ic_mean: float | None = None
     ic_ir: float | None = None
+    group_count: int = Field(default=5, ge=2, le=20)
+    group_return_spread_mean: float | None = None
     decision: ValidationDecision
 
 

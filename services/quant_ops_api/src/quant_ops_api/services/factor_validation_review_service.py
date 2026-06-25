@@ -60,6 +60,8 @@ def _build_latest_metric() -> FactorValidationMetricSummary:
         ic_mean=1.0,
         rank_ic_mean=1.0,
         ic_ir=None,
+        group_count=2,
+        group_return_spread_mean=0.1,
         decision="review_required",
     )
 
@@ -86,6 +88,13 @@ def _build_artifacts(*, run_id: str) -> list[FactorValidationArtifactSummary]:
             artifact_type="metrics_table",
             object_key=f"{object_prefix}/ic_series.json",
             schema_version="factor_ic_series.v1",
+            persistence_status="not_persisted",
+        ),
+        FactorValidationArtifactSummary(
+            artifact_id=f"{run_id}_group_returns",
+            artifact_type="metrics_table",
+            object_key=f"{object_prefix}/group_returns.json",
+            schema_version="factor_group_returns.v1",
             persistence_status="not_persisted",
         ),
     ]

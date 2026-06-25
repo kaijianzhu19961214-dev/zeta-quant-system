@@ -151,6 +151,8 @@ IC mean
 Rank IC mean
 IC std
 ICIR
+按交易日横截面分组收益
+高低分组收益差均值
 coverage_ratio
 missing_ratio
 report.decision
@@ -179,6 +181,7 @@ decision
 effective_sample_count / sample_count
 coverage_ratio
 IC / Rank IC
+group_return_spread_mean
 report.findings
 report.recommended_actions
 manifest.artifacts
@@ -223,9 +226,10 @@ ledger limitations
 建议下一步不要直接扩展大量因子，而是先补齐：
 
 ```text
-quant_factor_validation manifest 持久化与分组收益
+quant_factor_validation manifest 持久化
 FactorDailyValue 的持久化或 artifact 输出规范
 固定样本验证报告
+分组收益的正式分组数、调仓频率和多空构造口径
 研究员确认后的因子审核清单
 Web UI 中的因子运行列表、正式验证报告列表和真实产物链接
 ```

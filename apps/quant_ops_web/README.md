@@ -36,7 +36,7 @@ System
 - 展示整体状态、最后刷新时间、健康服务数量、异常服务数量。
 - 展示 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation` 的状态表。
 - 通过 `quant_ops_api /api/v1/factor-validation/review` 展示因子验证审核摘要。
-- 展示 `decision`、IC / Rank IC 摘要、findings、recommended actions 和 manifest artifact preview。
+- 展示 `decision`、IC / Rank IC、分组收益差、findings、recommended actions 和 manifest artifact preview。
 - 通过 `quant_ops_api /api/v1/artifacts/ledger` 展示任务账本和产物账本预览。
 - 提供加载、刷新和错误态，保持只读边界。
 

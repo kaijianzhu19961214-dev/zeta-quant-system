@@ -452,6 +452,14 @@ h3 {
   border-bottom: 1px solid #d8ded4;
 }
 
+.metric-grid.compact .metric {
+  border-bottom: 1px solid #d8ded4;
+}
+
+.metric-grid.compact .metric:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
 .metric-grid.compact .metric strong {
   font-size: 24px;
 }

@@ -8,6 +8,8 @@ from quant_contracts import (
 
 from quant_factor_validation.metrics import (
     calculate_forward_returns,
+    calculate_group_return_spread_mean,
+    calculate_group_returns,
     calculate_ic_series,
     mean_optional,
     standard_deviation,
@@ -45,6 +47,11 @@ class FactorValidationService:
             factor_values=request.factor_values,
             forward_returns=forward_returns,
         )
+        group_returns = calculate_group_returns(
+            factor_values=request.factor_values,
+            forward_returns=forward_returns,
+            group_count=request.group_count,
+        )
         ic_values = [point.ic for point in ic_series]
         rank_ic_values = [point.rank_ic for point in ic_series]
         ic_std = standard_deviation(ic_values)
@@ -67,6 +74,10 @@ class FactorValidationService:
             rank_ic_mean=mean_optional(rank_ic_values),
             ic_std=ic_std,
             ic_ir=_calculate_ic_ir(ic_mean=ic_mean, ic_std=ic_std),
+            group_count=request.group_count,
+            group_return_spread_mean=calculate_group_return_spread_mean(
+                group_returns=group_returns,
+            ),
             universe_name=request.universe_name,
             price_mode=request.price_mode,
             dataset_code=request.dataset_code or market_response.meta.dataset_code,
@@ -80,12 +91,14 @@ class FactorValidationService:
         return FactorValidationResponse(
             metrics=metrics,
             ic_series=ic_series,
+            group_returns=group_returns,
             report=report,
             manifest=build_validation_manifest(
                 request=request,
                 metrics=metrics,
                 report=report,
                 ic_series=ic_series,
+                group_returns=group_returns,
             ),
         )
 
