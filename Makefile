@@ -1,7 +1,7 @@
 PYTHON ?= python3
 PYTHON_IMAGE ?= python:3.12.13-slim
 
-.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset remote-101-clickhouse-tunnel remote-101-clickhouse-tunnel-status quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check quant-factor-lab-build quant-factor-lab-up quant-factor-lab-down quant-factor-lab-logs quant-factor-lab-check quant-factor-validation-build quant-factor-validation-up quant-factor-validation-down quant-factor-validation-logs quant-factor-validation-check quant-ops-api-build quant-ops-api-up quant-ops-api-down quant-ops-api-logs quant-ops-api-check smoke-quant-data-hub-101 test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test-quant-data-sdk test-quant-data-sdk-local test-quant-data-sdk-container test-quant-factor-lab test-quant-factor-lab-local test-quant-factor-lab-container test-quant-factor-validation test-quant-factor-validation-local test-quant-factor-validation-container test-quant-ops-api test-quant-ops-api-local test-quant-ops-api-container test
+.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset remote-101-clickhouse-tunnel remote-101-clickhouse-tunnel-status quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check quant-factor-lab-build quant-factor-lab-up quant-factor-lab-down quant-factor-lab-logs quant-factor-lab-check quant-factor-validation-build quant-factor-validation-up quant-factor-validation-down quant-factor-validation-logs quant-factor-validation-check quant-ops-api-build quant-ops-api-up quant-ops-api-down quant-ops-api-logs quant-ops-api-check quant-ops-web-build quant-ops-web-up quant-ops-web-down quant-ops-web-logs quant-ops-web-check smoke-quant-data-hub-101 test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test-quant-data-sdk test-quant-data-sdk-local test-quant-data-sdk-container test-quant-factor-lab test-quant-factor-lab-local test-quant-factor-lab-container test-quant-factor-validation test-quant-factor-validation-local test-quant-factor-validation-container test-quant-ops-api test-quant-ops-api-local test-quant-ops-api-container test-quant-ops-web test-quant-ops-web-container test
 
 infra-up:
 	docker compose up -d postgres redis
@@ -92,6 +92,21 @@ quant-ops-api-logs:
 quant-ops-api-check:
 	curl -sS -m 10 http://127.0.0.1:$${QUANT_OPS_API_PORT:-18030}/health
 
+quant-ops-web-build:
+	docker compose build quant_ops_web
+
+quant-ops-web-up:
+	docker compose up -d quant_ops_web
+
+quant-ops-web-down:
+	docker compose stop quant_ops_web
+
+quant-ops-web-logs:
+	docker compose logs -f quant_ops_web
+
+quant-ops-web-check:
+	curl -sS -m 10 http://127.0.0.1:$${QUANT_OPS_WEB_PORT:-18040}/
+
 smoke-quant-data-hub-101:
 	$(PYTHON) scripts/smoke_quant_data_hub_101.py
 
@@ -143,4 +158,9 @@ test-quant-ops-api-local:
 test-quant-ops-api-container:
 	docker run --rm -e PIP_DISABLE_PIP_VERSION_CHECK=1 -e PIP_ROOT_USER_ACTION=ignore -v "$(CURDIR):/workspace" -w /workspace $(PYTHON_IMAGE) sh -c "python -m pip install -e 'services/quant_ops_api[test]' && python -m unittest discover services/quant_ops_api/tests"
 
-test: test-quant-contracts test-quant-data-hub test-quant-data-sdk test-quant-factor-lab test-quant-factor-validation test-quant-ops-api
+test-quant-ops-web: test-quant-ops-web-container
+
+test-quant-ops-web-container:
+	docker run --rm -v "$(CURDIR)/apps/quant_ops_web:/workspace" -v /workspace/node_modules -w /workspace node:22-alpine sh -c "npm ci && npm run typecheck"
+
+test: test-quant-contracts test-quant-data-hub test-quant-data-sdk test-quant-factor-lab test-quant-factor-validation test-quant-ops-api test-quant-ops-web

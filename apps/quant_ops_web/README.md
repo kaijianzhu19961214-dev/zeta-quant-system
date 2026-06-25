@@ -30,5 +30,29 @@ System
 
 ## 当前状态
 
-当前仅建立需求和目录边界，前端代码后续按 `docs/web_ui_and_monitoring_requirements.md` 分阶段实现。
+当前已落地 MVP Overview 页面：
 
+- 通过 Vite 代理 `/ops-api` 读取 `quant_ops_api /api/v1/overview`。
+- 展示整体状态、最后刷新时间、健康服务数量、异常服务数量。
+- 展示 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation` 的状态表。
+- 提供加载、刷新和错误态，保持只读边界。
+
+## 本地运行
+
+```bash
+make quant-ops-web-up
+make quant-ops-web-check
+```
+
+默认访问地址：
+
+```text
+http://127.0.0.1:18040
+```
+
+## 本地验证
+
+```bash
+make test-quant-ops-web
+make quant-ops-web-build
+```

@@ -65,9 +65,9 @@ infra/
   remote_101/                   # 101 data node deployment templates
 ```
 
-当前仓库已建立 monorepo 目录骨架，并已落地 `quant_contracts` 公共协议包、`quant_data_hub` 第一批行情查询服务代码、`quant_data_sdk` Python 客户端、`quant_factor_lab` MVP 因子计算服务、`quant_factor_validation` MVP 验证服务和 `quant_ops_api` 只读运营聚合 API。业务服务代码会继续分阶段迁入。
+当前仓库已建立 monorepo 目录骨架，并已落地 `quant_contracts` 公共协议包、`quant_data_hub` 第一批行情查询服务代码、`quant_data_sdk` Python 客户端、`quant_factor_lab` MVP 因子计算服务、`quant_factor_validation` MVP 验证服务、`quant_ops_api` 只读运营聚合 API 和 `quant_ops_web` 运营监控 Overview 页面。业务服务代码会继续分阶段迁入。
 
-The repository now includes the monorepo directory scaffold, `quant_contracts`, the first `quant_data_hub` market-query service code, the `quant_data_sdk` Python client, the `quant_factor_lab` MVP factor service, the `quant_factor_validation` MVP validation service, the read-only `quant_ops_api`, local container infrastructure, and reference materials from the existing 101 data-ingestion project. Service code will continue to be migrated in phases.
+The repository now includes the monorepo directory scaffold, `quant_contracts`, the first `quant_data_hub` market-query service code, the `quant_data_sdk` Python client, the `quant_factor_lab` MVP factor service, the `quant_factor_validation` MVP validation service, the read-only `quant_ops_api`, the `quant_ops_web` operations overview page, local container infrastructure, and reference materials from the existing 101 data-ingestion project. Service code will continue to be migrated in phases.
 
 ---
 
@@ -153,6 +153,23 @@ make quant-ops-api-up
 make quant-ops-api-check
 ```
 
+启动 `quant_ops_web` 运营监控页面：
+
+Start the `quant_ops_web` operations dashboard:
+
+```bash
+make quant-ops-web-up
+make quant-ops-web-check
+```
+
+默认访问地址：
+
+Default URL:
+
+```text
+http://127.0.0.1:18040
+```
+
 停止本地基础设施：
 
 Stop local infrastructure:
@@ -172,6 +189,7 @@ quant_data_hub, optional service container
 quant_factor_lab, optional service container
 quant_factor_validation, optional service container
 quant_ops_api, optional read-only operations API
+quant_ops_web, optional operations dashboard
 ```
 
 大规模 PostgreSQL、ClickHouse、MinIO 和真实行情数据继续留在 101 节点。

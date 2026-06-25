@@ -25,12 +25,15 @@ quant_data_hub
 quant_factor_lab
 quant_factor_validation
 quant_ops_api
+quant_ops_web
 ```
 
-第二阶段随着 MVP 服务生成，再逐步加入：
+后续阶段随着 MVP 服务生成，再逐步加入：
 
 ```text
-quant_ops_web
+quant_model_lab
+quant_backtest_engine
+quant_risk_engine
 ```
 
 `quant_contracts` 是公共 Python 包，不作为常驻服务运行。
@@ -124,6 +127,14 @@ quant_ops_api:
       condition: service_healthy
     quant_factor_validation:
       condition: service_healthy
+
+quant_ops_web:
+  build: ./apps/quant_ops_web
+  depends_on:
+    quant_ops_api:
+      condition: service_healthy
+  proxy:
+    /ops-api -> quant_ops_api
 ```
 
 服务之间不能通过容器文件系统共享内部代码。跨服务通信只能使用：
@@ -167,6 +178,7 @@ services/quant_data_hub/Dockerfile
 services/quant_factor_lab/Dockerfile
 services/quant_factor_validation/Dockerfile
 services/quant_ops_api/Dockerfile
+apps/quant_ops_web/Dockerfile
 ```
 
 ---
@@ -193,9 +205,12 @@ QUANT_DATA_HUB_PORT
 QUANT_FACTOR_LAB_PORT
 QUANT_FACTOR_VALIDATION_PORT
 QUANT_OPS_API_PORT
+QUANT_OPS_WEB_PORT
 QUANT_DATA_HUB_BASE_URL
 QUANT_FACTOR_LAB_BASE_URL
 QUANT_FACTOR_VALIDATION_BASE_URL
+QUANT_OPS_API_INTERNAL_URL
+VITE_QUANT_OPS_API_BASE_PATH
 SERVICE_HEALTH_TIMEOUT_SECONDS
 CLICKHOUSE_HTTP_URL
 CLICKHOUSE_DATABASE
@@ -239,6 +254,19 @@ make quant-factor-validation-check
 ```bash
 make quant-ops-api-up
 make quant-ops-api-check
+```
+
+启动 `quant_ops_web`：
+
+```bash
+make quant-ops-web-up
+make quant-ops-web-check
+```
+
+默认页面地址：
+
+```text
+http://127.0.0.1:18040
 ```
 
 查看服务状态：

@@ -185,6 +185,36 @@ services:
     networks:
       - quant_backend
 
+  quant_ops_web:
+    build:
+      context: .
+      dockerfile: apps/quant_ops_web/Dockerfile
+    container_name: quant_system_quant_ops_web
+    restart: unless-stopped
+    environment:
+      QUANT_OPS_API_INTERNAL_URL: ${QUANT_OPS_API_INTERNAL_URL:-http://quant_ops_api:8000}
+      VITE_QUANT_OPS_API_BASE_PATH: ${VITE_QUANT_OPS_API_BASE_PATH:-/ops-api}
+      TZ: ${TZ:-Asia/Shanghai}
+    ports:
+      - "${QUANT_OPS_WEB_PORT:-18040}:5173"
+    depends_on:
+      quant_ops_api:
+        condition: service_healthy
+    healthcheck:
+      test:
+        [
+          "CMD",
+          "node",
+          "-e",
+          "fetch('http://127.0.0.1:5173').then(r=>{if(!r.ok)process.exit(1)}).catch(()=>process.exit(1))",
+        ]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 20s
+    networks:
+      - quant_backend
+
 networks:
   quant_backend:
     name: quant_system_backend

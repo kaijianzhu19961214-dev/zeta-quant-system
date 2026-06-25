@@ -22,6 +22,8 @@ quant_ops_api = 只读优先的运营聚合 API / BFF
 
 它们不替代 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation`，也不直接承担数据接入、因子计算或因子验证逻辑。
 
+当前已落地第一版 Overview 页面：`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api /api/v1/overview`，展示整体状态、服务健康表和刷新状态。
+
 ---
 
 ## 2. 第一版范围
@@ -138,6 +140,19 @@ services/quant_ops_api  # 只读聚合 API，当前已落地 /api/v1/overview
 ```
 
 短期本地开发优先让 `quant_ops_web` 调用 `quant_ops_api`，只有调试单服务时才直接调用业务服务只读接口。
+
+本地容器入口：
+
+```bash
+make quant-ops-web-up
+make quant-ops-web-check
+```
+
+默认地址：
+
+```text
+http://127.0.0.1:18040
+```
 
 ---
 
