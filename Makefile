@@ -1,7 +1,7 @@
 PYTHON ?= python3
 PYTHON_IMAGE ?= python:3.12.13-slim
 
-.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test
+.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset remote-101-clickhouse-tunnel remote-101-clickhouse-tunnel-status quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check smoke-quant-data-hub-101 test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test
 
 infra-up:
 	docker compose up -d postgres redis
@@ -16,7 +16,7 @@ infra-logs:
 	docker compose logs -f postgres redis
 
 infra-check:
-	docker compose config
+	docker compose config --quiet
 	docker compose exec postgres pg_isready -U $${POSTGRES_USER:-quant_admin} -d $${POSTGRES_DB:-quant_system}
 	docker compose exec redis redis-cli ping
 
@@ -25,6 +25,12 @@ infra-restart:
 
 infra-reset:
 	docker compose down -v
+
+remote-101-clickhouse-tunnel:
+	lsof -nP -iTCP:18123 -sTCP:LISTEN >/dev/null || ssh -fN -L 127.0.0.1:18123:127.0.0.1:18123 192.168.2.101
+
+remote-101-clickhouse-tunnel-status:
+	lsof -nP -iTCP:18123 -sTCP:LISTEN
 
 quant-data-hub-build:
 	docker compose build quant_data_hub
@@ -40,6 +46,9 @@ quant-data-hub-logs:
 
 quant-data-hub-check:
 	curl -sS -m 10 http://127.0.0.1:$${QUANT_DATA_HUB_PORT:-18000}/health
+
+smoke-quant-data-hub-101:
+	$(PYTHON) scripts/smoke_quant_data_hub_101.py
 
 test-quant-contracts: test-quant-contracts-container
 

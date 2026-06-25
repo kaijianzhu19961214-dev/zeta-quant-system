@@ -75,6 +75,18 @@ make quant-data-hub-check
 http://127.0.0.1:18000
 ```
 
+101 只读 smoke test：
+
+```bash
+make smoke-quant-data-hub-101
+```
+
+前提：
+
+- 本地 `.env` 已配置 101 ClickHouse 连接。
+- Mac 已打开 `127.0.0.1:18123 -> 101:18123` SSH tunnel。
+- `quant_data_hub` 容器已重启并读取本地 `.env`。
+
 ## 约束 / Rules
 
 - 默认通过 API 或只读小样本验证，不从 101 全量复制数据到 Mac。

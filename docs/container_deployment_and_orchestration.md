@@ -366,7 +366,7 @@ docker compose down -v
 容器环境第一阶段验收：
 
 ```text
-docker compose config 可以通过
+docker compose config --quiet 可以通过
 postgres 容器状态为 healthy
 redis 容器状态为 healthy
 quant_data_hub /health 返回 ok

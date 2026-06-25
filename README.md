@@ -185,6 +185,7 @@ Core documents:
 - [容器部署与服务编排方案](docs/container_deployment_and_orchestration.md)
 - [公共 GitHub 仓库治理方案](docs/github_repository_governance.md)
 - [Python 运行时策略](docs/python_runtime_policy.md)
+- [101 只读 Smoke Test](docs/remote_101_smoke_test.md)
 - [101 旧数据接入项目重合分析与迁移清单](docs/legacy_data_ingestion_overlap_and_migration.md)
 - [quant_contracts 与 101 旧数据接入项目协议映射](docs/quant_contracts_legacy_mapping.md)
 
@@ -238,7 +239,7 @@ Minimum first-stage checks:
 ```bash
 make test
 ruff check .
-docker compose config
+docker compose config --quiet
 ```
 
 当前项目采用容器优先策略，MVP 服务镜像默认使用 `python:3.12.13-slim`，详见 [Python 运行时策略](docs/python_runtime_policy.md)。
