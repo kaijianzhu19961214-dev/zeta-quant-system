@@ -242,7 +242,7 @@ Redis: PONG
 
 后续每个 Python 服务镜像必须满足：
 
-- 使用 Python 3.12。
+- 使用 `python:3.12.13-slim` 作为 MVP 默认基础镜像。
 - 只安装本服务运行所需依赖。
 - 不复制其他服务的内部源码。
 - 通过 `pip install -e ../quant_contracts` 或发布包方式使用公共协议。
@@ -253,7 +253,7 @@ Redis: PONG
 服务 Dockerfile 推荐结构：
 
 ```text
-python:3.12-slim
+python:3.12.13-slim
   ↓
 安装系统依赖
   ↓

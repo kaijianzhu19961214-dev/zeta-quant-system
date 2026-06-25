@@ -174,6 +174,7 @@ Core documents:
 - [量化多项目架构与 Codex 实施方案](docs/quant_multi_project_codex_plan.md)
 - [容器部署与服务编排方案](docs/container_deployment_and_orchestration.md)
 - [公共 GitHub 仓库治理方案](docs/github_repository_governance.md)
+- [Python 运行时策略](docs/python_runtime_policy.md)
 - [101 旧数据接入项目重合分析与迁移清单](docs/legacy_data_ingestion_overlap_and_migration.md)
 - [quant_contracts 与 101 旧数据接入项目协议映射](docs/quant_contracts_legacy_mapping.md)
 
@@ -225,14 +226,14 @@ __pycache__
 Minimum first-stage checks:
 
 ```bash
-python -m unittest
+make test-quant-contracts
 ruff check .
 docker compose config
 ```
 
-当前仓库还未迁入业务服务代码，因此 Python 测试和 ruff 会在后续服务落地后启用。
+当前项目采用容器优先策略，MVP 服务镜像默认使用 `python:3.12.13-slim`，详见 [Python 运行时策略](docs/python_runtime_policy.md)。
 
-Business service code has not been migrated yet, so Python tests and ruff checks will become active after the first services are added.
+The MVP runtime is container-first and defaults to `python:3.12.13-slim`. See [Python runtime policy](docs/python_runtime_policy.md).
 
 ---
 

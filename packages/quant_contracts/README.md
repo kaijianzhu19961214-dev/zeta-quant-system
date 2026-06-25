@@ -18,18 +18,60 @@
 - 不包含服务路由、后台任务、调度器或存储实现。
 - 不保存真实数据、token、password、access key。
 
-## 建议结构 / Suggested Structure
+## 当前结构 / Current Structure
 
 ```text
 src/quant_contracts/
-  market_data/
-  securities/
-  calendars/
-  adjustments/
-  factors/
-  lineage/
-  errors/
+  enums/
+  mappings/
+  schemas/
 tests/
+```
+
+## 已落地模型 / Implemented Models
+
+- `MarketBar`
+- `MarketBarsQuery`
+- `MarketBarsMeta`
+- `MarketBarsResponse`
+- `QfqBatch`
+- `TaskRun`
+- `TaskArtifact`
+- `PriceMode`
+- `Timeframe`
+- `TaskStatus`
+- `ArtifactType`
+
+## 旧项目兼容 / Legacy Compatibility
+
+已提供旧项目行情字段映射：
+
+```text
+symbol <-> code
+trade_date <-> date
+open_price <-> open
+volume <-> vol
+turnover <-> amount
+```
+
+兼容函数：
+
+```python
+from quant_contracts.mappings import from_legacy_market_bar, to_legacy_market_bars_query
+```
+
+## 测试 / Tests
+
+默认使用容器中的 Python 3.12：
+
+```bash
+make test-quant-contracts
+```
+
+如果本机已安装 Python 3.12 并安装依赖，可以运行：
+
+```bash
+make test-quant-contracts-local
 ```
 
 ## 迁移入口 / Legacy Mapping
@@ -39,4 +81,3 @@ tests/
 - [quant_contracts 与 101 旧数据接入项目协议映射](../../docs/quant_contracts_legacy_mapping.md)
 
 任何从 101 旧项目迁移进来的 schema，都应先在这里完成命名和兼容性确认，再进入具体服务。
-
