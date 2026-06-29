@@ -177,6 +177,8 @@ candidate_reject
 
 当前 `manifest.persistence_status = not_persisted`，表示接口已经给出任务血缘、产物路径、JSON payload 大小和 sha256 校验和，但还没有写入 PostgreSQL、MinIO 或其他生产存储。
 
+当前代码已经具备 `ValidationPersistenceService` 编排边界，默认通过 `VALIDATION_PERSISTENCE_ENABLED=false` 保持关闭。后续只有在 MinIO / S3 对象存储 adapter 和 PostgreSQL 账本 repository 都完成后，才应切换为 `persisted`。
+
 当前验证服务在内存中生成以下 JSON 产物 payload，用于后续直接接入对象存储：
 
 ```text

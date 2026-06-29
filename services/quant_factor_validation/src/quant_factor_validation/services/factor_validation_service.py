@@ -20,12 +20,19 @@ from quant_factor_validation.services.validation_artifacts import (
     enrich_manifest_with_artifact_payloads,
 )
 from quant_factor_validation.services.validation_manifest import build_validation_manifest
+from quant_factor_validation.services.validation_persistence import ValidationPersistenceService
 from quant_factor_validation.services.validation_report import build_validation_report
 
 
 class FactorValidationService:
-    def __init__(self, *, market_data_reader: MarketDataReader) -> None:
+    def __init__(
+        self,
+        *,
+        market_data_reader: MarketDataReader,
+        persistence_service: ValidationPersistenceService | None = None,
+    ) -> None:
         self.market_data_reader = market_data_reader
+        self.persistence_service = persistence_service or ValidationPersistenceService.disabled()
 
     async def validate(self, *, request: FactorValidationRequest) -> FactorValidationResponse:
         symbols = sorted({factor_value.symbol for factor_value in request.factor_values})
@@ -109,13 +116,17 @@ class FactorValidationService:
             manifest=manifest,
             artifact_payloads=artifact_payloads,
         )
+        persisted_manifest = await self.persistence_service.persist(
+            manifest=enriched_manifest,
+            artifact_payloads=artifact_payloads,
+        )
 
         return FactorValidationResponse(
             metrics=metrics,
             ic_series=ic_series,
             group_returns=group_returns,
             report=report,
-            manifest=enriched_manifest,
+            manifest=persisted_manifest,
         )
 
 

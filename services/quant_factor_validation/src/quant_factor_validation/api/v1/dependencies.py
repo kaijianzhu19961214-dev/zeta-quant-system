@@ -3,6 +3,7 @@ from functools import lru_cache
 from quant_factor_validation.core.config import get_settings
 from quant_factor_validation.repositories.market_data_reader import QuantDataHubMarketDataReader
 from quant_factor_validation.services.factor_validation_service import FactorValidationService
+from quant_factor_validation.services.validation_persistence import ValidationPersistenceService
 
 
 @lru_cache
@@ -16,9 +17,19 @@ def get_market_data_reader() -> QuantDataHubMarketDataReader:
 
 
 def get_factor_validation_service() -> FactorValidationService:
-    return FactorValidationService(market_data_reader=get_market_data_reader())
+    return FactorValidationService(
+        market_data_reader=get_market_data_reader(),
+        persistence_service=get_validation_persistence_service(),
+    )
+
+
+@lru_cache
+def get_validation_persistence_service() -> ValidationPersistenceService:
+    settings = get_settings()
+    return ValidationPersistenceService(is_enabled=settings.validation_persistence_enabled)
 
 
 def reset_dependencies() -> None:
     get_settings.cache_clear()
     get_market_data_reader.cache_clear()
+    get_validation_persistence_service.cache_clear()

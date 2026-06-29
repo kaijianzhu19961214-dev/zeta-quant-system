@@ -2,13 +2,19 @@ import unittest
 
 from quant_contracts import (
     FactorDailyValue,
+    FactorValidationManifest,
     FactorValidationRequest,
     MarketBar,
     MarketBarsMeta,
     MarketBarsQuery,
     MarketBarsResponse,
 )
-from quant_factor_validation.services import FactorValidationService
+from quant_factor_validation.services import (
+    FactorValidationService,
+    StoredValidationArtifact,
+    ValidationArtifactPayload,
+    ValidationPersistenceService,
+)
 
 
 class FakeMarketDataReader:
@@ -34,6 +40,36 @@ class FakeMarketDataReader:
                 MarketBar(symbol="000003.SZ", trade_date="2026-03-16", close_price="13"),
             ],
         )
+
+
+class FakeArtifactStore:
+    async def put_validation_artifact(
+        self,
+        *,
+        payload: ValidationArtifactPayload,
+    ) -> StoredValidationArtifact:
+        return StoredValidationArtifact(
+            artifact_id=payload.artifact_id,
+            object_key=payload.object_key,
+            bucket_name="quant-factor-data",
+            uri=f"s3://quant-factor-data/{payload.object_key}",
+            file_size_bytes=payload.size_bytes,
+            sha256=payload.sha256,
+            content_type=payload.content_type,
+        )
+
+
+class FakeLedgerRepository:
+    def __init__(self) -> None:
+        self.manifests: list[FactorValidationManifest] = []
+
+    async def record_validation_manifest(
+        self,
+        *,
+        manifest: FactorValidationManifest,
+    ) -> FactorValidationManifest:
+        self.manifests.append(manifest)
+        return manifest
 
 
 class FactorValidationServiceTest(unittest.IsolatedAsyncioTestCase):
@@ -96,6 +132,53 @@ class FactorValidationServiceTest(unittest.IsolatedAsyncioTestCase):
             "application/json",
         )
         self.assertIn("sha256", response.manifest.artifacts[0].metadata)
+
+    async def test_should_return_persisted_manifest_when_persistence_is_enabled(self) -> None:
+        ledger = FakeLedgerRepository()
+        service = FactorValidationService(
+            market_data_reader=FakeMarketDataReader(),
+            persistence_service=ValidationPersistenceService(
+                is_enabled=True,
+                artifact_store=FakeArtifactStore(),
+                ledger_repository=ledger,
+            ),
+        )
+
+        response = await service.validate(
+            request=FactorValidationRequest(
+                factor_name="momentum_1d",
+                factor_values=[
+                    FactorDailyValue(
+                        symbol="000001.SZ",
+                        trade_date="2026-03-13",
+                        factor_name="momentum_1d",
+                        factor_value="0.1",
+                    ),
+                    FactorDailyValue(
+                        symbol="000002.SZ",
+                        trade_date="2026-03-13",
+                        factor_name="momentum_1d",
+                        factor_value="0.2",
+                    ),
+                    FactorDailyValue(
+                        symbol="000003.SZ",
+                        trade_date="2026-03-13",
+                        factor_name="momentum_1d",
+                        factor_value="0.3",
+                    ),
+                ],
+                market_start="2026-03-13",
+                market_end="2026-03-16",
+                forward_days=1,
+                group_count=3,
+                run_id="run_validation_persisted",
+            )
+        )
+
+        self.assertEqual(response.manifest.persistence_status, "persisted")
+        self.assertEqual(len(ledger.manifests), 1)
+        self.assertEqual(response.manifest.artifacts[0].bucket_name, "quant-factor-data")
+        self.assertEqual(response.manifest.artifacts[0].metadata["persistence_status"], "persisted")
 
 
 if __name__ == "__main__":

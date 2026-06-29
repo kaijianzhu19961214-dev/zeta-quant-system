@@ -15,6 +15,10 @@ class Settings(BaseSettings):
     )
     quant_data_api_token: str | None = Field(default=None, alias="QUANT_DATA_API_TOKEN")
     quant_data_hub_timeout_seconds: float = Field(default=15.0, alias="QUANT_DATA_HUB_TIMEOUT_SECONDS")
+    validation_persistence_enabled: bool = Field(
+        default=False,
+        alias="VALIDATION_PERSISTENCE_ENABLED",
+    )
 
 
 @lru_cache

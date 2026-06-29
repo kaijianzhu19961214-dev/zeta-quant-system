@@ -30,6 +30,14 @@ metadata.row_count
 
 这意味着后续接入对象存储时，不需要改因子验证指标计算逻辑；只需要增加 repository / integration adapter。
 
+当前代码已接入 `ValidationPersistenceService` 编排边界：
+
+```text
+VALIDATION_PERSISTENCE_ENABLED=false
+```
+
+默认关闭真实持久化。开启前必须同时提供对象存储 adapter 和 PostgreSQL 账本 repository；如果只打开开关但没有 adapter，服务会拒绝把 manifest 标记为 `persisted`。
+
 ---
 
 ## 2. 生产存储分工
@@ -73,7 +81,7 @@ Python 后端优先使用成熟、维护活跃、生态通用的开源方案：
 quant_factor_validation.repositories.task_run_repository
 quant_factor_validation.repositories.task_artifact_repository
 quant_factor_validation.integrations.artifact_object_store
-quant_factor_validation.services.validation_persistence_service
+quant_factor_validation.services.validation_persistence
 ```
 
 建议调用顺序：
@@ -91,6 +99,25 @@ FactorValidationService.validate
 ```
 
 MVP 默认仍应支持 `not_persisted` 模式，便于本地开发和测试环境不依赖外部存储。
+
+当前已落地：
+
+```text
+ValidationArtifactStore 协议
+ValidationLedgerRepository 协议
+ValidationPersistenceService 编排
+StoredValidationArtifact 回填模型
+上传结果 size / sha256 / content_type 校验
+```
+
+后续仍待落地：
+
+```text
+MinIO / S3 兼容对象存储 adapter
+SQLAlchemy 2.0 async PostgreSQL repository
+服务 lifespan 中的连接池和客户端初始化
+生产环境鉴权与审计日志
+```
 
 ---
 

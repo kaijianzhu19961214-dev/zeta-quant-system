@@ -94,7 +94,15 @@ metadata.schema_version
 metadata.row_count
 ```
 
-这些字段用于后续无缝接入 MinIO / S3 兼容对象存储和 PostgreSQL `task_artifacts` 账本；当前接口仍不上传文件、不写生产表。
+这些字段用于后续无缝接入 MinIO / S3 兼容对象存储和 PostgreSQL `task_artifacts` 账本。当前已接入可插拔 `ValidationPersistenceService` 编排边界，但默认关闭真实持久化。
+
+配置开关：
+
+```text
+VALIDATION_PERSISTENCE_ENABLED=false
+```
+
+当前默认值必须保持 `false`。只有在对象存储 adapter 和 PostgreSQL 账本 repository 都配置完成后，才能切换为 `true`；否则服务会返回明确的持久化配置错误，避免误标记为 `persisted`。
 
 示例：
 
@@ -139,5 +147,6 @@ make quant-factor-validation-check
 - 验证逻辑必须可复现：同一输入、同一配置、同一代码版本应得到一致结果。
 - 指标模型和报告摘要字段必须复用 `quant_contracts`。
 - 自动决策只能作为候选审核状态，不能替代研究员对样本、股票池、成本和稳定性的人工复核。
-- 当前在线接口只做只读验证计算，会返回 manifest preview 和可持久化产物元数据，但不保存报告、不写生产表、不上传 MinIO。
+- 当前在线接口默认只做只读验证计算，会返回 manifest preview 和可持久化产物元数据，但不保存报告、不写生产表、不上传 MinIO。
 - 后续生产持久化必须放在 repository / integration adapter 层，不能在路由或因子统计函数中直接连接 PostgreSQL、ClickHouse 或 MinIO。
+- 开启 `VALIDATION_PERSISTENCE_ENABLED=true` 前，必须同时提供对象存储 adapter 和 PostgreSQL 账本 repository。
