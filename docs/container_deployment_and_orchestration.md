@@ -257,6 +257,14 @@ make quant-factor-validation-up
 make quant-factor-validation-check
 ```
 
+验证 `quant_factor_validation` 真实持久化链路：
+
+```bash
+make smoke-quant-factor-validation-persistence
+```
+
+该命令需要提前通过 `.env` 或部署平台注入 validation PostgreSQL 和 MinIO / S3 兼容对象存储配置；日志不得输出密钥。
+
 启动 `quant_ops_api`：
 
 ```bash

@@ -41,6 +41,9 @@ VALIDATION_OBJECT_STORE_ACCESS_KEY=
 VALIDATION_OBJECT_STORE_SECRET_KEY=
 VALIDATION_OBJECT_STORE_BUCKET=quant-factor-data
 VALIDATION_OBJECT_STORE_SECURE=false
+VALIDATION_SMOKE_CREATE_SCHEMA=true
+VALIDATION_SMOKE_CREATE_BUCKET=false
+VALIDATION_SMOKE_RUN_ID=validation_smoke_local
 ```
 
 默认关闭真实持久化。开启前必须同时提供对象存储配置、PostgreSQL 账本表结构和数据库连接配置；如果只打开开关但缺少任一 adapter，服务会拒绝把 manifest 标记为 `persisted`。
@@ -120,6 +123,7 @@ MinIO / S3 compatible object store adapter
 SQLAlchemy 2.0 async PostgreSQL ledger repository
 FastAPI lifespan database engine disposal
 本地 PostgreSQL init schema
+MinIO + PostgreSQL persistence smoke tool
 上传结果 size / sha256 / content_type 校验
 task_runs / task_artifacts 幂等 upsert
 ```
@@ -128,7 +132,7 @@ task_runs / task_artifacts 幂等 upsert
 
 ```text
 生产环境迁移流程或 Alembic 版本化迁移
-持久化开启后的端到端 MinIO + PostgreSQL 集成验证
+带真实 101 / 生产密钥的端到端 MinIO + PostgreSQL 集成执行记录
 只读账本查询 API
 生产环境鉴权与审计日志
 ```
@@ -143,6 +147,7 @@ task_runs / task_artifacts 幂等 upsert
 - 上传对象后必须校验对象大小和 checksum；不一致时不能登记为 `persisted`。
 - PostgreSQL 账本登记必须幂等，同一 `task_id + artifact_id` 重试不能产生重复产物。
 - 当前 schema 必须以 `quant_contracts` 为准：`task_id` 和 `artifact_id` 是业务字符串，不在 validation 服务内临时转换为 UUID。
+- 持久化 smoke 工具只允许从环境变量读取数据库和 MinIO 配置；执行日志不能输出 secret、token 或完整带密码的数据库 URL。
 - Web UI 只能通过后端只读 API 展示产物，不直接持有对象存储管理密钥。
 - `candidate_pass` 只能表示候选通过，不等同于生产准入。
 

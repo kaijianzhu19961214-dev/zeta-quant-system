@@ -107,6 +107,9 @@ VALIDATION_OBJECT_STORE_ACCESS_KEY=
 VALIDATION_OBJECT_STORE_SECRET_KEY=
 VALIDATION_OBJECT_STORE_BUCKET=quant-factor-data
 VALIDATION_OBJECT_STORE_SECURE=false
+VALIDATION_SMOKE_CREATE_SCHEMA=true
+VALIDATION_SMOKE_CREATE_BUCKET=false
+VALIDATION_SMOKE_RUN_ID=validation_smoke_local
 ```
 
 当前已提供 MinIO / S3 兼容对象存储 adapter 和 SQLAlchemy 2.0 async PostgreSQL 账本 repository。默认值必须保持 `false`；只有在对象存储、数据库表结构和生产密钥都配置完成后，才能切换为 `true`。否则服务会返回明确的持久化配置错误，避免误标记为 `persisted`。
@@ -119,6 +122,25 @@ task_artifacts
 ```
 
 本项目当前 contracts 使用可读业务字符串作为 `task_id` / `artifact_id`，因此本地 schema 使用 `varchar(128)`，字段名和索引形态继续对齐 101 节点历史模型。
+
+持久化端到端 smoke：
+
+```bash
+make smoke-quant-factor-validation-persistence
+```
+
+该命令在 `quant_factor_validation` 容器内执行：
+
+```text
+1. 校验 MinIO / S3 bucket 是否存在
+2. 可选创建 PostgreSQL task_runs / task_artifacts schema
+3. 运行一组固定小样本因子验证
+4. 上传 validation_report / metrics / ic_series / group_returns
+5. 写入 task_runs / task_artifacts
+6. 校验 manifest.persisted、账本行数和对象大小
+```
+
+真实执行前必须通过 `.env` 或部署平台注入 `VALIDATION_DATABASE_URL`、`VALIDATION_OBJECT_STORE_ENDPOINT`、`VALIDATION_OBJECT_STORE_ACCESS_KEY` 和 `VALIDATION_OBJECT_STORE_SECRET_KEY`。命令不会打印密钥。
 
 示例：
 
@@ -168,3 +190,4 @@ make quant-factor-validation-check
 - 开启 `VALIDATION_PERSISTENCE_ENABLED=true` 前，必须同时提供对象存储配置、`VALIDATION_DATABASE_URL` 和已初始化的 PostgreSQL 账本表。
 - 对象存储 SDK 调用必须通过 integration adapter 执行，并使用异步包装避免阻塞 FastAPI 请求处理。
 - PostgreSQL 写入必须通过 SQLAlchemy 2.0 async repository 执行，并在 FastAPI lifespan 中释放连接池。
+- 持久化 smoke 只能使用环境变量读取密钥，不允许把 101 节点或生产 MinIO 密钥写入文档、测试或提交历史。
