@@ -9,6 +9,7 @@ description = "Factor validation service for Zeta Quant System"
 requires-python = ">=3.12,<3.13"
 dependencies = [
   "fastapi>=0.115,<0.116",
+  "minio>=7.2,<8.0",
   "pydantic-settings>=2.0,<3.0",
   "quant-contracts",
   "quant-data-sdk",

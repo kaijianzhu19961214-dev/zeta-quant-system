@@ -30,13 +30,18 @@ metadata.row_count
 
 这意味着后续接入对象存储时，不需要改因子验证指标计算逻辑；只需要增加 repository / integration adapter。
 
-当前代码已接入 `ValidationPersistenceService` 编排边界：
+当前代码已接入 `ValidationPersistenceService` 编排边界和 MinIO / S3 兼容对象存储 adapter：
 
 ```text
 VALIDATION_PERSISTENCE_ENABLED=false
+VALIDATION_OBJECT_STORE_ENDPOINT=
+VALIDATION_OBJECT_STORE_ACCESS_KEY=
+VALIDATION_OBJECT_STORE_SECRET_KEY=
+VALIDATION_OBJECT_STORE_BUCKET=quant-factor-data
+VALIDATION_OBJECT_STORE_SECURE=false
 ```
 
-默认关闭真实持久化。开启前必须同时提供对象存储 adapter 和 PostgreSQL 账本 repository；如果只打开开关但没有 adapter，服务会拒绝把 manifest 标记为 `persisted`。
+默认关闭真实持久化。开启前必须同时提供对象存储配置和 PostgreSQL 账本 repository；如果只打开开关但缺少任一 adapter，服务会拒绝把 manifest 标记为 `persisted`。
 
 ---
 
@@ -107,13 +112,13 @@ ValidationArtifactStore 协议
 ValidationLedgerRepository 协议
 ValidationPersistenceService 编排
 StoredValidationArtifact 回填模型
+MinIO / S3 compatible object store adapter
 上传结果 size / sha256 / content_type 校验
 ```
 
 后续仍待落地：
 
 ```text
-MinIO / S3 兼容对象存储 adapter
 SQLAlchemy 2.0 async PostgreSQL repository
 服务 lifespan 中的连接池和客户端初始化
 生产环境鉴权与审计日志

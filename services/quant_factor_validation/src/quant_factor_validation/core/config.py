@@ -19,6 +19,26 @@ class Settings(BaseSettings):
         default=False,
         alias="VALIDATION_PERSISTENCE_ENABLED",
     )
+    validation_object_store_endpoint: str | None = Field(
+        default=None,
+        alias="VALIDATION_OBJECT_STORE_ENDPOINT",
+    )
+    validation_object_store_access_key: str | None = Field(
+        default=None,
+        alias="VALIDATION_OBJECT_STORE_ACCESS_KEY",
+    )
+    validation_object_store_secret_key: str | None = Field(
+        default=None,
+        alias="VALIDATION_OBJECT_STORE_SECRET_KEY",
+    )
+    validation_object_store_bucket: str = Field(
+        default="quant-factor-data",
+        alias="VALIDATION_OBJECT_STORE_BUCKET",
+    )
+    validation_object_store_secure: bool = Field(
+        default=False,
+        alias="VALIDATION_OBJECT_STORE_SECURE",
+    )
 
 
 @lru_cache
