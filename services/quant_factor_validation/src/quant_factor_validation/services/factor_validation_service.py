@@ -15,6 +15,10 @@ from quant_factor_validation.metrics import (
     standard_deviation,
 )
 from quant_factor_validation.repositories.market_data_reader import MarketDataReader
+from quant_factor_validation.services.validation_artifacts import (
+    build_validation_artifact_payloads,
+    enrich_manifest_with_artifact_payloads,
+)
 from quant_factor_validation.services.validation_manifest import build_validation_manifest
 from quant_factor_validation.services.validation_report import build_validation_report
 
@@ -87,19 +91,31 @@ class FactorValidationService:
         )
 
         report = build_validation_report(metrics=metrics)
+        manifest = build_validation_manifest(
+            request=request,
+            metrics=metrics,
+            report=report,
+            ic_series=ic_series,
+            group_returns=group_returns,
+        )
+        artifact_payloads = build_validation_artifact_payloads(
+            manifest=manifest,
+            metrics=metrics,
+            report=report,
+            ic_series=ic_series,
+            group_returns=group_returns,
+        )
+        enriched_manifest = enrich_manifest_with_artifact_payloads(
+            manifest=manifest,
+            artifact_payloads=artifact_payloads,
+        )
 
         return FactorValidationResponse(
             metrics=metrics,
             ic_series=ic_series,
             group_returns=group_returns,
             report=report,
-            manifest=build_validation_manifest(
-                request=request,
-                metrics=metrics,
-                report=report,
-                ic_series=ic_series,
-                group_returns=group_returns,
-            ),
+            manifest=enriched_manifest,
         )
 
 

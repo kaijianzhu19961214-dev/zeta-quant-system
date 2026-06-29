@@ -90,6 +90,12 @@ class FactorValidationServiceTest(unittest.IsolatedAsyncioTestCase):
             response.manifest.artifacts[0].object_key,
             "factor_validation/momentum_1d/run_validation_test/validation_report.json",
         )
+        self.assertIsNotNone(response.manifest.artifacts[0].file_size_bytes)
+        self.assertEqual(
+            response.manifest.artifacts[0].metadata["content_type"],
+            "application/json",
+        )
+        self.assertIn("sha256", response.manifest.artifacts[0].metadata)
 
 
 if __name__ == "__main__":

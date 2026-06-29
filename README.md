@@ -239,6 +239,7 @@ Core documents:
 - [Python 运行时策略](docs/python_runtime_policy.md)
 - [Web UI 与监控需求](docs/web_ui_and_monitoring_requirements.md)
 - [因子处理与审核流程现状说明](docs/factor_processing_researcher_review.md)
+- [因子验证产物持久化策略](docs/validation_artifact_persistence_strategy.md)
 - [101 只读 Smoke Test](docs/remote_101_smoke_test.md)
 - [101 旧数据接入项目重合分析与迁移清单](docs/legacy_data_ingestion_overlap_and_migration.md)
 - [quant_contracts 与 101 旧数据接入项目协议映射](docs/quant_contracts_legacy_mapping.md)

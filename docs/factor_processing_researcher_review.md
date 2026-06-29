@@ -160,6 +160,9 @@ report.findings
 report.recommended_actions
 manifest.task_run
 manifest.artifacts
+artifact file_size_bytes
+artifact metadata.content_type
+artifact metadata.sha256
 manifest.persistence_status
 ```
 
@@ -172,7 +175,18 @@ candidate_pass
 candidate_reject
 ```
 
-当前 `manifest.persistence_status = not_persisted`，表示接口已经给出任务血缘和产物路径预览，但还没有写入 PostgreSQL、MinIO 或其他生产存储。
+当前 `manifest.persistence_status = not_persisted`，表示接口已经给出任务血缘、产物路径、JSON payload 大小和 sha256 校验和，但还没有写入 PostgreSQL、MinIO 或其他生产存储。
+
+当前验证服务在内存中生成以下 JSON 产物 payload，用于后续直接接入对象存储：
+
+```text
+validation_report.json
+metrics.json
+ic_series.json
+group_returns.json
+```
+
+这些产物已经具备 `schema_version`、`content_type`、`file_size_bytes` 和 `sha256`，便于研究员判断报告、指标、IC 序列和分组收益是否应进入正式审核账本。
 
 当前 `quant_ops_web` 已提供 Factor Validation 只读展示页：
 
@@ -202,7 +216,7 @@ persistence_status
 ledger limitations
 ```
 
-该页面通过 `quant_ops_api /api/v1/artifacts/ledger` 读取任务/产物账本预览。现阶段该账本由 `quant_factor_validation` 的 manifest preview 映射而来，目的是让研究员提前确认任务血缘、产物分类和审核入口是否够用；它还不是生产持久化账本。
+该页面通过 `quant_ops_api /api/v1/artifacts/ledger` 读取任务/产物账本预览。现阶段该账本由 `quant_factor_validation` 的 manifest preview 映射而来，目的是让研究员提前确认任务血缘、产物分类、checksum 和审核入口是否够用；它还不是生产持久化账本。
 
 ---
 
@@ -227,6 +241,8 @@ ledger limitations
 
 ```text
 quant_factor_validation manifest 持久化
+MinIO / S3 兼容对象存储上传验证报告、指标和序列文件
+PostgreSQL task_runs / task_artifacts 正式登记
 FactorDailyValue 的持久化或 artifact 输出规范
 固定样本验证报告
 分组收益的正式分组数、调仓频率和多空构造口径

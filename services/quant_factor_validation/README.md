@@ -74,6 +74,28 @@ manifest.task_run
 manifest.artifacts
 ```
 
+接口会在内存中生成以下确定性 JSON 产物 payload，并把产物元数据回填到 manifest：
+
+```text
+validation_report.json
+metrics.json
+ic_series.json
+group_returns.json
+```
+
+每个 `manifest.artifacts[]` 当前包含：
+
+```text
+object_key
+file_size_bytes
+metadata.content_type = application/json
+metadata.sha256
+metadata.schema_version
+metadata.row_count
+```
+
+这些字段用于后续无缝接入 MinIO / S3 兼容对象存储和 PostgreSQL `task_artifacts` 账本；当前接口仍不上传文件、不写生产表。
+
 示例：
 
 ```bash
@@ -117,4 +139,5 @@ make quant-factor-validation-check
 - 验证逻辑必须可复现：同一输入、同一配置、同一代码版本应得到一致结果。
 - 指标模型和报告摘要字段必须复用 `quant_contracts`。
 - 自动决策只能作为候选审核状态，不能替代研究员对样本、股票池、成本和稳定性的人工复核。
-- 当前在线接口只做只读验证计算，会返回 manifest preview，但不保存报告、不写生产表、不上传 MinIO。
+- 当前在线接口只做只读验证计算，会返回 manifest preview 和可持久化产物元数据，但不保存报告、不写生产表、不上传 MinIO。
+- 后续生产持久化必须放在 repository / integration adapter 层，不能在路由或因子统计函数中直接连接 PostgreSQL、ClickHouse 或 MinIO。
