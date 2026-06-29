@@ -19,6 +19,14 @@ class Settings(BaseSettings):
         default=False,
         alias="VALIDATION_PERSISTENCE_ENABLED",
     )
+    validation_database_url: str | None = Field(
+        default=None,
+        alias="VALIDATION_DATABASE_URL",
+    )
+    validation_database_echo: bool = Field(
+        default=False,
+        alias="VALIDATION_DATABASE_ECHO",
+    )
     validation_object_store_endpoint: str | None = Field(
         default=None,
         alias="VALIDATION_OBJECT_STORE_ENDPOINT",

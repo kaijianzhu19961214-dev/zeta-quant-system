@@ -100,6 +100,8 @@ metadata.row_count
 
 ```text
 VALIDATION_PERSISTENCE_ENABLED=false
+VALIDATION_DATABASE_URL=postgresql+asyncpg://quant_admin:quant_local_password@postgres:5432/quant_factor_validation
+VALIDATION_DATABASE_ECHO=false
 VALIDATION_OBJECT_STORE_ENDPOINT=
 VALIDATION_OBJECT_STORE_ACCESS_KEY=
 VALIDATION_OBJECT_STORE_SECRET_KEY=
@@ -107,7 +109,16 @@ VALIDATION_OBJECT_STORE_BUCKET=quant-factor-data
 VALIDATION_OBJECT_STORE_SECURE=false
 ```
 
-当前已提供 MinIO / S3 兼容对象存储 adapter。默认值必须保持 `false`；只有在对象存储配置和 PostgreSQL 账本 repository 都配置完成后，才能切换为 `true`。否则服务会返回明确的持久化配置错误，避免误标记为 `persisted`。
+当前已提供 MinIO / S3 兼容对象存储 adapter 和 SQLAlchemy 2.0 async PostgreSQL 账本 repository。默认值必须保持 `false`；只有在对象存储、数据库表结构和生产密钥都配置完成后，才能切换为 `true`。否则服务会返回明确的持久化配置错误，避免误标记为 `persisted`。
+
+PostgreSQL 账本使用：
+
+```text
+task_runs
+task_artifacts
+```
+
+本项目当前 contracts 使用可读业务字符串作为 `task_id` / `artifact_id`，因此本地 schema 使用 `varchar(128)`，字段名和索引形态继续对齐 101 节点历史模型。
 
 示例：
 
@@ -154,5 +165,6 @@ make quant-factor-validation-check
 - 自动决策只能作为候选审核状态，不能替代研究员对样本、股票池、成本和稳定性的人工复核。
 - 当前在线接口默认只做只读验证计算，会返回 manifest preview 和可持久化产物元数据，但不保存报告、不写生产表、不上传 MinIO。
 - 后续生产持久化必须放在 repository / integration adapter 层，不能在路由或因子统计函数中直接连接 PostgreSQL、ClickHouse 或 MinIO。
-- 开启 `VALIDATION_PERSISTENCE_ENABLED=true` 前，必须同时提供对象存储配置和 PostgreSQL 账本 repository。
+- 开启 `VALIDATION_PERSISTENCE_ENABLED=true` 前，必须同时提供对象存储配置、`VALIDATION_DATABASE_URL` 和已初始化的 PostgreSQL 账本表。
 - 对象存储 SDK 调用必须通过 integration adapter 执行，并使用异步包装避免阻塞 FastAPI 请求处理。
+- PostgreSQL 写入必须通过 SQLAlchemy 2.0 async repository 执行，并在 FastAPI lifespan 中释放连接池。

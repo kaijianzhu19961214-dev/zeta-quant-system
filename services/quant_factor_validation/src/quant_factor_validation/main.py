@@ -3,6 +3,7 @@ from contextlib import asynccontextmanager
 
 from fastapi import FastAPI
 
+from quant_factor_validation.api.v1.dependencies import close_validation_database_engine
 from quant_factor_validation.api.v1.health import router as health_router
 from quant_factor_validation.api.v1.validation import router as validation_router
 from quant_factor_validation.core.config import get_settings
@@ -10,7 +11,10 @@ from quant_factor_validation.core.config import get_settings
 
 @asynccontextmanager
 async def lifespan(app: FastAPI) -> AsyncGenerator[None, None]:
-    yield
+    try:
+        yield
+    finally:
+        await close_validation_database_engine()
 
 
 def create_app() -> FastAPI:
