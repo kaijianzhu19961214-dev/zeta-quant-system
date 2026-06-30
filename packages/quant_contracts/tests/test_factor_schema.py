@@ -3,11 +3,20 @@ import unittest
 from pydantic import ValidationError
 from quant_contracts import (
     ArtifactType,
+    AssetClass,
+    EvaluationEngine,
+    FactorComparisonReport,
     FactorCalculationRequest,
     FactorDailyValue,
+    FactorEvaluationResult,
+    FactorFamily,
     FactorGroupReturnPoint,
+    FactorMode,
+    FactorScoreCard,
+    FactorScoreComponent,
     FactorValidationFinding,
     FactorValidationManifest,
+    FactorValidationMetric,
     FactorValidationReport,
     FactorValidationRequest,
     PriceMode,
@@ -29,6 +38,9 @@ class FactorSchemaTest(unittest.TestCase):
 
         self.assertEqual(request.factor_name, "momentum_20d")
         self.assertEqual(request.symbols, ["000001.SZ", "000651.SZ"])
+        self.assertEqual(request.asset_class, AssetClass.EQUITY)
+        self.assertEqual(request.factor_mode, FactorMode.CROSS_SECTIONAL)
+        self.assertEqual(request.factor_family, FactorFamily.PRICE_VOLUME)
         self.assertEqual(request.timeframe, Timeframe.DAY_1)
 
     def test_should_reject_non_daily_timeframe_for_mvp_factor_request(self) -> None:
@@ -79,6 +91,7 @@ class FactorSchemaTest(unittest.TestCase):
 
         self.assertEqual(request.forward_days, 1)
         self.assertEqual(request.group_count, 5)
+        self.assertEqual(request.evaluation_engine, EvaluationEngine.INTERNAL)
         self.assertEqual(request.timeframe, Timeframe.DAY_1)
 
     def test_should_accept_factor_group_return_point_when_payload_is_valid(self) -> None:
@@ -110,6 +123,24 @@ class FactorSchemaTest(unittest.TestCase):
                 market_end="2026-03-16",
             )
 
+    def test_should_reject_factor_validation_request_when_classification_mismatches(self) -> None:
+        with self.assertRaises(ValidationError):
+            FactorValidationRequest(
+                factor_name="momentum_20d",
+                factor_values=[
+                    FactorDailyValue(
+                        symbol="000001.SZ",
+                        trade_date="2026-03-13",
+                        factor_name="momentum_20d",
+                        factor_value="0.15",
+                        asset_class=AssetClass.FUTURES,
+                    )
+                ],
+                market_start="2026-03-13",
+                market_end="2026-03-16",
+                asset_class=AssetClass.EQUITY,
+            )
+
     def test_should_accept_factor_validation_report_when_payload_is_valid(self) -> None:
         report = FactorValidationReport(
             decision="review_required",
@@ -126,6 +157,52 @@ class FactorSchemaTest(unittest.TestCase):
 
         self.assertEqual(report.decision, "review_required")
         self.assertEqual(report.findings[0].code, "manual_review_required")
+
+    def test_should_accept_factor_score_card_when_payload_is_valid(self) -> None:
+        score_card = FactorScoreCard(
+            factor_name="momentum_20d",
+            evaluation_engine=EvaluationEngine.INTERNAL,
+            final_score=72.5,
+            review_decision="candidate_pass",
+            score_components=[
+                FactorScoreComponent(
+                    name="rank_ic_score",
+                    raw_value=0.08,
+                    score=20.0,
+                    max_score=25.0,
+                    reason="Rank IC is above the first-stage review threshold.",
+                )
+            ],
+            warnings=["Turnover has not been measured in this validation run."],
+        )
+
+        self.assertEqual(score_card.evaluation_engine, EvaluationEngine.INTERNAL)
+        self.assertEqual(score_card.score_components[0].name, "rank_ic_score")
+
+    def test_should_accept_factor_comparison_report_when_payload_is_valid(self) -> None:
+        metrics = FactorValidationMetric(
+            factor_name="momentum_20d",
+            start_date="2026-03-13",
+            end_date="2026-03-16",
+            forward_days=1,
+            sample_count=3,
+            effective_sample_count=3,
+        )
+        evaluation_result = FactorEvaluationResult(
+            factor_name="momentum_20d",
+            evaluation_engine=EvaluationEngine.INTERNAL,
+            metrics=metrics,
+        )
+        comparison_report = FactorComparisonReport(
+            factor_name="momentum_20d",
+            primary_engine=EvaluationEngine.INTERNAL,
+            engine_results=[evaluation_result],
+            engine_count=1,
+            comparison_summary="Only the internal validation engine has run.",
+        )
+
+        self.assertFalse(comparison_report.has_engine_disagreement)
+        self.assertEqual(comparison_report.engine_results[0].evaluation_engine, EvaluationEngine.INTERNAL)
 
     def test_should_accept_factor_validation_manifest_when_payload_is_valid(self) -> None:
         manifest = FactorValidationManifest(

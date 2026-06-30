@@ -4,8 +4,10 @@ import json
 from typing import Any
 
 from quant_contracts import (
+    FactorComparisonReport,
     FactorGroupReturnPoint,
     FactorIcPoint,
+    FactorScoreCard,
     FactorValidationManifest,
     FactorValidationMetric,
     FactorValidationReport,
@@ -33,6 +35,8 @@ def build_validation_artifact_payloads(
     report: FactorValidationReport,
     ic_series: list[FactorIcPoint],
     group_returns: list[FactorGroupReturnPoint],
+    score_card: FactorScoreCard | None = None,
+    comparison_report: FactorComparisonReport | None = None,
 ) -> list[ValidationArtifactPayload]:
     payload_by_schema = {
         "factor_validation_report.v1": report.model_dump(mode="json"),
@@ -40,6 +44,10 @@ def build_validation_artifact_payloads(
         "factor_ic_series.v1": [point.model_dump(mode="json") for point in ic_series],
         "factor_group_returns.v1": [point.model_dump(mode="json") for point in group_returns],
     }
+    if score_card is not None:
+        payload_by_schema["factor_score_card.v1"] = score_card.model_dump(mode="json")
+    if comparison_report is not None:
+        payload_by_schema["factor_comparison_report.v1"] = comparison_report.model_dump(mode="json")
 
     artifact_payloads: list[ValidationArtifactPayload] = []
     for artifact in manifest.artifacts:

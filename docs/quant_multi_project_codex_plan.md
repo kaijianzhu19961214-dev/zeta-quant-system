@@ -129,11 +129,11 @@ asyncpg
 PostgreSQL
 ClickHouse
 MinIO
-Redis，可选
+Redis 7
 Alembic
 unittest
 ruff
-mypy，可选
+mypy，暂不全量开启
 ```
 
 ### 4.2 代码风格
@@ -261,7 +261,45 @@ python -m unittest
 ruff check .
 ```
 
-### 4.9 配置、密钥与运行约束
+`mypy` 第一阶段暂不作为全仓库强制门禁。后续先从 `quant_contracts` 和 `quant_data_sdk` 这类公共协议/SDK 层启用，再逐步覆盖因子计算和验证服务。
+
+### 4.9 Redis 缓存、幂等与运行状态约束
+
+Redis 从第一版开始作为缓存层和轻量协调层启用，但不作为任何业务数据的最终事实来源。
+
+适用场景：
+
+| 场景 | 推荐位置 | 典型用途 |
+| ---- | ---- | ---- |
+| 元数据缓存 | `quant_data_hub` | 交易日历、证券主数据、复权批次、数据版本摘要 |
+| 查询短缓存 | `quant_data_hub` / `quant_ops_api` | 小范围行情查询、Dashboard 聚合、报告预览 |
+| 任务幂等 | `quant_factor_lab` / `quant_factor_validation` | `run_id` 级别分布式锁、重复提交保护、任务状态 |
+| 外部访问控制 | 数据接入 adapter / API gateway | 第三方 API 请求去重、限流、短期响应缓存 |
+
+推荐 key 设计：
+
+```text
+calendar:{market}:{year}
+security:{symbol}
+qfq_batch:{batch_id}
+market_bars:{symbol}:{timeframe}:{price_mode}:{start}:{end}:{data_version}
+ops:overview:{version}
+ops:factor_validation:latest
+lock:factor_calc:{run_id}
+lock:validation:{run_id}
+task_status:{run_id}
+```
+
+强约束：
+
+- Redis 不保存永久业务真相，不替代 PostgreSQL、ClickHouse 或 MinIO。
+- 大规模行情、完整因子矩阵、验证明细序列不直接塞 Redis。
+- 缓存 key 必须包含 `data_version`、`batch_id`、`run_id` 等可复现字段。
+- 缓存失效优先使用版本化 key 和 TTL，不依赖手工批量删除。
+- 分布式锁使用 `SET key value NX EX seconds` 语义，并设置合理过期时间。
+- Redis 访问必须放在 cache、repository、integration 或 adapter 层，路由层不能直接操作 Redis。
+
+### 4.10 配置、密钥与运行约束
 
 - 所有配置通过环境变量或配置文件注入，仓库只保留 `.env.example`。
 - 不允许在代码、测试、notebook、README 中写入真实数据库密码、API token 或券商密钥。
@@ -270,7 +308,7 @@ ruff check .
 - 生产服务必须有结构化日志，日志中保留 `request_id`、`run_id` 或任务批次号。
 - 容器部署与服务编排详见 `docs/container_deployment_and_orchestration.md`。
 
-### 4.10 公共 GitHub 仓库约束
+### 4.11 公共 GitHub 仓库约束
 
 可以使用公共 GitHub 仓库统一管理代码，但仓库只能保存：
 
@@ -492,6 +530,7 @@ class TargetPosition(BaseModel):
 PostgreSQL  # 控制面：元数据、任务、导入记录、血缘、小规模验证表
 ClickHouse  # 行情分析主存储：raw/qfq/hfq 查询、日线/分钟线大表
 MinIO       # 原始文件、导入中间产物、研究结果和报告
+Redis       # 元数据缓存、查询短缓存、任务幂等和运行状态
 ```
 
 职责：
@@ -504,6 +543,7 @@ MinIO       # 原始文件、导入中间产物、研究结果和报告
 - 写入 PostgreSQL 控制面
 - 写入 ClickHouse 行情分析表
 - 写入或登记 MinIO 对象
+- 使用 Redis 缓存高频元数据和短期查询结果
 - 提供标准查询 API
 - 提供 qfq / hfq 价格口径查询
 - 记录导入任务和研究产物血缘
@@ -533,6 +573,7 @@ security_master
 trading_calendar
 ClickHouse raw/qfq/hfq 行情表
 MinIO 原始文件和研究产物对象
+Redis 元数据缓存和短期查询缓存
 ```
 
 ### 6.3 推荐数据表
@@ -608,6 +649,8 @@ GET  /api/v1/adjustments/qfq-batches
 - qfq 前复权依赖 `batch_id` 和 `qfq_base_date`，不能覆盖 raw 主表。
 - hfq 后复权可以使用 ClickHouse view 动态计算。
 - MinIO 只通过服务端预签名 URL 或受控 SDK 暴露，不向研究员暴露管理密钥。
+- Redis 只缓存交易日历、证券主数据、复权批次元数据和小范围查询结果，不保存行情主数据。
+- Redis key 必须包含 `data_version`、`batch_id` 或明确时间范围，避免供应商修订后读到旧口径。
 - 101 旧项目重合分析见 `docs/legacy_data_ingestion_overlap_and_migration.md`。
 - 旧字段到 `quant_contracts` 的映射见 `docs/quant_contracts_legacy_mapping.md`。
 
@@ -628,8 +671,9 @@ GET  /api/v1/adjustments/qfq-batches
 6. 使用 FastAPI + Pydantic v2 + SQLAlchemy 2.0 async + asyncpg。
 7. PostgreSQL 用作控制面，ClickHouse 用作行情分析主存储，MinIO 用作对象存储。
 8. 测试使用 unittest。
-9. 所有 PostgreSQL / ClickHouse / MinIO 操作必须放在 repositories 或 integrations 层。
-10. 路由层不能直接访问数据库。
+9. Redis 用作元数据缓存和短期查询缓存，不作为主存储。
+10. 所有 PostgreSQL / ClickHouse / MinIO / Redis 操作必须放在 repositories、cache 或 integrations 层。
+11. 路由层不能直接访问数据库或 Redis。
 
 需要生成：
 1. app/main.py
@@ -677,8 +721,9 @@ GET  /api/v1/adjustments/qfq-batches
 - 读取经批准的只读研究数据快照
 - 计算量价因子
 - 计算截面因子
-- 做基础去极值、标准化、中性化，可放在后续版本
+- 做基础去极值、标准化、中性化，第一版可先预留接口
 - 存储因子值
+- 使用 Redis 做 `run_id` 幂等锁和短期行情窗口缓存
 
 不负责：
 
@@ -686,6 +731,7 @@ GET  /api/v1/adjustments/qfq-batches
 - 不做完整回测
 - 不做交易执行
 - 不负责第三方原始行情接入、清洗、代码映射、复权口径定义和数据质量判定
+- 不把完整因子矩阵或长期研究产物写入 Redis
 
 ### 7.1.1 第三方原始数据兼容策略
 
@@ -725,7 +771,48 @@ app/services/factor_calculation_service.py 直接解析供应商原始字段
 quant_factor_lab 写入 raw_market_data 表
 ```
 
-### 7.2 第一批建议实现的因子
+### 7.2 因子分类口径
+
+后续不要只用“股票 / 期货”区分因子，而要在公共协议中同时固定三个维度：
+
+```text
+asset_class     # equity / futures
+factor_mode     # cross_sectional / time_series
+factor_family   # price_volume / term_structure / fundamental / macro / model
+```
+
+建议口径：
+
+| 资产 | 因子形态 | 因子族 | 典型因子 | 默认验证方向 |
+| ---- | ---- | ---- | ---- | ---- |
+| 股票 | `cross_sectional` | `price_volume` | 动量、反转、波动率、量比、价量相关 | IC、Rank IC、分组收益、多空收益、换手 |
+| 股票 | `cross_sectional` | `fundamental` | 估值、盈利、成长、质量、资产定价特征 | 截面 IC、分组收益、行业/市值中性后表现 |
+| 股票 | `cross_sectional` | `model` | ML alpha score、模型预测收益 | train/valid/test、IC、Rank IC、组合回测 |
+| 期货 | `time_series` | `price_volume` | TSMOM、突破、均线、成交量冲击、波动率状态 | 单品种时序回测、Sharpe、回撤、胜率、换手 |
+| 期货 | `cross_sectional` | `term_structure` | carry、期限结构 slope/curvature、跨品种动量 XSMOM | 跨品种排序、分组收益、Rank IC、板块中性 |
+
+第一版当前只把股票日频量价截面因子放进生产主链路。期货时序因子、期货截面因子和股票 ML alpha 暂不进入 MVP，但协议从第一版开始预留，避免第二版重做字段和数据接口。
+
+### 7.3 外部库在因子计算层的定位
+
+外部库不作为 `quant_factor_lab` 的统一底座，而是按研究方向作为参考实现、benchmark 或 adapter 接入。生产因子值仍以 `quant_contracts` 定义的结构为准。
+
+| 库 / 项目 | 适用方向 | 在当前项目中的角色 |
+| ---- | ---- | ---- |
+| [Microsoft Qlib](https://github.com/microsoft/qlib) | 股票截面研究流水线、Alpha158 / Alpha360、后续模型研究 | 参考 Data Handler、Dataset、Processor 分层，不直接替代 `quant_data_hub` |
+| [Qlib Alpha158 / Alpha360](https://github.com/microsoft/qlib/blob/main/examples/benchmarks/README.md) | 股票 engineered factors 和 raw window features | 作为因子模板和特征窗口设计参考 |
+| [OpenSourceAP/CrossSection](https://github.com/OpenSourceAP/CrossSection) | 股票基本面和资产定价截面因子 | 参考因子定义、复现实验结构和字段口径 |
+| [commodity-curve-factors](https://github.com/brianbanna/commodity-curve-factors) | 商品期货期限结构、carry、slope、curvature、TSMOM / XSMOM | 参考期货时序和截面因子形态 |
+| [vectorbt](https://github.com/polakowo/vectorbt) | 大规模时序策略和参数实验 | 参考期货时序量价因子回测，不作为交易执行引擎 |
+
+强约束：
+
+- 外部库输出必须映射回标准 factor schema，不能把第三方私有字段直接写进核心表。
+- 如果两个库都能计算同类结果，可以并行输出到 `evaluation_engine_result` 做对比，但生产主结论必须经过统一评分和审核。
+- `quant_factor_lab` 只产出因子值，不负责判断哪个库“更好”。
+- Redis 只能缓存短期行情窗口、计算状态和幂等锁，不能作为因子值主存储。
+
+### 7.4 第一批建议实现的因子
 
 建议先实现简单、可解释、容易验证的基础因子：
 
@@ -738,7 +825,7 @@ turnover_change_20d       # 换手变化，可后续做
 price_volume_corr_20d     # 20 日价量相关性
 ```
 
-### 7.3 推荐数据表
+### 7.5 推荐数据表
 
 ```sql
 create table factor_daily_value (
@@ -762,7 +849,7 @@ create index idx_factor_daily_value_symbol on factor_daily_value(symbol);
 create index idx_factor_daily_value_run_id on factor_daily_value(run_id);
 ```
 
-### 7.4 给 Codex 的提示词
+### 7.6 给 Codex 的提示词
 
 ```text
 请为 quant_factor_lab 项目生成基础代码。
@@ -783,6 +870,9 @@ create index idx_factor_daily_value_run_id on factor_daily_value(run_id);
 10. 数据库访问必须通过 repositories 层。
 11. 使用 Pydantic v2 定义输入输出。
 12. 使用 unittest。
+13. 因子必须标注 asset_class、factor_mode、factor_family。
+14. 外部库结果只能通过 adapter 映射到标准 schema。
+15. Redis 只用于 run_id 幂等锁和短期窗口缓存，不能保存长期因子矩阵。
 
 需要生成：
 1. app/schemas/factor_request.py
@@ -836,6 +926,7 @@ create index idx_factor_daily_value_run_id on factor_daily_value(run_id);
 - 缺失率
 - 换手率
 - 输出因子验证报告
+- 使用 Redis 缓存验证摘要、报告预览和 `run_id` 幂等锁
 
 不负责：
 
@@ -843,6 +934,8 @@ create index idx_factor_daily_value_run_id on factor_daily_value(run_id);
 - 不负责数据接入
 - 不做实盘交易
 - 不做复杂组合优化
+- 不直接训练用于生产准入判断的黑盒模型
+- 不把完整验证明细、IC 序列长期存入 Redis
 
 ### 8.2 核心指标
 
@@ -857,16 +950,56 @@ ICIR：IC 均值 / IC 标准差
 换手率：组合持仓变化程度
 ```
 
-### 8.3 推荐输出
+### 8.3 验证引擎与评分协议
+
+`quant_factor_validation` 的第一目标是形成统一评价口径。无论结果来自自研验证、Alphalens、Qlib、vectorbt，还是其他研究库，都必须先映射成标准协议，再进入评分和审核。
+
+建议新增或预留以下协议：
+
+```text
+EvaluationEngine           # internal / alphalens / qlib / vectorbt / opensource_ap / commodity_curve
+FactorEvaluationResult     # 单个验证引擎的标准化结果
+FactorScoreCard            # 可解释评分卡
+FactorComparisonReport     # 多引擎对比报告
+```
+
+不同场景的默认对照关系：
+
+| 场景 | 默认验证 | 可选对照库 |
+| ---- | ---- | ---- |
+| 股票量价截面因子 | internal validation | Alphalens、Qlib |
+| 股票基本面/资产定价因子 | internal validation | OpenSourceAP/CrossSection、Qlib |
+| 股票 ML alpha | Qlib、internal validation | MLflow 记录实验 |
+| 期货时序量价因子 | internal backtest | vectorbt |
+| 期货截面/期限结构因子 | internal validation | commodity-curve-factors |
+
+第一版评分先使用透明规则，不直接使用模型替代审核：
+
+```text
+final_score =
+  rank_ic_ir_score
+  + group_return_score
+  + stability_score
+  + turnover_penalty
+  + coverage_score
+  + drawdown_penalty
+```
+
+这个分数只能帮助排序和复核，不能单独决定生产准入。生产准入仍需要 `review_decision`、`reviewer_notes`、`approved_by` 和可追溯的任务/产物记录。
+
+### 8.4 推荐输出
 
 ```text
 factor_validation_report
 factor_ic_series
 factor_group_return_series
 factor_long_short_return_series
+factor_evaluation_result
+factor_score_card
+factor_comparison_report
 ```
 
-### 8.4 给 Codex 的提示词
+### 8.5 给 Codex 的提示词
 
 ```text
 请为 quant_factor_validation 项目生成基础代码。
@@ -883,6 +1016,9 @@ factor_long_short_return_series
 6. 指标计算函数尽量使用纯函数。
 7. 禁止未来函数：计算未来收益时必须明确 forward_return_n 的窗口。
 8. 使用 unittest。
+9. 外部验证库输出必须先映射成 FactorEvaluationResult。
+10. 规则评分必须输出每个 score component，不能只输出 final_score。
+11. Redis 只用于验证任务锁、报告预览和短期聚合缓存，正式产物仍写入 MinIO / PostgreSQL。
 
 需要生成：
 1. app/schemas/validation_request.py
@@ -1497,7 +1633,7 @@ quant_execution_gateway
 
 ## 17. 最小可行版本 MVP
 
-第一版不要做得太复杂，建议 MVP 只包含：
+第一版不要做成“大而全平台”。MVP 的目标是把生产级边界、公共协议和最小研究闭环先跑稳：
 
 ```text
 1. quant_contracts
@@ -1506,7 +1642,14 @@ quant_execution_gateway
 4. quant_factor_validation
 ```
 
-同时从第一版开始预留 `quant_ops_web` 作为只读运营监控入口，用于展示服务状态、任务血缘和产物索引；它是支撑层，不改变上述核心闭环优先级。
+同时从第一版开始预留：
+
+```text
+quant_ops_api     # 只读聚合 API
+quant_ops_web     # 服务状态、任务血缘、产物索引和验证报告展示
+```
+
+这两个项目是支撑层，不改变核心闭环优先级，也不直接写生产数据库或对象存储。
 
 MVP 数据链路：
 
@@ -1524,15 +1667,13 @@ quant_factor_validation 计算 IC / Rank IC / 分组收益
 输出 Markdown / CSV / JSON 报告
 ```
 
-MVP 因子：
+MVP 因子范围：
 
-```text
-momentum_20d
-reversal_5d
-volatility_20d
-volume_ratio_20d
-price_volume_corr_20d
-```
+| 资产 | 因子形态 | 第一批因子 | 说明 |
+| ---- | ---- | ---- | ---- |
+| 股票 | 截面量价因子 | `momentum_20d`、`reversal_5d`、`volatility_20d`、`volume_ratio_20d`、`price_volume_corr_20d` | 生产主链路优先落地 |
+| 期货 | 时序量价因子 | TSMOM、突破、均线、波动率状态 | 第一版只预留协议，不进入主链路 |
+| 期货 | 截面/期限结构因子 | carry、slope、curvature、XSMOM | 第一版只预留协议，不进入主链路 |
 
 MVP 报告：
 
@@ -1549,16 +1690,156 @@ ICIR
 是否建议进入下一阶段回测
 ```
 
+MVP 阶段使用库和参考边界：
+
+| 能力 | 第一版处理方式 | 外部库状态 |
+| ---- | ---- | ---- |
+| 股票截面验证 | 先使用自研 `quant_factor_validation` | Alphalens / Qlib 作为后续 benchmark adapter |
+| 因子模板 | 先实现少量可解释量价因子 | Qlib Alpha158 / Alpha360、OpenSourceAP/CrossSection 作为参考 |
+| 期货时序因子 | 先定义协议和样例字段 | vectorbt 作为后续回测 adapter |
+| 期货期限结构因子 | 先定义 continuous contract、roll rule、term structure 字段 | commodity-curve-factors 作为研究参考 |
+| 实验沉淀 | 先使用 PostgreSQL + MinIO 记录任务和产物 | MLflow / Optuna / Evidently 放到第二阶段 |
+| 缓存与幂等 | 第一版启用 Redis | 缓存元数据、Dashboard 摘要、报告预览、`run_id` 锁和任务状态 |
+
+第一版必须预留但不急于完整实现：
+
+```text
+AssetClass
+FactorMode
+FactorFamily
+EvaluationEngine
+FactorEvaluationResult
+FactorScoreCard
+FactorComparisonReport
+```
+
 ---
 
-## 18. 后续扩展方向
+## 18. 因子评分与模型化三阶段路线
 
-等基础闭环稳定后，再考虑：
+后续扩展不是直接堆库或上模型，而是分三阶段推进。这样第一版不会推倒重来，第二版也能沿着同一套协议扩展。
+
+### 18.1 第一阶段：统一协议 + 多引擎对比 + 规则评分
+
+目标：让不同库和自研结果可比，先解决字段、指标、产物和审核口径问题。
+
+```text
+quant_contracts
+    定义 AssetClass / FactorMode / FactorFamily / EvaluationEngine
+    定义 FactorEvaluationResult / FactorScoreCard / FactorComparisonReport
+
+quant_factor_validation
+    输出 internal validation 结果
+    输出透明 score components
+    支持和外部库结果对比
+
+quant_ops_web
+    展示验证报告、评分卡、产物索引和任务血缘
+
+Redis
+    缓存元数据、验证摘要、Dashboard 聚合和运行中任务状态
+    提供 run_id 级别幂等锁
+```
+
+本阶段建议接入方式：
+
+| 方向 | 推荐库 | 使用方式 |
+| ---- | ---- | ---- |
+| 股票截面验证 | Alphalens、Qlib | 作为 benchmark adapter，结果映射到 `FactorEvaluationResult` |
+| 股票资产定价因子 | OpenSourceAP/CrossSection | 参考因子定义和复现实验结构 |
+| 期货时序量价 | vectorbt | 作为时序回测和参数矩阵实验参考 |
+| 期货期限结构 | commodity-curve-factors | 参考 carry、slope、curvature、TSMOM / XSMOM 定义 |
+
+规则评分先保持透明：
+
+```text
+final_score =
+  rank_ic_ir_score
+  + group_return_score
+  + stability_score
+  + turnover_penalty
+  + coverage_score
+  + drawdown_penalty
+```
+
+### 18.2 第二阶段：实验沉淀 + 审核记录 + 后验表现
+
+目标：把研究实验、评分卡、研究员审核和上线后表现沉淀成可追溯数据，为第三阶段模型化打基础。
+
+需要沉淀：
+
+```text
+ExperimentRun
+EvaluationEngineResult
+FactorScoreCard
+ResearchReview
+ForwardPerformance
+MarketRegimeTag
+DataQualitySnapshot
+```
+
+建议工具：
+
+| 能力 | 推荐库 / 服务 | 使用方式 |
+| ---- | ---- | ---- |
+| 实验跟踪 | [MLflow](https://mlflow.org/) | 记录参数、指标、artifact、模型版本和研究实验 |
+| 参数搜索 | [Optuna](https://optuna.org/) | 搜索 lookback、holding period、分组数、交易成本假设 |
+| 漂移监控 | [Evidently](https://www.evidentlyai.com/) | 监控因子分布、覆盖率、数据质量和上线后衰减 |
+| 生产审计 | PostgreSQL + MinIO | 保存 `task_runs`、`task_artifacts`、manifest 和报告产物 |
+
+第二阶段仍不让模型自动决定生产准入。重点是让每次实验和审核都能复盘。
+
+### 18.3 第三阶段：Meta Model / Ranking Model
+
+目标：当历史实验、审核标签和后验表现足够多以后，再训练模型辅助判断因子质量。
+
+模型输入可以包括：
+
+```text
+IC / Rank IC 序列特征
+分组收益稳定性
+多空收益和回撤
+换手率和交易成本敏感性
+覆盖率和缺失率
+不同 market regime 下表现
+不同 evaluation_engine 的结果差异
+研究员审核标签
+上线后 forward_performance
+```
+
+模型输出可以包括：
+
+```text
+factor_quality_score
+candidate_pass_probability
+expected_decay_risk
+recommended_weight
+review_priority
+```
+
+可选实现：
+
+```text
+Qlib model workflow
+LightGBM / scikit-learn ranking model
+MLflow model registry
+Evidently drift report
+```
+
+强约束：
+
+- Meta model 只能作为辅助判断，不能替代研究员审核。
+- 训练标签必须来自已审计的历史实验、后验表现和审核结果。
+- 模型输入必须来自标准协议，不允许直接读取各库的私有结果格式。
+- 生产准入仍需要明确的 `review_decision`、`reviewer_notes`、`approved_by` 和审计记录。
+
+### 18.4 其他扩展方向
+
+基础闭环稳定后，再考虑以下能力：
 
 ```text
 行业/市值中性化
 barra 风格暴露
-机器学习模型
 多因子组合优化
 分钟级数据
 盘口数据
@@ -1572,13 +1853,7 @@ Hugging Face 文本 embedding
 实盘交易接口
 ```
 
-特别说明：
-
-```text
-Hugging Face、向量数据库、文本 embedding 不建议第一阶段就加入主链路。
-```
-
-这些适合作为后续的“另类数据/文本因子研究模块”。当前优先级应该是：
+特别说明：Hugging Face、向量数据库、文本 embedding 适合作为后续的另类数据/文本因子研究模块，不建议第一阶段进入主链路。当前优先级仍然是：
 
 ```text
 行情数据稳定性 > 因子计算准确性 > 因子验证可靠性 > 回测真实性 > 模型复杂度

@@ -377,6 +377,36 @@ function FactorValidationReviewPanel({
         </div>
       </section>
 
+      {review.score_card !== null ? (
+        <section className="service-panel">
+          <div className="section-heading">
+            <div>
+              <p className="eyebrow">First-stage score</p>
+              <h3>{formatNumber(review.score_card.final_score)} / {review.score_card.max_score}</h3>
+            </div>
+            <span className="status-pill pill-ok">{review.score_card.evaluation_engine}</span>
+          </div>
+          {review.comparison !== null ? (
+            <div className="metric-grid compact">
+              <MetricTile label="引擎数" value={String(review.comparison.engine_count)} />
+              <MetricTile
+                label="分歧"
+                value={review.comparison.has_engine_disagreement ? "yes" : "no"}
+              />
+              <MetricTile label="主引擎" value={review.comparison.primary_engine} />
+            </div>
+          ) : null}
+          <div className="finding-list">
+            {review.score_card.score_components.map((component) => (
+              <div className="finding-item severity-info" key={component.name}>
+                <strong>{component.name}: {formatNumber(component.score)}</strong>
+                <span>{component.reason}</span>
+              </div>
+            ))}
+          </div>
+        </section>
+      ) : null}
+
       <section className="service-panel">
         <div className="section-heading">
           <div>

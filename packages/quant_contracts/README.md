@@ -43,9 +43,17 @@ tests/
 - `FactorValidationMetric`
 - `FactorValidationFinding`
 - `FactorValidationReport`
+- `FactorScoreComponent`
+- `FactorScoreCard`
+- `FactorEvaluationResult`
+- `FactorComparisonReport`
 - `FactorValidationManifest`
 - `FactorValidationResponse`
 - `FactorIcPoint`
+- `AssetClass`
+- `FactorMode`
+- `FactorFamily`
+- `EvaluationEngine`
 - `TaskRun`
 - `TaskArtifact`
 - `PriceMode`

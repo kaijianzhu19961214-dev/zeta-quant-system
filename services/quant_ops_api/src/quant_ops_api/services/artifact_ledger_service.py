@@ -37,6 +37,7 @@ class ArtifactLedgerService:
 def _build_validation_task(*, validation_review: FactorValidationReviewResponse) -> TaskLedgerItem:
     metric = validation_review.latest_metric
     manifest = validation_review.manifest
+    score_card = validation_review.score_card
 
     return TaskLedgerItem(
         task_id=manifest.task_id,
@@ -57,6 +58,8 @@ def _build_validation_task(*, validation_review: FactorValidationReviewResponse)
             "rank_ic_mean": metric.rank_ic_mean,
             "group_count": metric.group_count,
             "group_return_spread_mean": metric.group_return_spread_mean,
+            "factor_score": score_card.final_score if score_card is not None else None,
+            "evaluation_engine": score_card.evaluation_engine if score_card is not None else None,
             "artifact_count": manifest.artifact_count,
         },
         finished_at=validation_review.generated_at,

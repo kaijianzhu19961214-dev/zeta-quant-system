@@ -1,10 +1,10 @@
-# 因子处理与审核流程现状说明
+# 因子处理、验证与评分路线
 
-> 面向对象：量化研究员。本文只展示当前项目中已经落地或已经明确约束的因子处理流程，便于判断还需要补充哪些研究、验证和风控要求。
+> 面向对象：量化研究员、策略研究负责人和平台开发人员。本文用于统一当前项目的因子分类、外部库定位、验证评分路线和后续迭代边界。
 
 ---
 
-## 1. 当前因子主链路
+## 1. 当前主链路
 
 当前 MVP 主链路是：
 
@@ -16,16 +16,70 @@ quant_data_sdk
 quant_factor_lab
   ↓ 因子值
 quant_factor_validation
-  ↓ IC / Rank IC 验证摘要与候选审核状态
+  ↓ IC / Rank IC / 分组收益 / 验证报告
+quant_ops_api
+  ↓ 只读聚合 API
+quant_ops_web
+  ↓ 研究员和运营监控页面
 ```
 
-当前因子计算服务不直接读取 101 节点数据库，也不直接调用第三方数据源。所有行情输入默认来自 `quant_data_hub` 的标准行情接口。
+核心边界：
+
+- `quant_data_hub` 是标准数据入口，负责字段映射、复权口径和数据查询。
+- `quant_factor_lab` 只负责把标准数据或批准的研究快照转换成因子值。
+- `quant_factor_validation` 负责因子验证、报告、manifest 和可持久化产物。
+- `quant_ops_api` / `quant_ops_web` 只做只读聚合与展示，不直接写数据库或对象存储。
+- 第三方原始数据可以通过只读 adapter 做研究兼容，但进入生产主链路前必须迁移到 `quant_data_hub` 或独立数据接入服务。
 
 ---
 
-## 2. 已有因子协议
+## 2. 因子分类口径
 
-当前公共协议已经定义在 `quant_contracts` 中，核心对象包括：
+后续不要只按“股票 / 期货”切分因子，而要同时固定：
+
+```text
+asset_class     # equity / futures
+factor_mode     # cross_sectional / time_series
+factor_family   # price_volume / term_structure / fundamental / macro / model
+```
+
+建议分类：
+
+| 资产 | 因子形态 | 因子族 | 典型因子 | 默认验证方式 | 参考库 |
+| ---- | ---- | ---- | ---- | ---- | ---- |
+| 股票 | `cross_sectional` | `price_volume` | 动量、反转、波动率、量比、价量相关 | IC、Rank IC、分组收益、多空收益、换手 | Alphalens、Qlib、OpenSourceAP/CrossSection |
+| 股票 | `cross_sectional` | `fundamental` | 估值、盈利、成长、质量、资产定价特征 | 截面 IC、分组收益、行业/市值中性后表现 | OpenSourceAP/CrossSection、Qlib |
+| 股票 | `cross_sectional` | `model` | ML alpha score、模型预测收益 | train/valid/test、IC、Rank IC、组合回测 | Qlib、MLflow |
+| 期货 | `time_series` | `price_volume` | TSMOM、突破、均线、成交量冲击、波动率状态 | 单品种时序回测、Sharpe、回撤、胜率、换手 | vectorbt、commodity-curve-factors |
+| 期货 | `cross_sectional` | `term_structure` | carry、期限结构 slope/curvature、跨品种动量 XSMOM | 跨品种排序、分组收益、Rank IC、板块中性 | commodity-curve-factors |
+
+第一版当前只实现股票日频量价类截面因子中的 `momentum_*d`。期货时序因子、期货截面因子和股票 ML alpha 暂时不进入生产主链路，但协议和文档从第一版开始预留。
+
+---
+
+## 3. 外部库定位
+
+这些库不作为项目的“大一统底座”，而是按方向作为研究引擎、benchmark 或 adapter 插件接入。所有输出必须映射回 `quant_contracts`。
+
+| 库 / 项目 | 主要定位 | 在当前项目中的建议角色 | 接入边界 |
+| ---- | ---- | ---- | ---- |
+| [Alphalens](https://github.com/quantopian/alphalens) | 股票 alpha 因子表现分析，覆盖 returns、IC、turnover、grouped analysis | 股票截面因子验证 benchmark | 不直接替代 `quant_factor_validation`，只作为可复核引擎 |
+| [Microsoft Qlib](https://github.com/microsoft/qlib) | AI-oriented quant platform，覆盖数据处理、模型训练和回测 | 股票截面研究流水线、Alpha158 / Alpha360、后续 `quant_model_lab` 参考 | 不直接接生产库密钥，不替代 `quant_data_hub` |
+| [Qlib Alpha158 / Alpha360](https://github.com/microsoft/qlib/blob/main/examples/benchmarks/README.md) | Alpha158 偏人工设计表格因子，Alpha360 偏窗口特征 | 因子模板、Dataset / Processor 设计参考 | 输出必须转成标准 factor / evaluation 协议 |
+| [vectorbt](https://github.com/polakowo/vectorbt) | 向量化回测和大规模参数实验 | 期货时序量价因子回测与参数扫描参考 | 不作为交易执行引擎 |
+| [OpenSourceAP/CrossSection](https://github.com/OpenSourceAP/CrossSection) | 股票截面资产定价因子和可复现实验 | 股票基本面/资产定价特征库参考 | 仅引入因子定义和复现实验结构，不直接混入生产数据口径 |
+| [commodity-curve-factors](https://github.com/brianbanna/commodity-curve-factors) | 商品期货期限结构、carry、slope、curvature、TSMOM / XSMOM | 期货期限结构和跨品种因子设计参考 | 作为研究形态参考，生产依赖前需单独评估成熟度 |
+| [MLflow](https://mlflow.org/) | 实验跟踪、指标、artifact 和模型版本 | 第二阶段实验登记和模型对比工具候选 | 不替代 PostgreSQL `task_runs` / `task_artifacts` 审计账本 |
+| [Optuna](https://optuna.org/) | 参数搜索和优化 | 第二阶段 lookback、holding period、分组数、交易参数优化 | 只能在受控研究任务中执行 |
+| [Evidently](https://www.evidentlyai.com/) | 数据质量、漂移和模型表现监控 | 第二/三阶段因子分布漂移和上线后衰减监控 | 不直接决定生产准入 |
+
+---
+
+## 4. 当前已落地能力
+
+### 4.1 公共协议
+
+当前 `quant_contracts` 已包含：
 
 ```text
 FactorCalculationRequest
@@ -38,55 +92,31 @@ FactorValidationReport
 FactorValidationFinding
 FactorValidationManifest
 FactorValidationResponse
+TaskRun
+TaskArtifact
 ```
 
-研究员需要关注的输入字段：
-
-| 字段 | 说明 |
-| ---- | ---- |
-| `factor_name` | 因子名称，例如 `momentum_20d` |
-| `symbols` | 股票列表 |
-| `start` / `end` | 样本区间 |
-| `timeframe` | 当前 MVP 只支持 `1d` |
-| `price_mode` | `raw` / `qfq` / `hfq`，当前可传入协议层 |
-| `batch_id` | 使用 `qfq` 时必须指定 |
-| `lookback_window` | 回看窗口，必须和因子名中的窗口一致 |
-| `run_id` | 运行批次，用于审计和复现 |
-| `data_source` | 默认 `quant_data_hub` |
-| `data_version` | 数据版本，可选 |
-| `factor_version` | 因子版本，默认 `v1` |
-
-输出的因子值包含：
+后续需要补充：
 
 ```text
-symbol
-trade_date
-factor_name
-factor_value
-universe_name
-data_source
-data_version
-factor_version
-run_id
+AssetClass
+FactorMode
+FactorFamily
+EvaluationEngine
+FactorEvaluationResult
+FactorScoreCard
+FactorComparisonReport
 ```
 
----
+### 4.2 因子计算
 
-## 3. 已实现因子
-
-当前只实现了动量类因子：
+当前只实现动量类因子：
 
 ```text
 momentum_*d = close_price / close_price.shift(N) - 1
 ```
 
-例如：
-
-```text
-momentum_20d = close_price_t / close_price_t-20 - 1
-```
-
-已处理的边界情况：
+已处理边界：
 
 - 样本窗口不足时，`factor_value = null`。
 - 前 N 日收盘价为空时，`factor_value = null`。
@@ -94,7 +124,7 @@ momentum_20d = close_price_t / close_price_t-20 - 1
 - 计算按 `symbol + trade_date` 排序。
 - 计算 T 日因子时只使用 T 日及以前的数据。
 
-当前尚未实现：
+尚未实现：
 
 ```text
 reversal_5d
@@ -105,43 +135,13 @@ price_volume_corr_20d
 去极值
 标准化
 缺失值填充策略
+期货连续合约和换月规则
+期货期限结构因子
 ```
 
----
+### 4.3 因子验证
 
-## 4. 当前审核约束
-
-当前项目已经明确以下审核约束：
-
-- 因子计算函数尽量保持纯函数。
-- 不允许在因子函数中直接调用第三方 API。
-- 不允许在因子函数中隐式读取当前日期、数据库最新值或外部状态。
-- 第三方原始数据如果要兼容，必须先通过 adapter 转成标准模型。
-- 因子结果必须保留 `run_id`、`data_source`、`data_version`、`factor_version`。
-- 使用 `qfq` 价格口径时必须指定 `batch_id`。
-- 当前 MVP 因子只支持日频数据。
-- 任何新增因子必须有固定样本的确定性单元测试。
-
----
-
-## 5. 已有测试覆盖
-
-当前已经覆盖：
-
-```text
-因子请求字段校验
-qfq batch_id 校验
-momentum 计算正确性
-窗口不足返回 null
-前序价格为 0 返回 null
-FastAPI 路由成功响应
-不支持的因子返回参数错误
-quant_factor_lab 通过 quant_data_sdk 读取标准行情
-```
-
-当前测试重点是确定性和边界条件，还没有覆盖真实大样本统计稳定性。
-
-当前 `quant_factor_validation` MVP 已支持：
+当前 `quant_factor_validation` 已支持：
 
 ```text
 forward_return_n
@@ -175,87 +175,206 @@ candidate_pass
 candidate_reject
 ```
 
-当前默认 `manifest.persistence_status = not_persisted`，表示接口已经给出任务血缘、产物路径、JSON payload 大小和 sha256 校验和，但默认不会写入 PostgreSQL、MinIO 或其他生产存储。
+### 4.4 产物持久化
 
-当前代码已经具备 `ValidationPersistenceService` 编排边界、MinIO / S3 对象存储 adapter 和 SQLAlchemy 2.0 async PostgreSQL 账本 repository，默认通过 `VALIDATION_PERSISTENCE_ENABLED=false` 保持关闭。后续只有在对象存储、`task_runs` / `task_artifacts` 表结构、数据库连接和生产密钥都完成端到端验证后，才应切换为 `persisted`。
+当前默认 `manifest.persistence_status = not_persisted`，接口会给出任务血缘、产物路径、JSON payload 大小和 sha256，但默认不会写入 PostgreSQL、MinIO 或其他生产存储。
 
-当前验证服务在内存中生成以下 JSON 产物 payload，用于后续直接接入对象存储：
-
-```text
-validation_report.json
-metrics.json
-ic_series.json
-group_returns.json
-```
-
-这些产物已经具备 `schema_version`、`content_type`、`file_size_bytes` 和 `sha256`，便于研究员判断报告、指标、IC 序列和分组收益是否应进入正式审核账本。
-
-当前 `quant_ops_web` 已提供 Factor Validation 只读展示页：
+当前代码已经具备：
 
 ```text
-decision
-effective_sample_count / sample_count
-coverage_ratio
-IC / Rank IC
-group_return_spread_mean
-report.findings
-report.recommended_actions
-manifest.artifacts
-manifest.persistence_status
+ValidationPersistenceService
+MinIO / S3 object store adapter
+SQLAlchemy 2.0 async PostgreSQL ledger repository
+task_runs / task_artifacts schema
+MinIO + PostgreSQL persistence smoke tool
 ```
 
-该页面通过 `quant_ops_api /api/v1/factor-validation/review` 读取审核摘要。现阶段展示的是 MVP manifest preview，后续应接入 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后再作为正式审核账本。
-
-当前 `quant_ops_web` 也已提供 Artifacts 只读展示页：
+持久化开启前必须完成：
 
 ```text
-task_count / artifact_count
-task_id / task_name / task_status
-artifact_type
-storage_type
-object_key / uri
-persistence_status
-ledger limitations
+对象存储配置
+VALIDATION_DATABASE_URL
+task_runs / task_artifacts 表结构
+生产或 101 节点密钥注入
+make smoke-quant-factor-validation-persistence 端到端通过
 ```
 
-该页面通过 `quant_ops_api /api/v1/artifacts/ledger` 读取任务/产物账本预览。现阶段该账本由 `quant_factor_validation` 的 manifest preview 映射而来，目的是让研究员提前确认任务血缘、产物分类、checksum 和审核入口是否够用；它还不是生产持久化账本。
+### 4.5 Web UI
+
+当前 `quant_ops_web` 已提供：
+
+```text
+Overview
+Factor Validation review
+Artifacts ledger preview
+```
+
+现阶段 Artifacts 页面展示的是 manifest preview，不是正式 persisted 账本。后续应接入 PostgreSQL `task_runs` / `task_artifacts` 的只读 API，或 MinIO 中受控的 `latest.json` / manifest 对象。
 
 ---
 
-## 6. 研究员建议重点确认
+## 5. 三阶段评分路线
 
-建议研究员优先判断以下问题：
+### 5.1 第一阶段：统一协议 + 多引擎对比 + 规则评分
 
-1. `momentum_20d` 是否应使用 `raw`、`qfq` 还是 `hfq` 价格作为默认口径？
-2. 窗口不足时返回 `null` 是否符合后续验证流程？
-3. 是否需要在因子层做停牌、涨跌停、成交额过低、ST 股票过滤？
-4. 是否需要统一股票池定义，例如全 A、沪深 300、中证 500？
-5. 因子值是否需要在计算阶段就做去极值、标准化、中性化？
-6. `run_id`、`data_version`、`factor_version` 是否满足研究复现要求？
-7. 第一批因子的优先级是否仍然是：动量、反转、波动率、量比、价量相关？
-8. 因子审核通过后，Web UI 中的 `candidate_pass` 是否需要触发单独的生产准入流程？
+目标：先让不同库和自研验证结果可比，而不是一开始训练自动判断模型。
+
+本阶段必须落地：
+
+```text
+FactorEvaluationResult
+FactorScoreCard
+FactorComparisonReport
+EvaluationEngine
+score_components
+final_score
+review_decision
+```
+
+建议评分先使用透明规则：
+
+```text
+final_score =
+  rank_ic_ir_score
+  + group_return_score
+  + stability_score
+  + turnover_penalty
+  + coverage_score
+  + drawdown_penalty
+```
+
+可接入或对照：
+
+| 场景 | 对照引擎 |
+| ---- | ---- |
+| 股票截面因子 | internal validation、Alphalens、Qlib |
+| 股票资产定价特征 | internal validation、OpenSourceAP/CrossSection |
+| 股票 ML alpha | Qlib、internal validation |
+| 期货时序因子 | vectorbt、internal backtest |
+| 期货截面/期限结构 | commodity-curve-factors、internal validation |
+
+第一阶段结论必须可解释。研究员应能看到每个 score component，而不是只看到一个黑盒分数。
+
+### 5.2 第二阶段：实验沉淀 + 审核记录 + 后验表现
+
+目标：积累 meta model 未来需要学习的数据，但仍不直接让模型决定生产准入。
+
+本阶段需要沉淀：
+
+```text
+ExperimentRun
+EvaluationEngineResult
+FactorScoreCard
+ResearchReview
+ForwardPerformance
+MarketRegimeTag
+DataQualitySnapshot
+```
+
+建议工具：
+
+| 能力 | 工具候选 | 使用方式 |
+| ---- | ---- | ---- |
+| 实验跟踪 | MLflow | 记录参数、指标、artifact、模型版本 |
+| 参数搜索 | Optuna | 搜索 lookback、holding period、分组数、交易成本假设 |
+| 漂移监控 | Evidently | 监控因子分布、覆盖率、数据质量和上线后衰减 |
+| 任务审计 | PostgreSQL + MinIO | 继续作为生产审计账本和产物存储 |
+
+第二阶段的关键不是“更复杂的模型”，而是把研究员审核、规则评分和后验表现放进同一个可追溯账本。
+
+### 5.3 第三阶段：Meta Model / Ranking Model
+
+目标：在有足够历史实验、研究员审核和后验表现后，训练模型辅助判断因子质量。
+
+模型输入可以包括：
+
+```text
+IC / Rank IC 序列特征
+分组收益稳定性
+多空收益和回撤
+换手率和交易成本敏感性
+覆盖率和缺失率
+不同 market regime 下表现
+不同 evaluation_engine 的结果差异
+研究员审核标签
+上线后 forward_performance
+```
+
+模型输出可以包括：
+
+```text
+factor_quality_score
+candidate_pass_probability
+expected_decay_risk
+recommended_weight
+review_priority
+```
+
+可选实现：
+
+```text
+Qlib model workflow
+LightGBM / scikit-learn ranking model
+自研 scoring service
+MLflow model registry
+Evidently drift report
+```
+
+强约束：
+
+- Meta model 只能作为辅助判断，不能替代研究员审核。
+- 训练标签必须来自已审计的历史实验、后验表现和审核结果。
+- 模型输入必须来自标准协议，不允许直接读取各库的私有结果格式。
+- 生产准入仍需要明确的 `review_decision`、`reviewer_notes`、`approved_by` 和审计记录。
+
+---
+
+## 6. 研究员需要确认的问题
+
+建议研究员优先确认：
+
+1. 股票动量类因子默认使用 `raw`、`qfq` 还是 `hfq` 价格。
+2. 股票截面因子是否需要统一股票池，例如全 A、沪深 300、中证 500。
+3. 股票因子是否在计算阶段做去极值、标准化、中性化，还是在验证阶段处理。
+4. 停牌、涨跌停、成交额过低、ST 股票是否进入第一版过滤规则。
+5. 期货时序量价因子是否先从 TSMOM、突破、均线和波动率状态开始。
+6. 期货连续合约、主力合约、换月和 roll rule 由哪个服务定义。
+7. 期货截面因子是否优先做 carry、期限结构 slope/curvature 和 XSMOM。
+8. 多引擎对比时，Alphalens、Qlib、vectorbt、自研结果冲突时由谁作为最终复核标准。
+9. 第一阶段规则评分中，各 score component 的权重是否需要研究员确认。
+10. `candidate_pass` 是否需要触发单独的生产准入流程。
 
 ---
 
 ## 7. 下一步建议
 
-建议下一步不要直接扩展大量因子，而是先补齐：
+下一步不要直接扩展大量因子，建议按以下顺序推进：
 
 ```text
-quant_factor_validation manifest 持久化
-MinIO / S3 兼容对象存储上传验证报告、指标和序列文件
-PostgreSQL task_runs / task_artifacts 正式登记
-FactorDailyValue 的持久化或 artifact 输出规范
-固定样本验证报告
-分组收益的正式分组数、调仓频率和多空构造口径
-研究员确认后的因子审核清单
-Web UI 中的因子运行列表、正式验证报告列表和真实产物链接
+1. 在 quant_contracts 中补齐 AssetClass / FactorMode / FactorFamily / EvaluationEngine。
+2. 定义 FactorEvaluationResult / FactorScoreCard / FactorComparisonReport。
+3. 跑通 quant_factor_validation 的真实 MinIO + PostgreSQL persisted smoke。
+4. 让 quant_ops_api 从真实 task_runs / task_artifacts 读取只读账本。
+5. 为股票截面因子补充 Alphalens / Qlib 对照输出映射。
+6. 为期货时序因子设计 vectorbt 或 internal backtest adapter。
+7. 为期货期限结构因子整理 continuous contract、roll rule、carry、slope、curvature 协议。
+8. 在 Web UI 展示多引擎对比、规则评分和研究员审核记录。
 ```
 
-这样可以先形成：
+这样可以形成稳定闭环：
 
 ```text
-因子计算 → 因子验证 → 审核意见 → 是否进入下一阶段
+因子计算
+  ↓
+多引擎验证
+  ↓
+规则评分
+  ↓
+研究员审核
+  ↓
+持久化账本
+  ↓
+后验表现沉淀
+  ↓
+Meta model 辅助判断
 ```
-
-的闭环。

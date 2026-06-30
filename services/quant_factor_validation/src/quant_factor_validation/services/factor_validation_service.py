@@ -15,6 +15,11 @@ from quant_factor_validation.metrics import (
     standard_deviation,
 )
 from quant_factor_validation.repositories.market_data_reader import MarketDataReader
+from quant_factor_validation.services.factor_scoring import (
+    build_factor_comparison_report,
+    build_factor_evaluation_result,
+    build_factor_score_card,
+)
 from quant_factor_validation.services.validation_artifacts import (
     build_validation_artifact_payloads,
     enrich_manifest_with_artifact_payloads,
@@ -71,6 +76,10 @@ class FactorValidationService:
 
         metrics = FactorValidationMetric(
             factor_name=request.factor_name,
+            asset_class=request.asset_class,
+            factor_mode=request.factor_mode,
+            factor_family=request.factor_family,
+            evaluation_engine=request.evaluation_engine,
             start_date=min(value.trade_date for value in request.factor_values),
             end_date=max(value.trade_date for value in request.factor_values),
             forward_days=request.forward_days,
@@ -98,12 +107,21 @@ class FactorValidationService:
         )
 
         report = build_validation_report(metrics=metrics)
+        score_card = build_factor_score_card(metrics=metrics, report=report)
+        evaluation_result = build_factor_evaluation_result(
+            metrics=metrics,
+            report=report,
+            score_card=score_card,
+        )
+        comparison_report = build_factor_comparison_report(primary_result=evaluation_result)
         manifest = build_validation_manifest(
             request=request,
             metrics=metrics,
             report=report,
             ic_series=ic_series,
             group_returns=group_returns,
+            score_card=score_card,
+            comparison_report=comparison_report,
         )
         artifact_payloads = build_validation_artifact_payloads(
             manifest=manifest,
@@ -111,6 +129,8 @@ class FactorValidationService:
             report=report,
             ic_series=ic_series,
             group_returns=group_returns,
+            score_card=score_card,
+            comparison_report=comparison_report,
         )
         enriched_manifest = enrich_manifest_with_artifact_payloads(
             manifest=manifest,
@@ -126,6 +146,9 @@ class FactorValidationService:
             ic_series=ic_series,
             group_returns=group_returns,
             report=report,
+            evaluation_result=evaluation_result,
+            score_card=score_card,
+            comparison_report=comparison_report,
             manifest=persisted_manifest,
         )
 

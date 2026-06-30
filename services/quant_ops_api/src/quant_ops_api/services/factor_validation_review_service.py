@@ -1,6 +1,9 @@
 from datetime import datetime, timezone
 
 from quant_ops_api.schemas import (
+    FactorComparisonSummary,
+    FactorScoreCardSummary,
+    FactorScoreComponentSummary,
     FactorValidationArtifactSummary,
     FactorValidationFindingSummary,
     FactorValidationManifestSummary,
@@ -31,6 +34,13 @@ class FactorValidationReviewService:
                 "Expand the validation sample and add factor decay plus quantile-return checks.",
                 "Persist manifest and report outputs before using this view as an audit ledger.",
             ],
+            score_card=_build_score_card(),
+            comparison=FactorComparisonSummary(
+                primary_engine="internal",
+                engine_count=1,
+                has_engine_disagreement=False,
+                comparison_summary="Only internal has produced a standardized evaluation result.",
+            ),
             manifest=FactorValidationManifestSummary(
                 manifest_id=f"manifest_{latest_metric.run_id}",
                 task_id=latest_metric.run_id,
@@ -97,4 +107,58 @@ def _build_artifacts(*, run_id: str) -> list[FactorValidationArtifactSummary]:
             schema_version="factor_group_returns.v1",
             persistence_status="not_persisted",
         ),
+        FactorValidationArtifactSummary(
+            artifact_id=f"{run_id}_score_card",
+            artifact_type="metrics_table",
+            object_key=f"{object_prefix}/score_card.json",
+            schema_version="factor_score_card.v1",
+            persistence_status="not_persisted",
+        ),
+        FactorValidationArtifactSummary(
+            artifact_id=f"{run_id}_comparison_report",
+            artifact_type="metrics_table",
+            object_key=f"{object_prefix}/comparison_report.json",
+            schema_version="factor_comparison_report.v1",
+            persistence_status="not_persisted",
+        ),
     ]
+
+
+def _build_score_card() -> FactorScoreCardSummary:
+    return FactorScoreCardSummary(
+        factor_name="momentum_1d",
+        evaluation_engine="internal",
+        final_score=64.0,
+        review_decision="review_required",
+        score_components=[
+            FactorScoreComponentSummary(
+                name="rank_ic_score",
+                raw_value=1.0,
+                score=25.0,
+                max_score=25.0,
+                reason="Scores absolute Rank IC mean with a first-stage cap of 25.",
+            ),
+            FactorScoreComponentSummary(
+                name="group_return_score",
+                raw_value=0.1,
+                score=20.0,
+                max_score=20.0,
+                reason="Scores high-minus-low group return spread with a first-stage cap of 20.",
+            ),
+            FactorScoreComponentSummary(
+                name="coverage_score",
+                raw_value=1.0,
+                score=15.0,
+                max_score=15.0,
+                reason="Scores effective sample coverage with a first-stage cap of 15.",
+            ),
+            FactorScoreComponentSummary(
+                name="turnover_penalty",
+                raw_value=None,
+                score=0.0,
+                max_score=0.0,
+                reason="Turnover is not measured in the current MVP validation run.",
+            ),
+        ],
+        warnings=["Turnover and drawdown penalties are placeholders until backtest metrics are available."],
+    )

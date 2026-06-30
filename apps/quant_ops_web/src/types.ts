@@ -61,6 +61,31 @@ export interface FactorValidationArtifactSummary {
   persistence_status: PersistenceStatus;
 }
 
+export interface FactorScoreComponentSummary {
+  name: string;
+  raw_value: number | null;
+  score: number;
+  max_score: number;
+  reason: string;
+}
+
+export interface FactorScoreCardSummary {
+  factor_name: string;
+  evaluation_engine: string;
+  final_score: number;
+  max_score: number;
+  review_decision: ValidationDecision;
+  score_components: FactorScoreComponentSummary[];
+  warnings: string[];
+}
+
+export interface FactorComparisonSummary {
+  primary_engine: string;
+  engine_count: number;
+  has_engine_disagreement: boolean;
+  comparison_summary: string;
+}
+
 export interface FactorValidationManifestSummary {
   manifest_id: string;
   task_id: string;
@@ -78,6 +103,8 @@ export interface FactorValidationReviewResponse {
   latest_metric: FactorValidationMetricSummary;
   findings: FactorValidationFindingSummary[];
   recommended_actions: string[];
+  score_card: FactorScoreCardSummary | null;
+  comparison: FactorComparisonSummary | null;
   manifest: FactorValidationManifestSummary;
   limitations: string[];
 }

@@ -4,6 +4,9 @@ from quant_ops_api.schemas.artifact_ledger import (
     TaskLedgerItem,
 )
 from quant_ops_api.schemas.factor_validation import (
+    FactorComparisonSummary,
+    FactorScoreCardSummary,
+    FactorScoreComponentSummary,
     FactorValidationArtifactSummary,
     FactorValidationFindingSummary,
     FactorValidationManifestSummary,
@@ -15,6 +18,9 @@ from quant_ops_api.schemas.ops import OpsOverviewResponse, ServiceEndpoint, Serv
 __all__ = [
     "ArtifactLedgerItem",
     "ArtifactLedgerResponse",
+    "FactorComparisonSummary",
+    "FactorScoreCardSummary",
+    "FactorScoreComponentSummary",
     "FactorValidationArtifactSummary",
     "FactorValidationFindingSummary",
     "FactorValidationManifestSummary",

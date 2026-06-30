@@ -2,8 +2,10 @@ from datetime import datetime, timezone
 
 from quant_contracts import (
     ArtifactType,
+    FactorComparisonReport,
     FactorGroupReturnPoint,
     FactorIcPoint,
+    FactorScoreCard,
     FactorValidationManifest,
     FactorValidationMetric,
     FactorValidationReport,
@@ -21,6 +23,8 @@ def build_validation_manifest(
     report: FactorValidationReport,
     ic_series: list[FactorIcPoint],
     group_returns: list[FactorGroupReturnPoint],
+    score_card: FactorScoreCard | None = None,
+    comparison_report: FactorComparisonReport | None = None,
 ) -> FactorValidationManifest:
     run_id = _resolve_run_id(request=request, metrics=metrics)
     safe_factor_name = _safe_path_part(metrics.factor_name)
@@ -59,31 +63,49 @@ def build_validation_manifest(
         finished_at=datetime.now(timezone.utc),
     )
 
+    artifacts = [
+        _build_report_artifact(
+            run_id=run_id,
+            object_prefix=object_prefix,
+            report=report,
+        ),
+        _build_metrics_artifact(
+            run_id=run_id,
+            object_prefix=object_prefix,
+            metrics=metrics,
+        ),
+        _build_ic_series_artifact(
+            run_id=run_id,
+            object_prefix=object_prefix,
+            ic_series=ic_series,
+        ),
+        _build_group_returns_artifact(
+            run_id=run_id,
+            object_prefix=object_prefix,
+            group_returns=group_returns,
+        ),
+    ]
+    if score_card is not None:
+        artifacts.append(
+            _build_score_card_artifact(
+                run_id=run_id,
+                object_prefix=object_prefix,
+                score_card=score_card,
+            )
+        )
+    if comparison_report is not None:
+        artifacts.append(
+            _build_comparison_report_artifact(
+                run_id=run_id,
+                object_prefix=object_prefix,
+                comparison_report=comparison_report,
+            )
+        )
+
     return FactorValidationManifest(
         manifest_id=f"manifest_{safe_run_id}",
         task_run=task_run,
-        artifacts=[
-            _build_report_artifact(
-                run_id=run_id,
-                object_prefix=object_prefix,
-                report=report,
-            ),
-            _build_metrics_artifact(
-                run_id=run_id,
-                object_prefix=object_prefix,
-                metrics=metrics,
-            ),
-            _build_ic_series_artifact(
-                run_id=run_id,
-                object_prefix=object_prefix,
-                ic_series=ic_series,
-            ),
-            _build_group_returns_artifact(
-                run_id=run_id,
-                object_prefix=object_prefix,
-                group_returns=group_returns,
-            ),
-        ],
+        artifacts=artifacts,
         persistence_status="not_persisted",
         created_at=datetime.now(timezone.utc),
     )
@@ -164,6 +186,50 @@ def _build_group_returns_artifact(
         metadata={
             "row_count": len(group_returns),
             "schema_version": "factor_group_returns.v1",
+            "persistence_status": "not_persisted",
+        },
+    )
+
+
+def _build_score_card_artifact(
+    *,
+    run_id: str,
+    object_prefix: str,
+    score_card: FactorScoreCard,
+) -> TaskArtifact:
+    return TaskArtifact(
+        artifact_id=f"{_safe_path_part(run_id)}_score_card",
+        task_id=run_id,
+        artifact_type=ArtifactType.METRICS_TABLE,
+        object_key=f"{object_prefix}/score_card.json",
+        metadata={
+            "factor_name": score_card.factor_name,
+            "evaluation_engine": score_card.evaluation_engine,
+            "final_score": score_card.final_score,
+            "review_decision": score_card.review_decision,
+            "schema_version": "factor_score_card.v1",
+            "persistence_status": "not_persisted",
+        },
+    )
+
+
+def _build_comparison_report_artifact(
+    *,
+    run_id: str,
+    object_prefix: str,
+    comparison_report: FactorComparisonReport,
+) -> TaskArtifact:
+    return TaskArtifact(
+        artifact_id=f"{_safe_path_part(run_id)}_comparison_report",
+        task_id=run_id,
+        artifact_type=ArtifactType.METRICS_TABLE,
+        object_key=f"{object_prefix}/comparison_report.json",
+        metadata={
+            "factor_name": comparison_report.factor_name,
+            "primary_engine": comparison_report.primary_engine,
+            "engine_count": comparison_report.engine_count,
+            "has_engine_disagreement": comparison_report.has_engine_disagreement,
+            "schema_version": "factor_comparison_report.v1",
             "persistence_status": "not_persisted",
         },
     )

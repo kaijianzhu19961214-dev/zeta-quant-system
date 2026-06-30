@@ -4,9 +4,13 @@ import json
 import unittest
 
 from quant_contracts import (
+    FactorComparisonReport,
     FactorDailyValue,
+    FactorEvaluationResult,
     FactorGroupReturnPoint,
     FactorIcPoint,
+    FactorScoreCard,
+    FactorScoreComponent,
     FactorValidationFinding,
     FactorValidationManifest,
     FactorValidationMetric,
@@ -116,6 +120,41 @@ class ValidationArtifactsTest(unittest.TestCase):
                 group_returns=_make_group_returns(),
             )
 
+    def test_should_materialize_score_card_and_comparison_report_payloads(self) -> None:
+        metrics = _make_metrics()
+        report = _make_report()
+        score_card = _make_score_card()
+        comparison_report = _make_comparison_report(metrics=metrics, report=report, score_card=score_card)
+        manifest = build_validation_manifest(
+            request=FactorValidationRequest(
+                factor_name="momentum_20d",
+                factor_values=[_make_factor_value()],
+                market_start="2026-01-01",
+                market_end="2026-03-31",
+                run_id="validation run 1",
+            ),
+            metrics=metrics,
+            report=report,
+            ic_series=_make_ic_series(),
+            group_returns=_make_group_returns(),
+            score_card=score_card,
+            comparison_report=comparison_report,
+        )
+
+        payloads = build_validation_artifact_payloads(
+            manifest=manifest,
+            metrics=metrics,
+            report=report,
+            ic_series=_make_ic_series(),
+            group_returns=_make_group_returns(),
+            score_card=score_card,
+            comparison_report=comparison_report,
+        )
+
+        self.assertEqual(len(payloads), 6)
+        self.assertIn("factor_score_card.v1", {payload.schema_version for payload in payloads})
+        self.assertIn("factor_comparison_report.v1", {payload.schema_version for payload in payloads})
+
 
 def _make_manifest() -> FactorValidationManifest:
     return build_validation_manifest(
@@ -187,6 +226,44 @@ def _make_ic_series() -> list[FactorIcPoint]:
             rank_ic=0.2,
         )
     ]
+
+
+def _make_score_card() -> FactorScoreCard:
+    return FactorScoreCard(
+        factor_name="momentum_20d",
+        final_score=64.0,
+        review_decision="review_required",
+        score_components=[
+            FactorScoreComponent(
+                name="rank_ic_score",
+                raw_value=0.04,
+                score=10.0,
+                max_score=25.0,
+                reason="Rank IC is available.",
+            )
+        ],
+    )
+
+
+def _make_comparison_report(
+    *,
+    metrics: FactorValidationMetric,
+    report: FactorValidationReport,
+    score_card: FactorScoreCard,
+) -> FactorComparisonReport:
+    return FactorComparisonReport(
+        factor_name="momentum_20d",
+        engine_results=[
+            FactorEvaluationResult(
+                factor_name="momentum_20d",
+                metrics=metrics,
+                report=report,
+                score_card=score_card,
+            )
+        ],
+        engine_count=1,
+        comparison_summary="Only the internal validation engine has run.",
+    )
 
 
 def _make_group_returns() -> list[FactorGroupReturnPoint]:

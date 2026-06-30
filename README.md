@@ -184,7 +184,7 @@ Current local Compose services:
 
 ```text
 PostgreSQL 16
-Redis 7
+Redis 7, cache and run_id lock layer
 quant_data_hub, optional service container
 quant_factor_lab, optional service container
 quant_factor_validation, optional service container
@@ -193,8 +193,10 @@ quant_ops_web, optional operations dashboard
 ```
 
 大规模 PostgreSQL、ClickHouse、MinIO 和真实行情数据继续留在 101 节点。
+Redis 只用于元数据缓存、短期查询缓存、任务状态和幂等锁，不作为业务主存储。
 
 Large PostgreSQL, ClickHouse, MinIO, and real market data stay on the 101 node.
+Redis is used only for metadata cache, short-lived query cache, task status, and idempotency locks, not as primary business storage.
 
 ---
 

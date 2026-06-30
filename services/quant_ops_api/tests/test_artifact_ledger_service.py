@@ -12,11 +12,15 @@ class ArtifactLedgerServiceTest(unittest.TestCase):
 
         self.assertEqual(response.persistence_status, "not_persisted")
         self.assertEqual(response.task_count, 1)
-        self.assertEqual(response.artifact_count, 4)
+        self.assertEqual(response.artifact_count, 6)
         self.assertEqual(response.tasks[0].task_type, "factor_validation")
         self.assertEqual(response.tasks[0].status, "succeeded")
+        self.assertEqual(response.tasks[0].output_summary["evaluation_engine"], "internal")
+        self.assertGreaterEqual(response.tasks[0].output_summary["factor_score"], 0)
         self.assertEqual(response.artifacts[0].storage_type, "preview_manifest")
         self.assertEqual(response.artifacts[3].schema_version, "factor_group_returns.v1")
+        self.assertEqual(response.artifacts[4].schema_version, "factor_score_card.v1")
+        self.assertEqual(response.artifacts[5].schema_version, "factor_comparison_report.v1")
         self.assertIn("source_manifest_id", response.artifacts[0].metadata)
 
 

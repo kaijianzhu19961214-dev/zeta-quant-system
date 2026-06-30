@@ -4,9 +4,17 @@ from typing import Literal
 
 from pydantic import Field, field_validator, model_validator
 
-from quant_contracts.enums import PriceMode, Timeframe
+from quant_contracts.enums import AssetClass, EvaluationEngine, FactorFamily, FactorMode, PriceMode, Timeframe
 from quant_contracts.schemas.common import ContractModel
 from quant_contracts.schemas.lineage import TaskArtifact, TaskRun
+
+
+FactorReviewDecision = Literal[
+    "insufficient_data",
+    "review_required",
+    "candidate_pass",
+    "candidate_reject",
+]
 
 
 class FactorCalculationRequest(ContractModel):
@@ -14,6 +22,9 @@ class FactorCalculationRequest(ContractModel):
     symbols: list[str] = Field(min_length=1, max_length=500)
     start: date | str
     end: date | str
+    asset_class: AssetClass = AssetClass.EQUITY
+    factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
+    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
     timeframe: Timeframe = Timeframe.DAY_1
     price_mode: PriceMode = PriceMode.RAW
     dataset_code: str | None = Field(default=None, max_length=128)
@@ -68,6 +79,9 @@ class FactorDailyValue(ContractModel):
     trade_date: date
     factor_name: str = Field(min_length=1, max_length=128)
     factor_value: Decimal | None = None
+    asset_class: AssetClass = AssetClass.EQUITY
+    factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
+    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
     universe_name: str = Field(default="default", min_length=1, max_length=128)
     data_source: str = Field(default="quant_data_hub", min_length=1, max_length=64)
     data_version: str | None = Field(default=None, max_length=128)
@@ -94,6 +108,9 @@ class FactorDailyValue(ContractModel):
 
 class FactorCalculationMeta(ContractModel):
     factor_name: str
+    asset_class: AssetClass = AssetClass.EQUITY
+    factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
+    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
     timeframe: Timeframe
     price_mode: PriceMode
     row_count: int = Field(ge=0)
@@ -117,6 +134,10 @@ class FactorValidationRequest(ContractModel):
     factor_values: list[FactorDailyValue] = Field(min_length=1)
     market_start: date | str
     market_end: date | str
+    asset_class: AssetClass = AssetClass.EQUITY
+    factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
+    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
+    evaluation_engine: EvaluationEngine = EvaluationEngine.INTERNAL
     forward_days: int = Field(default=1, ge=1, le=60)
     group_count: int = Field(default=5, ge=2, le=20)
     timeframe: Timeframe = Timeframe.DAY_1
@@ -160,6 +181,16 @@ class FactorValidationRequest(ContractModel):
         if invalid_factor_names:
             raise ValueError("all factor_values must match factor_name")
 
+        invalid_factor_classifications = [
+            value
+            for value in self.factor_values
+            if value.asset_class != self.asset_class
+            or value.factor_mode != self.factor_mode
+            or value.factor_family != self.factor_family
+        ]
+        if invalid_factor_classifications:
+            raise ValueError("all factor_values must match asset_class, factor_mode, and factor_family")
+
         return self
 
 
@@ -180,6 +211,10 @@ class FactorGroupReturnPoint(ContractModel):
 
 class FactorValidationMetric(ContractModel):
     factor_name: str
+    asset_class: AssetClass = AssetClass.EQUITY
+    factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
+    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
+    evaluation_engine: EvaluationEngine = EvaluationEngine.INTERNAL
     start_date: date
     end_date: date
     forward_days: int = Field(ge=1)
@@ -208,15 +243,48 @@ class FactorValidationFinding(ContractModel):
 
 
 class FactorValidationReport(ContractModel):
-    decision: Literal[
-        "insufficient_data",
-        "review_required",
-        "candidate_pass",
-        "candidate_reject",
-    ]
+    decision: FactorReviewDecision
     summary: str = Field(min_length=1, max_length=512)
     findings: list[FactorValidationFinding] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
+
+
+class FactorScoreComponent(ContractModel):
+    name: str = Field(min_length=1, max_length=64)
+    raw_value: float | None = None
+    score: float = Field(ge=-100, le=100)
+    max_score: float = Field(default=100, ge=0, le=100)
+    reason: str = Field(min_length=1, max_length=256)
+
+
+class FactorScoreCard(ContractModel):
+    factor_name: str = Field(min_length=1, max_length=128)
+    evaluation_engine: EvaluationEngine = EvaluationEngine.INTERNAL
+    final_score: float = Field(ge=0, le=100)
+    max_score: float = Field(default=100, ge=1, le=100)
+    review_decision: FactorReviewDecision
+    score_components: list[FactorScoreComponent] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class FactorEvaluationResult(ContractModel):
+    factor_name: str = Field(min_length=1, max_length=128)
+    asset_class: AssetClass = AssetClass.EQUITY
+    factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
+    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
+    evaluation_engine: EvaluationEngine = EvaluationEngine.INTERNAL
+    metrics: FactorValidationMetric
+    report: FactorValidationReport | None = None
+    score_card: FactorScoreCard | None = None
+
+
+class FactorComparisonReport(ContractModel):
+    factor_name: str = Field(min_length=1, max_length=128)
+    primary_engine: EvaluationEngine = EvaluationEngine.INTERNAL
+    engine_results: list[FactorEvaluationResult] = Field(default_factory=list)
+    engine_count: int = Field(default=0, ge=0)
+    has_engine_disagreement: bool = False
+    comparison_summary: str = Field(min_length=1, max_length=512)
 
 
 class FactorValidationManifest(ContractModel):
@@ -233,4 +301,7 @@ class FactorValidationResponse(ContractModel):
     ic_series: list[FactorIcPoint] = Field(default_factory=list)
     group_returns: list[FactorGroupReturnPoint] = Field(default_factory=list)
     report: FactorValidationReport | None = None
+    evaluation_result: FactorEvaluationResult | None = None
+    score_card: FactorScoreCard | None = None
+    comparison_report: FactorComparisonReport | None = None
     manifest: FactorValidationManifest | None = None

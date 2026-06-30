@@ -1,10 +1,14 @@
 from quant_contracts.schemas.adjustment import QfqBatch
 from quant_contracts.schemas.factor import (
+    FactorComparisonReport,
     FactorCalculationMeta,
     FactorCalculationRequest,
     FactorCalculationResponse,
     FactorDailyValue,
+    FactorEvaluationResult,
     FactorGroupReturnPoint,
+    FactorScoreCard,
+    FactorScoreComponent,
     FactorValidationFinding,
     FactorIcPoint,
     FactorValidationManifest,
@@ -22,11 +26,15 @@ from quant_contracts.schemas.market_query import (
 )
 
 __all__ = [
+    "FactorComparisonReport",
     "FactorCalculationMeta",
     "FactorCalculationRequest",
     "FactorCalculationResponse",
     "FactorDailyValue",
+    "FactorEvaluationResult",
     "FactorGroupReturnPoint",
+    "FactorScoreCard",
+    "FactorScoreComponent",
     "FactorValidationFinding",
     "FactorIcPoint",
     "FactorValidationManifest",

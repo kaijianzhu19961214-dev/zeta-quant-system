@@ -1,13 +1,26 @@
 """Shared contracts for Zeta Quant System."""
 
-from quant_contracts.enums import ArtifactType, PriceMode, TaskStatus, Timeframe
+from quant_contracts.enums import (
+    ArtifactType,
+    AssetClass,
+    EvaluationEngine,
+    FactorFamily,
+    FactorMode,
+    PriceMode,
+    TaskStatus,
+    Timeframe,
+)
 from quant_contracts.schemas.adjustment import QfqBatch
 from quant_contracts.schemas.factor import (
+    FactorComparisonReport,
     FactorCalculationMeta,
     FactorCalculationRequest,
     FactorCalculationResponse,
     FactorDailyValue,
+    FactorEvaluationResult,
     FactorGroupReturnPoint,
+    FactorScoreCard,
+    FactorScoreComponent,
     FactorValidationFinding,
     FactorIcPoint,
     FactorValidationManifest,
@@ -25,12 +38,20 @@ from quant_contracts.schemas.market_query import (
 )
 
 __all__ = [
+    "AssetClass",
     "ArtifactType",
+    "EvaluationEngine",
+    "FactorComparisonReport",
     "FactorCalculationMeta",
     "FactorCalculationRequest",
     "FactorCalculationResponse",
     "FactorDailyValue",
+    "FactorEvaluationResult",
+    "FactorFamily",
     "FactorGroupReturnPoint",
+    "FactorMode",
+    "FactorScoreCard",
+    "FactorScoreComponent",
     "FactorValidationFinding",
     "FactorIcPoint",
     "FactorValidationManifest",

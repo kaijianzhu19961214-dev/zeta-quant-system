@@ -45,6 +45,31 @@ class FactorValidationArtifactSummary(BaseModel):
     persistence_status: PersistenceStatus
 
 
+class FactorScoreComponentSummary(BaseModel):
+    name: str = Field(min_length=1, max_length=64)
+    raw_value: float | None = None
+    score: float
+    max_score: float = Field(ge=0)
+    reason: str = Field(min_length=1, max_length=256)
+
+
+class FactorScoreCardSummary(BaseModel):
+    factor_name: str = Field(min_length=1, max_length=128)
+    evaluation_engine: str = Field(min_length=1, max_length=64)
+    final_score: float = Field(ge=0, le=100)
+    max_score: float = Field(default=100, ge=1, le=100)
+    review_decision: ValidationDecision
+    score_components: list[FactorScoreComponentSummary] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+
+
+class FactorComparisonSummary(BaseModel):
+    primary_engine: str = Field(min_length=1, max_length=64)
+    engine_count: int = Field(ge=0)
+    has_engine_disagreement: bool = False
+    comparison_summary: str = Field(min_length=1, max_length=512)
+
+
 class FactorValidationManifestSummary(BaseModel):
     manifest_id: str = Field(min_length=1, max_length=128)
     task_id: str = Field(min_length=1, max_length=128)
@@ -62,5 +87,7 @@ class FactorValidationReviewResponse(BaseModel):
     latest_metric: FactorValidationMetricSummary
     findings: list[FactorValidationFindingSummary] = Field(default_factory=list)
     recommended_actions: list[str] = Field(default_factory=list)
+    score_card: FactorScoreCardSummary | None = None
+    comparison: FactorComparisonSummary | None = None
     manifest: FactorValidationManifestSummary
     limitations: list[str] = Field(default_factory=list)

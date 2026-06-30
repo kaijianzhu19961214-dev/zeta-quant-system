@@ -81,8 +81,8 @@ Docker context: orbstack
 ### 3.1 MVP 基础设施
 
 ```text
-PostgreSQL 16
-Redis 7
+PostgreSQL 16  # 控制面、任务账本、小规模验证表
+Redis 7        # 缓存、运行状态、run_id 幂等锁
 ```
 
 PostgreSQL 本地开发采用一个实例、多个数据库：
@@ -96,6 +96,28 @@ quant_factor_validation       # 因子验证服务库
 
 生产环境可以拆成独立实例或独立集群，但服务边界不变。
 
+Redis 从第一版开始启用，但只承担缓存和轻量协调职责：
+
+```text
+calendar:{market}:{year}
+security:{symbol}
+qfq_batch:{batch_id}
+market_bars:{symbol}:{timeframe}:{price_mode}:{start}:{end}:{data_version}
+ops:overview:{version}
+ops:factor_validation:latest
+lock:factor_calc:{run_id}
+lock:validation:{run_id}
+task_status:{run_id}
+```
+
+约束：
+
+- Redis 不替代 PostgreSQL、ClickHouse 或 MinIO。
+- Redis 不保存完整行情大表、完整因子矩阵或长期验证明细。
+- Redis key 必须包含版本、批次或时间范围，避免缓存口径不清。
+- 任务锁必须设置过期时间，避免异常退出后永久占锁。
+- 本地 Compose 可以使用 Redis AOF；生产环境是否开启持久化由运维策略决定。
+
 ### 3.2 后续服务编排
 
 每个服务独立镜像、独立启动命令、独立健康检查：
@@ -105,18 +127,23 @@ quant_data_hub:
   build: ./services/quant_data_hub/Dockerfile
   healthcheck: GET /health
   clickhouse: external URL by CLICKHOUSE_HTTP_URL
+  redis: metadata cache and query short cache
 
 quant_factor_lab:
   build: ./quant_factor_lab
   depends_on:
-    postgres:
+    redis:
       condition: service_healthy
+  redis: run_id lock and short market window cache
 
 quant_factor_validation:
   build: ./quant_factor_validation
   depends_on:
     postgres:
       condition: service_healthy
+    redis:
+      condition: service_healthy
+  redis: validation lock, report preview cache and task status
 
 quant_ops_api:
   build: ./quant_ops_api
@@ -127,6 +154,9 @@ quant_ops_api:
       condition: service_healthy
     quant_factor_validation:
       condition: service_healthy
+    redis:
+      condition: service_healthy
+  redis: dashboard cache and service status cache
 
 quant_ops_web:
   build: ./apps/quant_ops_web

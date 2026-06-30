@@ -116,11 +116,26 @@ class FactorValidationServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(response.group_returns), 3)
         self.assertAlmostEqual(response.group_returns[2].average_forward_return, 0.3)
         self.assertEqual(response.report.decision, "review_required")
+        self.assertIsNotNone(response.score_card)
+        self.assertEqual(response.score_card.evaluation_engine, "internal")
+        self.assertGreaterEqual(response.score_card.final_score, 0)
+        self.assertIsNotNone(response.evaluation_result)
+        self.assertEqual(response.evaluation_result.evaluation_engine, "internal")
+        self.assertIsNotNone(response.comparison_report)
+        self.assertEqual(response.comparison_report.engine_count, 1)
         self.assertEqual(response.manifest.persistence_status, "not_persisted")
         self.assertEqual(response.manifest.task_run.task_type, "factor_validation")
         self.assertEqual(
             response.manifest.artifacts[3].object_key,
             "factor_validation/momentum_1d/run_validation_test/group_returns.json",
+        )
+        self.assertEqual(
+            response.manifest.artifacts[4].object_key,
+            "factor_validation/momentum_1d/run_validation_test/score_card.json",
+        )
+        self.assertEqual(
+            response.manifest.artifacts[5].object_key,
+            "factor_validation/momentum_1d/run_validation_test/comparison_report.json",
         )
         self.assertEqual(
             response.manifest.artifacts[0].object_key,
