@@ -2,6 +2,10 @@ from typing import Any
 
 
 _EXPORTS = {
+    "AlphalensMetricSummary": (
+        "quant_factor_validation.services.alphalens_evaluation_normalizer",
+        "AlphalensMetricSummary",
+    ),
     "FactorValidationService": (
         "quant_factor_validation.services.factor_validation_service",
         "FactorValidationService",
@@ -33,6 +37,14 @@ _EXPORTS = {
     "build_factor_comparison_report": (
         "quant_factor_validation.services.factor_scoring",
         "build_factor_comparison_report",
+    ),
+    "build_alphalens_external_summary": (
+        "quant_factor_validation.services.alphalens_evaluation_normalizer",
+        "build_alphalens_external_summary",
+    ),
+    "build_alphalens_factor_evaluation_result": (
+        "quant_factor_validation.services.alphalens_evaluation_normalizer",
+        "build_alphalens_factor_evaluation_result",
     ),
     "build_external_factor_evaluation_result": (
         "quant_factor_validation.services.external_evaluation_adapter",

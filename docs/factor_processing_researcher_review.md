@@ -248,7 +248,7 @@ final_score
 review_decision
 ```
 
-当前在线验证 API 的计算引擎仍是 `internal`。项目已提供 `ExternalFactorValidationSummary` 标准摘要和 adapter，可把 Alphalens、Qlib、vectorbt、OpenSourceAP/CrossSection 和 commodity-curve-factors 的核心统计结果映射成统一 `FactorEvaluationResult`；这些库尚未作为运行依赖引入。
+当前在线验证 API 的计算引擎仍是 `internal`。项目已提供 `ExternalFactorValidationSummary` 标准摘要和 adapter，并已落地 Alphalens-style 指标摘要 normalizer；Qlib、vectorbt、OpenSourceAP/CrossSection 和 commodity-curve-factors 尚未作为运行依赖引入。
 
 建议评分先使用透明规则：
 
@@ -370,7 +370,7 @@ Evidently drift report
 下一步不要直接扩展大量因子，建议按以下顺序推进：
 
 ```text
-1. 为股票截面因子补充 Alphalens / Qlib runner，把原始输出整理成 `ExternalFactorValidationSummary`。
+1. 为股票截面因子补充完整 Alphalens runner 和 Qlib runner，把原始输出整理成 `ExternalFactorValidationSummary`。
 2. 为期货时序因子设计 vectorbt 或 internal backtest runner，并复用同一 adapter 协议。
 3. 为期货期限结构因子整理 continuous contract、roll rule、carry、slope、curvature 协议。
 4. 在 Web UI 接入真实多引擎对比、规则评分和研究员审核记录。

@@ -1695,7 +1695,7 @@ MVP 阶段使用库和参考边界：
 
 | 能力 | 第一版处理方式 | 外部库状态 |
 | ---- | ---- | ---- |
-| 股票截面验证 | 先使用自研 `quant_factor_validation` | Alphalens / Qlib 作为后续 benchmark adapter |
+| 股票截面验证 | 先使用自研 `quant_factor_validation` | Alphalens-style normalizer 已落地；Qlib 作为后续 benchmark adapter |
 | 因子模板 | 先实现少量可解释量价因子 | Qlib Alpha158 / Alpha360、OpenSourceAP/CrossSection 作为参考 |
 | 期货时序因子 | 先定义协议和样例字段 | vectorbt 作为后续回测 adapter |
 | 期货期限结构因子 | 先定义 continuous contract、roll rule、term structure 字段 | commodity-curve-factors 作为研究参考 |
@@ -1715,7 +1715,7 @@ FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，可将 Alphalens / Qlib / vectorbt 等结果映射到统一评价协议；具体外部库 runner 尚未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens-style 指标摘要 normalizer；Qlib / vectorbt 等具体 runner 尚未作为运行依赖接入。
 
 ---
 
@@ -1738,6 +1738,7 @@ quant_contracts
 quant_factor_validation
     已输出 internal validation 结果
     已提供 ExternalFactorValidationSummary -> FactorEvaluationResult adapter
+    已提供 AlphalensMetricSummary -> ExternalFactorValidationSummary normalizer
     已输出 score_card.json / comparison_report.json
     已输出透明 score components
     101 节点 PostgreSQL schema + MinIO persisted smoke 已通过
@@ -1748,13 +1749,13 @@ quant_ops_api / quant_ops_web
     quant_ops_api 已验证读取 101 真实 task/artifact 账本
 ```
 
-后续补强点是：为 Alphalens / Qlib / vectorbt 分别补具体 runner，把这些库的原始输出整理成 `ExternalFactorValidationSummary`，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。
+后续补强点是：为 Alphalens 补完整 runner，为 Qlib / vectorbt 分别补具体 runner，把这些库的原始输出整理成 `ExternalFactorValidationSummary`，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。
 
 本阶段建议接入方式：
 
 | 方向 | 推荐库 | 使用方式 |
 | ---- | ---- | ---- |
-| 股票截面验证 | Alphalens、Qlib | 作为 benchmark adapter，结果映射到 `FactorEvaluationResult` |
+| 股票截面验证 | Alphalens、Qlib | Alphalens 已有指标摘要 normalizer；Qlib 后续作为 benchmark adapter |
 | 股票资产定价因子 | OpenSourceAP/CrossSection | 参考因子定义和复现实验结构 |
 | 期货时序量价 | vectorbt | 作为时序回测和参数矩阵实验参考 |
 | 期货期限结构 | commodity-curve-factors | 参考 carry、slope、curvature、TSMOM / XSMOM 定义 |
