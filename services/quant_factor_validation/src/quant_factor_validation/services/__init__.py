@@ -6,6 +6,10 @@ _EXPORTS = {
         "quant_factor_validation.services.alphalens_evaluation_normalizer",
         "AlphalensMetricSummary",
     ),
+    "AlphalensMetricPayload": (
+        "quant_factor_validation.services.alphalens_evaluation_normalizer",
+        "AlphalensMetricPayload",
+    ),
     "FactorValidationService": (
         "quant_factor_validation.services.factor_validation_service",
         "FactorValidationService",
@@ -42,6 +46,10 @@ _EXPORTS = {
         "quant_factor_validation.services.alphalens_evaluation_normalizer",
         "build_alphalens_external_summary",
     ),
+    "build_alphalens_metric_summary_from_payload": (
+        "quant_factor_validation.services.alphalens_evaluation_normalizer",
+        "build_alphalens_metric_summary_from_payload",
+    ),
     "build_alphalens_factor_evaluation_result": (
         "quant_factor_validation.services.alphalens_evaluation_normalizer",
         "build_alphalens_factor_evaluation_result",
@@ -77,6 +85,10 @@ _EXPORTS = {
     "enrich_manifest_with_artifact_payloads": (
         "quant_factor_validation.services.validation_artifacts",
         "enrich_manifest_with_artifact_payloads",
+    ),
+    "run_alphalens_payload_evaluation": (
+        "quant_factor_validation.services.alphalens_evaluation_normalizer",
+        "run_alphalens_payload_evaluation",
     ),
 }
 
