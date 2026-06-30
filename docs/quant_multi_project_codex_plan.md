@@ -1701,17 +1701,19 @@ MVP 阶段使用库和参考边界：
 | 实验沉淀 | 先使用 PostgreSQL + MinIO 记录任务和产物 | MLflow / Optuna / Evidently 放到第二阶段 |
 | 缓存与幂等 | 第一版启用 Redis | 缓存元数据、Dashboard 摘要、报告预览、`run_id` 锁和任务状态 |
 
-第一版必须预留但不急于完整实现：
+第一版协议清单与当前状态：
 
 ```text
-AssetClass
-FactorMode
-FactorFamily
-EvaluationEngine
-FactorEvaluationResult
-FactorScoreCard
-FactorComparisonReport
+AssetClass               # 已落地
+FactorMode               # 已落地
+FactorFamily             # 已落地
+EvaluationEngine         # 已落地，当前运行引擎为 internal
+FactorEvaluationResult   # 已落地
+FactorScoreCard          # 已落地
+FactorComparisonReport   # 已落地
 ```
+
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库仍停留在 adapter 入口预留阶段，未作为运行依赖接入。
 
 ---
 
@@ -1723,23 +1725,23 @@ FactorComparisonReport
 
 目标：让不同库和自研结果可比，先解决字段、指标、产物和审核口径问题。
 
+当前实现状态：
+
 ```text
 quant_contracts
-    定义 AssetClass / FactorMode / FactorFamily / EvaluationEngine
-    定义 FactorEvaluationResult / FactorScoreCard / FactorComparisonReport
+    已定义 AssetClass / FactorMode / FactorFamily / EvaluationEngine
+    已定义 FactorEvaluationResult / FactorScoreCard / FactorComparisonReport
 
 quant_factor_validation
-    输出 internal validation 结果
-    输出透明 score components
-    支持和外部库结果对比
+    已输出 internal validation 结果
+    已输出 score_card.json / comparison_report.json
+    已输出透明 score components
 
-quant_ops_web
-    展示验证报告、评分卡、产物索引和任务血缘
-
-Redis
-    缓存元数据、验证摘要、Dashboard 聚合和运行中任务状态
-    提供 run_id 级别幂等锁
+quant_ops_api / quant_ops_web
+    已展示 first-stage score preview 和 artifact ledger preview
 ```
+
+后续补强点是：接入外部库 adapter 后，把 Alphalens / Qlib / vectorbt 等结果也统一映射到 `FactorEvaluationResult`，再进入 `FactorComparisonReport` 做跨引擎比较。
 
 本阶段建议接入方式：
 

@@ -16,6 +16,7 @@ def build_factor_score_card(
 ) -> FactorScoreCard:
     score_components = [
         _build_ic_ir_score(metrics=metrics),
+        _build_ic_mean_score(metrics=metrics),
         _build_rank_ic_score(metrics=metrics),
         _build_group_return_score(metrics=metrics),
         _build_coverage_score(metrics=metrics),
@@ -123,6 +124,26 @@ def _build_rank_ic_score(*, metrics: FactorValidationMetric) -> FactorScoreCompo
         score=score,
         max_score=25.0,
         reason="Scores absolute Rank IC mean with a first-stage cap of 25.",
+    )
+
+
+def _build_ic_mean_score(*, metrics: FactorValidationMetric) -> FactorScoreComponent:
+    if metrics.ic_mean is None:
+        return FactorScoreComponent(
+            name="ic_mean_score",
+            raw_value=None,
+            score=0.0,
+            max_score=10.0,
+            reason="IC mean is unavailable.",
+        )
+
+    score = min(abs(metrics.ic_mean) / 0.05 * 10.0, 10.0)
+    return FactorScoreComponent(
+        name="ic_mean_score",
+        raw_value=metrics.ic_mean,
+        score=score,
+        max_score=10.0,
+        reason="Scores absolute IC mean with a first-stage cap of 10.",
     )
 
 

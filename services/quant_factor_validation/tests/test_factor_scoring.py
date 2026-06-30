@@ -27,6 +27,7 @@ class FactorScoringTest(unittest.TestCase):
             ic_ir=0.5,
             rank_ic_mean=0.08,
             group_return_spread_mean=0.04,
+            ic_mean=0.03,
         )
         report = FactorValidationReport(
             decision="candidate_pass",
@@ -44,6 +45,7 @@ class FactorScoringTest(unittest.TestCase):
             {component.name for component in score_card.score_components},
             {
                 "ic_ir_score",
+                "ic_mean_score",
                 "rank_ic_score",
                 "group_return_score",
                 "coverage_score",

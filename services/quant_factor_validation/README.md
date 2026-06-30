@@ -55,6 +55,8 @@ coverage_ratio
 missing_ratio
 validation report summary
 artifact manifest preview
+factor score card
+factor comparison report
 ```
 
 结构化审核摘要包含：
@@ -81,6 +83,8 @@ validation_report.json
 metrics.json
 ic_series.json
 group_returns.json
+score_card.json
+comparison_report.json
 ```
 
 每个 `manifest.artifacts[]` 当前包含：
@@ -93,6 +97,8 @@ metadata.sha256
 metadata.schema_version
 metadata.row_count
 ```
+
+评分卡当前只使用 `internal` 规则评分引擎，输出透明 `score_components`、`final_score` 和 `review_decision`。Alphalens、Qlib、vectorbt、OpenSourceAP/CrossSection 和 commodity-curve-factors 只作为后续 `EvaluationEngine` / adapter 入口预留，当前不作为运行依赖。
 
 这些字段用于后续无缝接入 MinIO / S3 兼容对象存储和 PostgreSQL `task_artifacts` 账本。当前已接入可插拔 `ValidationPersistenceService` 编排边界，但默认关闭真实持久化。
 
@@ -135,7 +141,7 @@ make smoke-quant-factor-validation-persistence
 1. 校验 MinIO / S3 bucket 是否存在
 2. 可选创建 PostgreSQL task_runs / task_artifacts schema
 3. 运行一组固定小样本因子验证
-4. 上传 validation_report / metrics / ic_series / group_returns
+4. 上传 validation_report / metrics / ic_series / group_returns / score_card / comparison_report
 5. 写入 task_runs / task_artifacts
 6. 校验 manifest.persisted、账本行数和对象大小
 ```

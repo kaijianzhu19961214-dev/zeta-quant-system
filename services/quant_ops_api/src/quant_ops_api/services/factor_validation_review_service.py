@@ -132,6 +132,13 @@ def _build_score_card() -> FactorScoreCardSummary:
         review_decision="review_required",
         score_components=[
             FactorScoreComponentSummary(
+                name="ic_mean_score",
+                raw_value=1.0,
+                score=10.0,
+                max_score=10.0,
+                reason="Scores absolute IC mean with a first-stage cap of 10.",
+            ),
+            FactorScoreComponentSummary(
                 name="rank_ic_score",
                 raw_value=1.0,
                 score=25.0,

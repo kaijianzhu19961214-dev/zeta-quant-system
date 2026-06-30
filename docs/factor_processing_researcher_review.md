@@ -82,6 +82,10 @@ factor_family   # price_volume / term_structure / fundamental / macro / model
 当前 `quant_contracts` 已包含：
 
 ```text
+AssetClass
+FactorMode
+FactorFamily
+EvaluationEngine
 FactorCalculationRequest
 FactorDailyValue
 FactorCalculationMeta
@@ -92,20 +96,21 @@ FactorValidationReport
 FactorValidationFinding
 FactorValidationManifest
 FactorValidationResponse
+FactorEvaluationResult
+FactorScoreCard
+FactorComparisonReport
 TaskRun
 TaskArtifact
 ```
 
-后续需要补充：
+后续需要扩展：
 
 ```text
-AssetClass
-FactorMode
-FactorFamily
-EvaluationEngine
-FactorEvaluationResult
-FactorScoreCard
-FactorComparisonReport
+ResearchReview
+ForwardPerformance
+MarketRegimeTag
+DataQualitySnapshot
+EvaluationEngineResult
 ```
 
 ### 4.2 因子计算
@@ -164,6 +169,11 @@ artifact file_size_bytes
 artifact metadata.content_type
 artifact metadata.sha256
 manifest.persistence_status
+evaluation_result
+score_card.final_score
+score_card.score_components
+comparison_report.engine_count
+comparison_report.has_engine_disagreement
 ```
 
 当前 `report.decision` 只作为研究审核辅助状态，不等同于生产准入结论：
@@ -187,6 +197,8 @@ MinIO / S3 object store adapter
 SQLAlchemy 2.0 async PostgreSQL ledger repository
 task_runs / task_artifacts schema
 MinIO + PostgreSQL persistence smoke tool
+score_card.json artifact
+comparison_report.json artifact
 ```
 
 持久化开启前必须完成：
@@ -207,6 +219,7 @@ make smoke-quant-factor-validation-persistence 端到端通过
 Overview
 Factor Validation review
 Artifacts ledger preview
+First-stage score preview
 ```
 
 现阶段 Artifacts 页面展示的是 manifest preview，不是正式 persisted 账本。后续应接入 PostgreSQL `task_runs` / `task_artifacts` 的只读 API，或 MinIO 中受控的 `latest.json` / manifest 对象。
@@ -219,7 +232,7 @@ Artifacts ledger preview
 
 目标：先让不同库和自研验证结果可比，而不是一开始训练自动判断模型。
 
-本阶段必须落地：
+本阶段当前已经落地：
 
 ```text
 FactorEvaluationResult
@@ -230,6 +243,8 @@ score_components
 final_score
 review_decision
 ```
+
+当前可运行引擎只有 `internal`。Alphalens、Qlib、vectorbt、OpenSourceAP/CrossSection 和 commodity-curve-factors 只作为后续 adapter / benchmark 的 `EvaluationEngine` 入口预留，尚未引入运行依赖。
 
 建议评分先使用透明规则：
 
@@ -351,14 +366,13 @@ Evidently drift report
 下一步不要直接扩展大量因子，建议按以下顺序推进：
 
 ```text
-1. 在 quant_contracts 中补齐 AssetClass / FactorMode / FactorFamily / EvaluationEngine。
-2. 定义 FactorEvaluationResult / FactorScoreCard / FactorComparisonReport。
-3. 跑通 quant_factor_validation 的真实 MinIO + PostgreSQL persisted smoke。
-4. 让 quant_ops_api 从真实 task_runs / task_artifacts 读取只读账本。
-5. 为股票截面因子补充 Alphalens / Qlib 对照输出映射。
-6. 为期货时序因子设计 vectorbt 或 internal backtest adapter。
-7. 为期货期限结构因子整理 continuous contract、roll rule、carry、slope、curvature 协议。
-8. 在 Web UI 展示多引擎对比、规则评分和研究员审核记录。
+1. 跑通 quant_factor_validation 的真实 MinIO + PostgreSQL persisted smoke。
+2. 让 quant_ops_api 从真实 task_runs / task_artifacts 读取只读账本。
+3. 为股票截面因子补充 Alphalens / Qlib 对照输出映射。
+4. 为期货时序因子设计 vectorbt 或 internal backtest adapter。
+5. 为期货期限结构因子整理 continuous contract、roll rule、carry、slope、curvature 协议。
+6. 在 Web UI 接入真实多引擎对比、规则评分和研究员审核记录。
+7. 沉淀 ResearchReview / ForwardPerformance / MarketRegimeTag / DataQualitySnapshot。
 ```
 
 这样可以形成稳定闭环：

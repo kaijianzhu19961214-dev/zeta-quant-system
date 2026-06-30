@@ -59,6 +59,8 @@ def build_validation_manifest(
             "group_count": metrics.group_count,
             "group_return_spread_mean": metrics.group_return_spread_mean,
             "decision": report.decision,
+            "factor_score": score_card.final_score if score_card is not None else None,
+            "evaluation_engine": score_card.evaluation_engine if score_card is not None else None,
         },
         finished_at=datetime.now(timezone.utc),
     )
