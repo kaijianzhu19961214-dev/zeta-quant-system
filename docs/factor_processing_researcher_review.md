@@ -248,7 +248,7 @@ final_score
 review_decision
 ```
 
-当前在线验证 API 的计算引擎仍是 `internal`。项目已提供 `ExternalFactorValidationSummary` 标准摘要和 adapter，并已落地 Alphalens / Qlib / vectorbt payload runner 边界，可接收 notebook、脚本、recorder 或 portfolio 导出的指标字典；OpenSourceAP/CrossSection 和 commodity-curve-factors 尚未作为运行依赖引入。vectorbt 的 Sharpe、回撤、换手等回测指标当前保留在审计 notes 中，暂不直接替代 IC / Rank IC 评分。
+当前在线验证 API 的计算引擎仍是 `internal`。项目已提供 `ExternalFactorValidationSummary` 标准摘要和 adapter，并已落地 Alphalens / Qlib / vectorbt payload runner 边界，可接收 notebook、脚本、recorder 或 portfolio 导出的指标字典；多引擎 payload 可以通过 `ExternalPayloadEvaluationSet` 汇总为 `FactorComparisonReport`。OpenSourceAP/CrossSection 和 commodity-curve-factors 尚未作为运行依赖引入。vectorbt 的 Sharpe、回撤、换手等回测指标当前保留在审计 notes 中，暂不直接替代 IC / Rank IC 评分。
 
 建议评分先使用透明规则：
 

@@ -1741,6 +1741,7 @@ quant_factor_validation
     已提供 AlphalensMetricPayload -> AlphalensMetricSummary -> ExternalFactorValidationSummary payload runner
     已提供 QlibMetricPayload -> QlibMetricSummary -> ExternalFactorValidationSummary payload runner
     已提供 VectorbtMetricPayload -> VectorbtMetricSummary -> ExternalFactorValidationSummary payload runner
+    已提供 ExternalPayloadEvaluationSet -> FactorComparisonReport 多引擎 payload 汇总层
     已输出 score_card.json / comparison_report.json
     已输出透明 score components
     101 节点 PostgreSQL schema + MinIO persisted smoke 已通过
@@ -1751,7 +1752,7 @@ quant_ops_api / quant_ops_web
     quant_ops_api 已验证读取 101 真实 task/artifact 账本
 ```
 
-后续补强点是：为 Alphalens / Qlib / vectorbt 补第三方库执行层，把这些库的原始输出整理成 `ExternalFactorValidationSummary`，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。
+后续补强点是：为 Alphalens / Qlib / vectorbt 补第三方库执行层，把这些库的原始输出整理成 payload，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。
 
 本阶段建议接入方式：
 

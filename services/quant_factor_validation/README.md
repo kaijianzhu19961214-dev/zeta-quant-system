@@ -98,7 +98,7 @@ metadata.schema_version
 metadata.row_count
 ```
 
-评分卡当前在线 API 仍使用 `internal` 规则评分引擎，输出透明 `score_components`、`final_score` 和 `review_decision`。服务层已提供 `ExternalFactorValidationSummary -> FactorEvaluationResult` 的标准 adapter，并已落地 Alphalens / Qlib / vectorbt payload runner 边界；Alphalens、Qlib、vectorbt、OpenSourceAP/CrossSection 和 commodity-curve-factors 当前不作为运行依赖。vectorbt 的 Sharpe、回撤、换手等回测指标当前保留在审计 notes 中，暂不直接替代 IC / Rank IC 评分。
+评分卡当前在线 API 仍使用 `internal` 规则评分引擎，输出透明 `score_components`、`final_score` 和 `review_decision`。服务层已提供 `ExternalFactorValidationSummary -> FactorEvaluationResult` 的标准 adapter，已落地 Alphalens / Qlib / vectorbt payload runner 边界，并可将多引擎 payload 汇总为 `FactorComparisonReport`；Alphalens、Qlib、vectorbt、OpenSourceAP/CrossSection 和 commodity-curve-factors 当前不作为运行依赖。vectorbt 的 Sharpe、回撤、换手等回测指标当前保留在审计 notes 中，暂不直接替代 IC / Rank IC 评分。
 
 这些字段用于后续无缝接入 MinIO / S3 兼容对象存储和 PostgreSQL `task_artifacts` 账本。当前已接入可插拔 `ValidationPersistenceService` 编排边界，但默认关闭真实持久化。
 
@@ -204,6 +204,7 @@ make quant-factor-validation-check
 - 验证逻辑必须可复现：同一输入、同一配置、同一代码版本应得到一致结果。
 - 指标模型和报告摘要字段必须复用 `quant_contracts`。
 - 外部验证库输出必须先汇总为 `ExternalFactorValidationSummary`，再由 adapter 映射为 `FactorValidationMetric` / `FactorEvaluationResult`。
+- 多引擎 payload 对比必须通过 `ExternalPayloadEvaluationSet` 汇总，输出统一 `FactorComparisonReport`。
 - Alphalens / Qlib / vectorbt 输出当前只接入 payload runner 边界；完整第三方库执行层必须继续隔离在 adapter 层，不能把 notebook / recorder / portfolio / 第三方对象直接写进核心协议。
 - 自动决策只能作为候选审核状态，不能替代研究员对样本、股票池、成本和稳定性的人工复核。
 - 当前在线接口默认只做只读验证计算，会返回 manifest preview 和可持久化产物元数据，但不保存报告、不写生产表、不上传 MinIO。

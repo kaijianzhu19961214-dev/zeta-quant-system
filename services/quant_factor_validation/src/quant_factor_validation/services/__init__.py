@@ -14,6 +14,10 @@ _EXPORTS = {
         "quant_factor_validation.services.factor_validation_service",
         "FactorValidationService",
     ),
+    "ExternalPayloadEvaluationSet": (
+        "quant_factor_validation.services.external_payload_comparison",
+        "ExternalPayloadEvaluationSet",
+    ),
     "QlibMetricPayload": (
         "quant_factor_validation.services.qlib_evaluation_normalizer",
         "QlibMetricPayload",
@@ -77,6 +81,14 @@ _EXPORTS = {
     "build_external_factor_validation_metric": (
         "quant_factor_validation.services.external_evaluation_adapter",
         "build_external_factor_validation_metric",
+    ),
+    "build_external_payload_comparison_report": (
+        "quant_factor_validation.services.external_payload_comparison",
+        "build_external_payload_comparison_report",
+    ),
+    "build_external_payload_evaluation_results": (
+        "quant_factor_validation.services.external_payload_comparison",
+        "build_external_payload_evaluation_results",
     ),
     "build_factor_evaluation_result": (
         "quant_factor_validation.services.factor_scoring",
