@@ -1736,10 +1736,12 @@ quant_factor_validation
     已输出 internal validation 结果
     已输出 score_card.json / comparison_report.json
     已输出透明 score components
+    101 节点 PostgreSQL schema + MinIO persisted smoke 已通过
 
 quant_ops_api / quant_ops_web
     已展示 first-stage score preview
     quant_ops_api 已支持 artifact ledger preview / PostgreSQL 只读账本双路径
+    quant_ops_api 已验证读取 101 真实 task/artifact 账本
 ```
 
 后续补强点是：接入外部库 adapter 后，把 Alphalens / Qlib / vectorbt 等结果也统一映射到 `FactorEvaluationResult`，再进入 `FactorComparisonReport` 做跨引擎比较。

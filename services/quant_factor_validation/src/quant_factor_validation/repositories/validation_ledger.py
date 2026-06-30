@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+import re
 from typing import Any, Protocol
 
 from quant_contracts import FactorValidationManifest, TaskArtifact
@@ -15,6 +16,7 @@ from sqlalchemy import (
     Text,
     UniqueConstraint,
     func,
+    text,
 )
 from sqlalchemy.dialects.postgresql import JSONB, insert as postgresql_insert
 from sqlalchemy.exc import SQLAlchemyError
@@ -23,6 +25,7 @@ from sqlalchemy.ext.asyncio import AsyncEngine, AsyncSession, async_sessionmaker
 from quant_factor_validation.services.validation_persistence import ValidationPersistenceError
 
 validation_ledger_metadata = MetaData()
+SCHEMA_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 task_runs_table = Table(
     "task_runs",
@@ -115,15 +118,18 @@ def create_validation_database_engine(
     *,
     database_url: str,
     echo: bool = False,
+    schema_name: str | None = None,
 ) -> AsyncEngine:
     normalized_database_url = database_url.strip()
     if not normalized_database_url:
         raise ValueError("validation database URL must not be blank")
 
+    normalized_schema_name = apply_validation_ledger_schema(schema_name=schema_name)
     return create_async_engine(
         normalized_database_url,
         echo=echo,
         pool_pre_ping=True,
+        connect_args=_build_connect_args(schema_name=normalized_schema_name),
     )
 
 
@@ -137,9 +143,44 @@ def create_validation_session_factory(
     )
 
 
-async def create_validation_ledger_schema(*, engine: AsyncEngine) -> None:
+async def create_validation_ledger_schema(
+    *,
+    engine: AsyncEngine,
+    schema_name: str | None = None,
+) -> None:
+    normalized_schema_name = apply_validation_ledger_schema(schema_name=schema_name)
     async with engine.begin() as connection:
+        if normalized_schema_name is not None:
+            await connection.execute(text(f'CREATE SCHEMA IF NOT EXISTS "{normalized_schema_name}"'))
         await connection.run_sync(validation_ledger_metadata.create_all)
+
+
+def normalize_database_schema_name(*, schema_name: str | None) -> str | None:
+    if schema_name is None or not schema_name.strip():
+        return None
+
+    normalized_schema_name = schema_name.strip()
+    if not SCHEMA_NAME_PATTERN.fullmatch(normalized_schema_name):
+        raise ValueError("validation database schema name is invalid")
+    return normalized_schema_name
+
+
+def apply_validation_ledger_schema(*, schema_name: str | None) -> str | None:
+    normalized_schema_name = normalize_database_schema_name(schema_name=schema_name)
+    for table in validation_ledger_metadata.tables.values():
+        table.schema = normalized_schema_name
+    return normalized_schema_name
+
+
+def _build_connect_args(*, schema_name: str | None) -> dict[str, Any]:
+    if schema_name is None:
+        return {}
+
+    return {
+        "server_settings": {
+            "search_path": f"{schema_name},public",
+        }
+    }
 
 
 def _build_task_run_values(*, manifest: FactorValidationManifest) -> dict[str, Any]:
@@ -165,7 +206,7 @@ def _build_task_run_values(*, manifest: FactorValidationManifest) -> dict[str, A
 
 def _build_task_artifact_values(*, artifact: TaskArtifact) -> dict[str, Any]:
     metadata = artifact.metadata
-    return {
+    values: dict[str, Any] = {
         "artifact_id": artifact.artifact_id,
         "task_id": artifact.task_id,
         "artifact_type": str(artifact.artifact_type),
@@ -190,8 +231,11 @@ def _build_task_artifact_values(*, artifact: TaskArtifact) -> dict[str, Any]:
         "file_size_bytes": artifact.file_size_bytes,
         "etag": _get_optional_str(metadata.get("etag")),
         "metadata": metadata,
-        "created_at": artifact.created_at,
     }
+    if artifact.created_at is not None:
+        values["created_at"] = artifact.created_at
+
+    return values
 
 
 def _build_task_run_upsert_statement(*, manifest: FactorValidationManifest) -> Any:

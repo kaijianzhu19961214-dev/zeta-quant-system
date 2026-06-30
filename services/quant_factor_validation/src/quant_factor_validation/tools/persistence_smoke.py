@@ -63,6 +63,7 @@ class PersistenceSmokeConfig:
     object_store_endpoint: str
     object_store_access_key: str
     object_store_secret_key: str
+    database_schema: str | None = None
     object_store_bucket: str = DEFAULT_BUCKET_NAME
     object_store_secure: bool = False
     should_create_schema: bool = True
@@ -104,10 +105,16 @@ async def run_persistence_smoke(*, config: PersistenceSmokeConfig) -> list[str]:
     )
     await ensure_bucket_exists(client=minio_client, config=config)
 
-    engine = create_validation_database_engine(database_url=config.database_url)
+    engine = create_validation_database_engine(
+        database_url=config.database_url,
+        schema_name=config.database_schema,
+    )
     try:
         if config.should_create_schema:
-            await create_validation_ledger_schema(engine=engine)
+            await create_validation_ledger_schema(
+                engine=engine,
+                schema_name=config.database_schema,
+            )
 
         session_factory = create_validation_session_factory(engine=engine)
         service = FactorValidationService(
@@ -307,6 +314,12 @@ def read_config_from_env(*, env: Mapping[str, str]) -> PersistenceSmokeConfig:
         object_store_endpoint=_read_required_env(env=env, key="VALIDATION_OBJECT_STORE_ENDPOINT"),
         object_store_access_key=_read_required_env(env=env, key="VALIDATION_OBJECT_STORE_ACCESS_KEY"),
         object_store_secret_key=_read_required_env(env=env, key="VALIDATION_OBJECT_STORE_SECRET_KEY"),
+        database_schema=_read_optional_env(
+            env=env,
+            key="VALIDATION_DATABASE_SCHEMA",
+            default="",
+        )
+        or None,
         object_store_bucket=_read_optional_env(
             env=env,
             key="VALIDATION_OBJECT_STORE_BUCKET",

@@ -108,6 +108,7 @@ metadata.row_count
 VALIDATION_PERSISTENCE_ENABLED=false
 VALIDATION_DATABASE_URL=postgresql+asyncpg://quant_admin:quant_local_password@postgres:5432/quant_factor_validation
 VALIDATION_DATABASE_ECHO=false
+VALIDATION_DATABASE_SCHEMA=
 VALIDATION_OBJECT_STORE_ENDPOINT=
 VALIDATION_OBJECT_STORE_ACCESS_KEY=
 VALIDATION_OBJECT_STORE_SECRET_KEY=
@@ -129,6 +130,8 @@ task_artifacts
 
 本项目当前 contracts 使用可读业务字符串作为 `task_id` / `artifact_id`，因此本地 schema 使用 `varchar(128)`，字段名和索引形态继续对齐 101 节点历史模型。
 
+如果复用 101 旧项目数据库，必须配置独立 schema，例如 `VALIDATION_DATABASE_SCHEMA=zeta_quant_factor_validation`，避免命中旧 public schema 下 UUID 版 `task_runs` / `task_artifacts`。
+
 持久化端到端 smoke：
 
 ```bash
@@ -147,6 +150,16 @@ make smoke-quant-factor-validation-persistence
 ```
 
 真实执行前必须通过 `.env` 或部署平台注入 `VALIDATION_DATABASE_URL`、`VALIDATION_OBJECT_STORE_ENDPOINT`、`VALIDATION_OBJECT_STORE_ACCESS_KEY` 和 `VALIDATION_OBJECT_STORE_SECRET_KEY`。命令不会打印密钥。
+
+101 节点验证记录：
+
+```text
+2026-06-30 validation_smoke_101_codex
+schema: zeta_quant_factor_validation
+manifest persisted: manifest_validation_smoke_101_codex
+postgres ledger: task_count=1, artifact_count=6
+object store: bucket=quant-factor-data, object_count=6
+```
 
 示例：
 

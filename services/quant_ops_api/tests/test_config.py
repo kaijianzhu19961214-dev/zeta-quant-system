@@ -23,6 +23,17 @@ class SettingsTest(unittest.TestCase):
             "postgresql+asyncpg://reader@postgres:5432/ledger",
         )
 
+    def test_should_prefer_artifact_ledger_database_schema(self) -> None:
+        settings = Settings(
+            ARTIFACT_LEDGER_DATABASE_SCHEMA=" zeta_quant_factor_validation ",
+            VALIDATION_DATABASE_SCHEMA="validation",
+        )
+
+        self.assertEqual(
+            settings.artifact_ledger_read_database_schema(),
+            "zeta_quant_factor_validation",
+        )
+
     def test_should_fall_back_to_validation_database_url(self) -> None:
         settings = Settings(
             ARTIFACT_LEDGER_DATABASE_URL="",
@@ -32,6 +43,17 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(
             settings.artifact_ledger_read_database_url(),
             "postgresql+asyncpg://reader@postgres:5432/ledger",
+        )
+
+    def test_should_fall_back_to_validation_database_schema(self) -> None:
+        settings = Settings(
+            ARTIFACT_LEDGER_DATABASE_SCHEMA="",
+            VALIDATION_DATABASE_SCHEMA="zeta_quant_factor_validation",
+        )
+
+        self.assertEqual(
+            settings.artifact_ledger_read_database_schema(),
+            "zeta_quant_factor_validation",
         )
 
 

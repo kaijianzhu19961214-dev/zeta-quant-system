@@ -27,6 +27,10 @@ class Settings(BaseSettings):
         default=False,
         alias="VALIDATION_DATABASE_ECHO",
     )
+    validation_database_schema: str | None = Field(
+        default=None,
+        alias="VALIDATION_DATABASE_SCHEMA",
+    )
     validation_object_store_endpoint: str | None = Field(
         default=None,
         alias="VALIDATION_OBJECT_STORE_ENDPOINT",

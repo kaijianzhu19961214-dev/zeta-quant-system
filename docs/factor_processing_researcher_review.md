@@ -199,6 +199,8 @@ task_runs / task_artifacts schema
 MinIO + PostgreSQL persistence smoke tool
 score_card.json artifact
 comparison_report.json artifact
+101 节点 zeta_quant_factor_validation schema persisted smoke 通过
+quant_ops_api 真实 task/artifact 只读账本读取通过
 ```
 
 持久化开启前必须完成：
@@ -206,6 +208,7 @@ comparison_report.json artifact
 ```text
 对象存储配置
 VALIDATION_DATABASE_URL
+VALIDATION_DATABASE_SCHEMA，复用旧库时必须配置
 task_runs / task_artifacts 表结构
 生产或 101 节点密钥注入
 make smoke-quant-factor-validation-persistence 端到端通过
@@ -222,7 +225,7 @@ Artifacts ledger preview
 First-stage score preview
 ```
 
-现阶段 Artifacts 页面默认展示 manifest preview；`quant_ops_api` 已预留 PostgreSQL `task_runs` / `task_artifacts` 只读账本读取路径，配置 `ARTIFACT_LEDGER_DATABASE_URL` 或 `VALIDATION_DATABASE_URL` 后可切换到真实账本。
+现阶段 Artifacts 页面默认展示 manifest preview；`quant_ops_api` 已支持 PostgreSQL `task_runs` / `task_artifacts` 只读账本读取路径，配置 `ARTIFACT_LEDGER_DATABASE_URL` 或 `VALIDATION_DATABASE_URL` 后可切换到真实账本。复用 101 旧库时需要同时配置 `ARTIFACT_LEDGER_DATABASE_SCHEMA=zeta_quant_factor_validation` 或 `VALIDATION_DATABASE_SCHEMA=zeta_quant_factor_validation`。
 
 ---
 
@@ -366,12 +369,10 @@ Evidently drift report
 下一步不要直接扩展大量因子，建议按以下顺序推进：
 
 ```text
-1. 跑通 quant_factor_validation 的真实 MinIO + PostgreSQL persisted smoke。
-2. 用真实 task_runs / task_artifacts 验证 quant_ops_api 只读账本读取链路。
-3. 为股票截面因子补充 Alphalens / Qlib 对照输出映射。
-4. 为期货时序因子设计 vectorbt 或 internal backtest adapter。
-5. 为期货期限结构因子整理 continuous contract、roll rule、carry、slope、curvature 协议。
-6. 在 Web UI 接入真实多引擎对比、规则评分和研究员审核记录。
+1. 为股票截面因子补充 Alphalens / Qlib 对照输出映射。
+2. 为期货时序因子设计 vectorbt 或 internal backtest adapter。
+3. 为期货期限结构因子整理 continuous contract、roll rule、carry、slope、curvature 协议。
+4. 在 Web UI 接入真实多引擎对比、规则评分和研究员审核记录。
 7. 沉淀 ResearchReview / ForwardPerformance / MarketRegimeTag / DataQualitySnapshot。
 ```
 

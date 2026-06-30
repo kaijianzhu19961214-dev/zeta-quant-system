@@ -59,6 +59,7 @@ def get_validation_database_engine() -> AsyncEngine | None:
     return create_validation_database_engine(
         database_url=settings.validation_database_url,
         echo=settings.validation_database_echo,
+        schema_name=settings.validation_database_schema,
     )
 
 

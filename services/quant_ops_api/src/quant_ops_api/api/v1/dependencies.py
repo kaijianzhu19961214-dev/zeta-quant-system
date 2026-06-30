@@ -32,7 +32,10 @@ def get_validation_ledger_engine() -> AsyncEngine | None:
     database_url = settings.artifact_ledger_read_database_url()
     if database_url is None:
         return None
-    return create_validation_ledger_reader_engine(database_url=database_url)
+    return create_validation_ledger_reader_engine(
+        database_url=database_url,
+        schema_name=settings.artifact_ledger_read_database_schema(),
+    )
 
 
 def get_validation_ledger_reader() -> SqlAlchemyValidationLedgerReader | None:

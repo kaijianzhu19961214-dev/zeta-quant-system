@@ -3,6 +3,7 @@ from __future__ import annotations
 from collections import Counter
 from dataclasses import dataclass
 from datetime import datetime, timezone
+import re
 from typing import Any
 
 from sqlalchemy import BigInteger, Column, DateTime, MetaData, String, Table, Text, desc, select
@@ -13,6 +14,7 @@ from quant_ops_api.schemas import ArtifactLedgerItem, TaskLedgerItem
 
 
 validation_ledger_reader_metadata = MetaData()
+SCHEMA_NAME_PATTERN = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
 
 task_runs_table = Table(
     "task_runs",
@@ -118,15 +120,49 @@ class SqlAlchemyValidationLedgerReader:
         )
 
 
-def create_validation_ledger_reader_engine(*, database_url: str) -> AsyncEngine:
+def create_validation_ledger_reader_engine(
+    *,
+    database_url: str,
+    schema_name: str | None = None,
+) -> AsyncEngine:
     normalized_database_url = database_url.strip()
     if not normalized_database_url:
         raise ValueError("artifact ledger database URL must not be blank")
 
+    normalized_schema_name = apply_validation_ledger_reader_schema(schema_name=schema_name)
     return create_async_engine(
         normalized_database_url,
         pool_pre_ping=True,
+        connect_args=_build_connect_args(schema_name=normalized_schema_name),
     )
+
+
+def normalize_database_schema_name(*, schema_name: str | None) -> str | None:
+    if schema_name is None or not schema_name.strip():
+        return None
+
+    normalized_schema_name = schema_name.strip()
+    if not SCHEMA_NAME_PATTERN.fullmatch(normalized_schema_name):
+        raise ValueError("artifact ledger database schema name is invalid")
+    return normalized_schema_name
+
+
+def apply_validation_ledger_reader_schema(*, schema_name: str | None) -> str | None:
+    normalized_schema_name = normalize_database_schema_name(schema_name=schema_name)
+    for table in validation_ledger_reader_metadata.tables.values():
+        table.schema = normalized_schema_name
+    return normalized_schema_name
+
+
+def _build_connect_args(*, schema_name: str | None) -> dict[str, Any]:
+    if schema_name is None:
+        return {}
+
+    return {
+        "server_settings": {
+            "search_path": f"{schema_name},public",
+        }
+    }
 
 
 def _build_task_ledger_item(

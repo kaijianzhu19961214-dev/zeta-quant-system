@@ -14,6 +14,7 @@ from quant_factor_validation.repositories.validation_ledger import (
     SqlAlchemyValidationLedgerRepository,
     _build_task_artifact_values,
     _build_task_run_values,
+    normalize_database_schema_name,
 )
 from quant_factor_validation.services import ValidationPersistenceError
 
@@ -93,6 +94,7 @@ class ValidationLedgerRepositoryTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(values["bucket_name"], "quant-factor-data")
         self.assertEqual(values["content_type"], "application/json")
         self.assertEqual(values["etag"], "etag-123")
+        self.assertNotIn("created_at", values)
 
     def test_should_reject_artifact_without_storage_fields(self) -> None:
         artifact = _make_persisted_manifest().artifacts[0].model_copy(
@@ -103,6 +105,16 @@ class ValidationLedgerRepositoryTest(unittest.IsolatedAsyncioTestCase):
 
         with self.assertRaisesRegex(ValidationPersistenceError, "bucket_name"):
             _build_task_artifact_values(artifact=artifact)
+
+    def test_should_normalize_database_schema_name(self) -> None:
+        self.assertEqual(
+            normalize_database_schema_name(schema_name=" zeta_quant_factor_validation "),
+            "zeta_quant_factor_validation",
+        )
+        self.assertIsNone(normalize_database_schema_name(schema_name=""))
+
+        with self.assertRaisesRegex(ValueError, "schema"):
+            normalize_database_schema_name(schema_name="public;drop table task_runs")
 
 
 def _compile_statement(*, statement: object) -> str:

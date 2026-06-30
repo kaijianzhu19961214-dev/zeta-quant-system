@@ -38,6 +38,7 @@ metadata.row_count
 VALIDATION_PERSISTENCE_ENABLED=false
 VALIDATION_DATABASE_URL=postgresql+asyncpg://quant_admin:quant_local_password@postgres:5432/quant_factor_validation
 VALIDATION_DATABASE_ECHO=false
+VALIDATION_DATABASE_SCHEMA=
 VALIDATION_OBJECT_STORE_ENDPOINT=
 VALIDATION_OBJECT_STORE_ACCESS_KEY=
 VALIDATION_OBJECT_STORE_SECRET_KEY=
@@ -51,6 +52,15 @@ VALIDATION_SMOKE_RUN_ID=validation_smoke_local
 默认关闭真实持久化。开启前必须同时提供对象存储配置、PostgreSQL 账本表结构和数据库连接配置；如果只打开开关但缺少任一 adapter，服务会拒绝把 manifest 标记为 `persisted`。
 
 当前 PostgreSQL repository 已按本项目 `quant_contracts` 落地：`task_id` / `artifact_id` 使用可读业务字符串，因此 schema 使用 `varchar(128)`。字段名、索引和幂等 upsert 语义继续对齐 101 节点的 `task_runs` / `task_artifacts` 经验，但不沿用旧表里的 UUID 类型约束。
+
+如果复用 101 旧项目数据库，必须使用独立 PostgreSQL schema，例如：
+
+```text
+VALIDATION_DATABASE_SCHEMA=zeta_quant_factor_validation
+ARTIFACT_LEDGER_DATABASE_SCHEMA=zeta_quant_factor_validation
+```
+
+原因是 101 旧项目 public schema 下已有 UUID 版 `task_runs` / `task_artifacts`，不能和当前业务字符串协议混用。
 
 ---
 
@@ -131,13 +141,13 @@ MinIO + PostgreSQL persistence smoke tool
 完整 6 产物 score_card / comparison_report 持久化校验
 task_runs / task_artifacts 幂等 upsert
 quant_ops_api 只读账本查询入口
+101 节点真实 PostgreSQL schema + MinIO persisted smoke 通过
 ```
 
 后续仍待落地：
 
 ```text
 生产环境迁移流程或 Alembic 版本化迁移
-带真实 101 / 生产密钥的端到端 MinIO + PostgreSQL 集成执行记录
 生产环境鉴权与审计日志
 ```
 

@@ -37,6 +37,7 @@ class PersistenceSmokeToolTest(unittest.TestCase):
                 "VALIDATION_OBJECT_STORE_ENDPOINT": "http://minio:9000",
                 "VALIDATION_OBJECT_STORE_ACCESS_KEY": "access",
                 "VALIDATION_OBJECT_STORE_SECRET_KEY": "secret",
+                "VALIDATION_DATABASE_SCHEMA": "zeta_quant_factor_validation",
                 "VALIDATION_OBJECT_STORE_SECURE": "true",
                 "VALIDATION_SMOKE_CREATE_BUCKET": "yes",
                 "VALIDATION_SMOKE_RUN_ID": "smoke_run_1",
@@ -44,6 +45,7 @@ class PersistenceSmokeToolTest(unittest.TestCase):
         )
 
         self.assertEqual(config.object_store_bucket, DEFAULT_BUCKET_NAME)
+        self.assertEqual(config.database_schema, "zeta_quant_factor_validation")
         self.assertTrue(config.object_store_secure)
         self.assertTrue(config.should_create_bucket)
         self.assertEqual(config.run_id, "smoke_run_1")

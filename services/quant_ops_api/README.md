@@ -81,10 +81,13 @@ limitations
 
 ```text
 ARTIFACT_LEDGER_DATABASE_URL=postgresql+asyncpg://readonly_user:***@postgres:5432/quant_factor_validation
+ARTIFACT_LEDGER_DATABASE_SCHEMA=zeta_quant_factor_validation
 ARTIFACT_LEDGER_QUERY_LIMIT=20
 ```
 
-如果没有单独配置 `ARTIFACT_LEDGER_DATABASE_URL`，也可以临时复用 `VALIDATION_DATABASE_URL`。生产环境建议使用只读数据库用户。
+如果没有单独配置 `ARTIFACT_LEDGER_DATABASE_URL`，也可以临时复用 `VALIDATION_DATABASE_URL`；如果没有单独配置 `ARTIFACT_LEDGER_DATABASE_SCHEMA`，也会回退读取 `VALIDATION_DATABASE_SCHEMA`。生产环境建议使用只读数据库用户。
+
+101 节点已验证 `quant_ops_api` reader 可从 `zeta_quant_factor_validation` schema 读到 `validation_smoke_101_codex` 的 1 个 task 和 6 个 artifact。
 
 ## 约束 / Rules
 
