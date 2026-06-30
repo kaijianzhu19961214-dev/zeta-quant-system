@@ -14,11 +14,13 @@ from quant_contracts import (
 from quant_factor_validation.tools.persistence_smoke import (
     DEFAULT_BUCKET_NAME,
     DEFAULT_RUN_ID,
+    EXPECTED_ARTIFACT_SCHEMA_VERSIONS,
     LedgerCounts,
     build_smoke_request,
     parse_bool,
     read_config_from_env,
     validate_ledger_counts,
+    validate_manifest_artifacts,
     validate_persisted_response,
 )
 
@@ -74,6 +76,13 @@ class PersistenceSmokeToolTest(unittest.TestCase):
 
         self.assertIs(validated_manifest, manifest)
 
+    def test_should_reject_missing_first_stage_artifacts(self) -> None:
+        manifest = _make_manifest(persistence_status="persisted")
+        incomplete_manifest = manifest.model_copy(update={"artifacts": manifest.artifacts[:-1]})
+
+        with self.assertRaisesRegex(RuntimeError, "expected 6 artifacts"):
+            validate_manifest_artifacts(manifest=incomplete_manifest)
+
     def test_should_reject_not_persisted_response(self) -> None:
         response = FactorValidationResponse(
             metrics=_make_metrics(),
@@ -85,14 +94,14 @@ class PersistenceSmokeToolTest(unittest.TestCase):
 
     def test_should_validate_ledger_counts(self) -> None:
         validate_ledger_counts(
-            counts=LedgerCounts(task_count=1, artifact_count=4),
-            expected_artifact_count=4,
+            counts=LedgerCounts(task_count=1, artifact_count=6),
+            expected_artifact_count=6,
         )
 
         with self.assertRaisesRegex(RuntimeError, "task_artifact"):
             validate_ledger_counts(
-                counts=LedgerCounts(task_count=1, artifact_count=3),
-                expected_artifact_count=4,
+                counts=LedgerCounts(task_count=1, artifact_count=5),
+                expected_artifact_count=6,
             )
 
 
@@ -122,17 +131,16 @@ def _make_manifest(*, persistence_status: str) -> FactorValidationManifest:
         finished_at=created_at,
     )
     artifacts = [
-        TaskArtifact(
-            artifact_id=f"validation_smoke_local_artifact_{index}",
+        _make_artifact(
             task_id=task_run.task_id,
-            artifact_type=ArtifactType.METRICS_TABLE,
-            bucket_name=DEFAULT_BUCKET_NAME,
-            object_key=f"factor_validation/smoke/{index}.json",
-            uri=f"s3://{DEFAULT_BUCKET_NAME}/factor_validation/smoke/{index}.json",
-            file_size_bytes=2,
-            metadata={"persistence_status": persistence_status},
+            name=name,
+            schema_version=schema_version,
+            artifact_type=ArtifactType.VALIDATION_REPORT
+            if name == "validation_report"
+            else ArtifactType.METRICS_TABLE,
+            persistence_status=persistence_status,
         )
-        for index in range(4)
+        for name, schema_version in _artifact_specs()
     ]
     return FactorValidationManifest(
         manifest_id="manifest_validation_smoke_local",
@@ -141,6 +149,45 @@ def _make_manifest(*, persistence_status: str) -> FactorValidationManifest:
         persistence_status=persistence_status,
         created_at=created_at,
     )
+
+
+def _make_artifact(
+    *,
+    task_id: str,
+    name: str,
+    schema_version: str,
+    artifact_type: ArtifactType,
+    persistence_status: str,
+) -> TaskArtifact:
+    object_key = f"factor_validation/smoke/{name}.json"
+    return TaskArtifact(
+        artifact_id=f"validation_smoke_local_{name}",
+        task_id=task_id,
+        artifact_type=artifact_type,
+        bucket_name=DEFAULT_BUCKET_NAME,
+        object_key=object_key,
+        uri=f"s3://{DEFAULT_BUCKET_NAME}/{object_key}",
+        file_size_bytes=2,
+        metadata={
+            "content_type": "application/json",
+            "persistence_status": persistence_status,
+            "schema_version": schema_version,
+            "sha256": "f" * 64,
+        },
+    )
+
+
+def _artifact_specs() -> list[tuple[str, str]]:
+    specs = [
+        ("validation_report", "factor_validation_report.v1"),
+        ("metrics", "factor_validation_metrics.v1"),
+        ("ic_series", "factor_ic_series.v1"),
+        ("group_returns", "factor_group_returns.v1"),
+        ("score_card", "factor_score_card.v1"),
+        ("comparison_report", "factor_comparison_report.v1"),
+    ]
+    assert {schema_version for _, schema_version in specs} == EXPECTED_ARTIFACT_SCHEMA_VERSIONS
+    return specs
 
 
 if __name__ == "__main__":

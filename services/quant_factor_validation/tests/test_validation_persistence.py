@@ -16,6 +16,9 @@ from quant_factor_validation.services import (
     ValidationArtifactPayload,
     ValidationPersistenceError,
     ValidationPersistenceService,
+    build_factor_comparison_report,
+    build_factor_evaluation_result,
+    build_factor_score_card,
     build_validation_artifact_payloads,
     build_validation_manifest,
     enrich_manifest_with_artifact_payloads,
@@ -94,7 +97,7 @@ class ValidationPersistenceServiceTest(unittest.IsolatedAsyncioTestCase):
         )
 
         self.assertEqual(persisted_manifest.persistence_status, "persisted")
-        self.assertEqual(len(store.payloads), 4)
+        self.assertEqual(len(store.payloads), 6)
         self.assertEqual(len(ledger.manifests), 1)
         self.assertEqual(persisted_manifest.artifacts[0].bucket_name, "quant-factor-data")
         self.assertEqual(
@@ -153,6 +156,17 @@ def _make_enriched_manifest_and_payloads() -> tuple[
     FactorValidationManifest,
     list[ValidationArtifactPayload],
 ]:
+    metrics = _make_metrics()
+    report = _make_report()
+    score_card = build_factor_score_card(metrics=metrics, report=report)
+    evaluation_result = build_factor_evaluation_result(
+        metrics=metrics,
+        report=report,
+        score_card=score_card,
+    )
+    comparison_report = build_factor_comparison_report(primary_result=evaluation_result)
+    ic_series = _make_ic_series()
+    group_returns = _make_group_returns()
     manifest = build_validation_manifest(
         request=FactorValidationRequest(
             factor_name="momentum_20d",
@@ -161,17 +175,21 @@ def _make_enriched_manifest_and_payloads() -> tuple[
             market_end="2026-03-31",
             run_id="validation run 1",
         ),
-        metrics=_make_metrics(),
-        report=_make_report(),
-        ic_series=_make_ic_series(),
-        group_returns=_make_group_returns(),
+        metrics=metrics,
+        report=report,
+        ic_series=ic_series,
+        group_returns=group_returns,
+        score_card=score_card,
+        comparison_report=comparison_report,
     )
     payloads = build_validation_artifact_payloads(
         manifest=manifest,
-        metrics=_make_metrics(),
-        report=_make_report(),
-        ic_series=_make_ic_series(),
-        group_returns=_make_group_returns(),
+        metrics=metrics,
+        report=report,
+        ic_series=ic_series,
+        group_returns=group_returns,
+        score_card=score_card,
+        comparison_report=comparison_report,
     )
     return (
         enrich_manifest_with_artifact_payloads(

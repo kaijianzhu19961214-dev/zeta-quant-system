@@ -222,7 +222,7 @@ Artifacts ledger preview
 First-stage score preview
 ```
 
-现阶段 Artifacts 页面展示的是 manifest preview，不是正式 persisted 账本。后续应接入 PostgreSQL `task_runs` / `task_artifacts` 的只读 API，或 MinIO 中受控的 `latest.json` / manifest 对象。
+现阶段 Artifacts 页面默认展示 manifest preview；`quant_ops_api` 已预留 PostgreSQL `task_runs` / `task_artifacts` 只读账本读取路径，配置 `ARTIFACT_LEDGER_DATABASE_URL` 或 `VALIDATION_DATABASE_URL` 后可切换到真实账本。
 
 ---
 
@@ -367,7 +367,7 @@ Evidently drift report
 
 ```text
 1. 跑通 quant_factor_validation 的真实 MinIO + PostgreSQL persisted smoke。
-2. 让 quant_ops_api 从真实 task_runs / task_artifacts 读取只读账本。
+2. 用真实 task_runs / task_artifacts 验证 quant_ops_api 只读账本读取链路。
 3. 为股票截面因子补充 Alphalens / Qlib 对照输出映射。
 4. 为期货时序因子设计 vectorbt 或 internal backtest adapter。
 5. 为期货期限结构因子整理 continuous contract、roll rule、carry、slope、curvature 协议。

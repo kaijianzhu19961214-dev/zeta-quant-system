@@ -9,7 +9,7 @@ from quant_ops_api.schemas import ArtifactLedgerItem, ArtifactLedgerResponse, Ta
 
 
 class FakeArtifactLedgerService:
-    def get_ledger(self) -> ArtifactLedgerResponse:
+    async def get_ledger(self) -> ArtifactLedgerResponse:
         return ArtifactLedgerResponse(
             generated_at=datetime.now(timezone.utc),
             source="test",

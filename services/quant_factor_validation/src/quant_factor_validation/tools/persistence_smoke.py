@@ -35,6 +35,26 @@ from quant_factor_validation.services import FactorValidationService, Validation
 
 DEFAULT_BUCKET_NAME = "quant-factor-data"
 DEFAULT_RUN_ID = "validation_smoke_local"
+EXPECTED_ARTIFACT_SCHEMA_VERSIONS = frozenset(
+    {
+        "factor_validation_report.v1",
+        "factor_validation_metrics.v1",
+        "factor_ic_series.v1",
+        "factor_group_returns.v1",
+        "factor_score_card.v1",
+        "factor_comparison_report.v1",
+    }
+)
+EXPECTED_ARTIFACT_FILE_NAMES = frozenset(
+    {
+        "validation_report.json",
+        "metrics.json",
+        "ic_series.json",
+        "group_returns.json",
+        "score_card.json",
+        "comparison_report.json",
+    }
+)
 
 
 @dataclass(frozen=True)
@@ -156,18 +176,47 @@ def validate_persisted_response(*, response: FactorValidationResponse) -> Factor
         raise RuntimeError(f"manifest persistence_status is {manifest.persistence_status}")
     if response.metrics.effective_sample_count < 1:
         raise RuntimeError("smoke validation produced no effective samples")
-    if len(manifest.artifacts) != 4:
-        raise RuntimeError(f"expected 4 artifacts, got {len(manifest.artifacts)}")
+
+    validate_manifest_artifacts(manifest=manifest)
+
+    return manifest
+
+
+def validate_manifest_artifacts(*, manifest: FactorValidationManifest) -> None:
+    expected_artifact_count = len(EXPECTED_ARTIFACT_SCHEMA_VERSIONS)
+    if len(manifest.artifacts) != expected_artifact_count:
+        raise RuntimeError(f"expected {expected_artifact_count} artifacts, got {len(manifest.artifacts)}")
+
+    schema_versions: set[str] = set()
+    file_names: set[str] = set()
 
     for artifact in manifest.artifacts:
         if artifact.bucket_name is None:
             raise RuntimeError(f"artifact {artifact.artifact_id} is missing bucket_name")
+        if artifact.object_key is None:
+            raise RuntimeError(f"artifact {artifact.artifact_id} is missing object_key")
         if artifact.uri is None:
             raise RuntimeError(f"artifact {artifact.artifact_id} is missing uri")
+        if artifact.file_size_bytes is None or artifact.file_size_bytes <= 0:
+            raise RuntimeError(f"artifact {artifact.artifact_id} is missing file_size_bytes")
+        if artifact.metadata.get("content_type") != "application/json":
+            raise RuntimeError(f"artifact {artifact.artifact_id} content_type is not application/json")
+        if not artifact.metadata.get("sha256"):
+            raise RuntimeError(f"artifact {artifact.artifact_id} is missing sha256")
         if artifact.metadata.get("persistence_status") != "persisted":
             raise RuntimeError(f"artifact {artifact.artifact_id} was not marked persisted")
 
-    return manifest
+        schema_version = artifact.metadata.get("schema_version")
+        if not isinstance(schema_version, str) or not schema_version:
+            raise RuntimeError(f"artifact {artifact.artifact_id} is missing schema_version")
+
+        schema_versions.add(schema_version)
+        file_names.add(artifact.object_key.rsplit("/", 1)[-1])
+
+    if schema_versions != EXPECTED_ARTIFACT_SCHEMA_VERSIONS:
+        raise RuntimeError(f"unexpected artifact schema versions: {sorted(schema_versions)}")
+    if file_names != EXPECTED_ARTIFACT_FILE_NAMES:
+        raise RuntimeError(f"unexpected artifact file names: {sorted(file_names)}")
 
 
 async def ensure_bucket_exists(

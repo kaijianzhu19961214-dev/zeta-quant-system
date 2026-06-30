@@ -6,7 +6,7 @@
 
 ## 1. 当前已具备
 
-`quant_factor_validation` 当前接口仍保持只读计算，不直接写 PostgreSQL、ClickHouse 或 MinIO。
+`quant_factor_validation` 当前默认仍保持只读计算，不直接写 PostgreSQL、ClickHouse 或 MinIO；当显式开启持久化配置时，才通过 adapter 写入外部存储。
 
 但每次验证完成后，服务已经在内存中生成以下确定性 JSON payload：
 
@@ -15,6 +15,8 @@ validation_report.json
 metrics.json
 ic_series.json
 group_returns.json
+score_card.json
+comparison_report.json
 ```
 
 返回的 `manifest.artifacts[]` 已包含：
@@ -28,7 +30,7 @@ metadata.schema_version
 metadata.row_count
 ```
 
-这意味着后续接入对象存储时，不需要改因子验证指标计算逻辑；只需要增加 repository / integration adapter。
+这意味着接入对象存储时，不需要改因子验证指标计算逻辑；只需要通过 repository / integration adapter 完成产物上传和账本登记。
 
 当前代码已接入 `ValidationPersistenceService` 编排边界和 MinIO / S3 兼容对象存储 adapter：
 
@@ -101,6 +103,7 @@ quant_factor_validation.services.validation_persistence
 ```text
 FactorValidationService.validate
   -> 生成 metrics / report / ic_series / group_returns
+  -> 生成 score_card / comparison_report
   -> 生成 ValidationArtifactPayload
   -> enrich manifest
   -> ValidationPersistenceService.persist
@@ -125,7 +128,9 @@ FastAPI lifespan database engine disposal
 本地 PostgreSQL init schema
 MinIO + PostgreSQL persistence smoke tool
 上传结果 size / sha256 / content_type 校验
+完整 6 产物 score_card / comparison_report 持久化校验
 task_runs / task_artifacts 幂等 upsert
+quant_ops_api 只读账本查询入口
 ```
 
 后续仍待落地：
@@ -133,7 +138,6 @@ task_runs / task_artifacts 幂等 upsert
 ```text
 生产环境迁移流程或 Alembic 版本化迁移
 带真实 101 / 生产密钥的端到端 MinIO + PostgreSQL 集成执行记录
-只读账本查询 API
 生产环境鉴权与审计日志
 ```
 

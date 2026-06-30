@@ -52,7 +52,16 @@ manifest
 limitations
 ```
 
-该接口只暴露因子验证审核摘要和 manifest preview。当前 `latest_metric` 包含 IC、Rank IC、分组数和高低分组收益差均值；manifest preview 包含 report、metrics、ic_series、group_returns 四类产物，不代表报告已写入 PostgreSQL、MinIO 或生产 artifact 表。
+该接口只暴露因子验证审核摘要和 manifest preview。当前 `latest_metric` 包含 IC、Rank IC、分组数和高低分组收益差均值；manifest preview 已扩展为 6 类产物：
+
+```text
+validation_report.json
+metrics.json
+ic_series.json
+group_returns.json
+score_card.json
+comparison_report.json
+```
 
 `/api/v1/artifacts/ledger` 当前返回：
 
@@ -66,14 +75,23 @@ persistence_status
 limitations
 ```
 
-该接口把当前因子验证 manifest preview 映射成只读任务/产物账本形态，用于 Web UI 先展示 `task_runs` / `task_artifacts` 结构。当前 `persistence_status = not_persisted`，不代表已经接入 101 节点 PostgreSQL 或生产 MinIO。后续正式版本应通过只读 API、只读视图或受控 manifest 对象接入真实账本。
+该接口优先读取 PostgreSQL `task_runs` / `task_artifacts` 只读账本；未配置数据库时，会退回到当前因子验证 manifest preview，用于 Web UI 先展示任务/产物结构。
+
+配置真实账本读取：
+
+```text
+ARTIFACT_LEDGER_DATABASE_URL=postgresql+asyncpg://readonly_user:***@postgres:5432/quant_factor_validation
+ARTIFACT_LEDGER_QUERY_LIMIT=20
+```
+
+如果没有单独配置 `ARTIFACT_LEDGER_DATABASE_URL`，也可以临时复用 `VALIDATION_DATABASE_URL`。生产环境建议使用只读数据库用户。
 
 ## 约束 / Rules
 
 - 只读，不直接写 PostgreSQL、ClickHouse、MinIO。
 - 不保存 token、password、access key。
 - 不直接 import 业务服务内部 repository / service。
-- 外部状态只通过明确 HTTP API 查询。
+- 外部状态通过明确 HTTP API 或只读 repository 查询。
 - 当前不替代 Prometheus / Grafana，只作为 Web UI 的轻量 BFF。
 
 ## 运行 / Run

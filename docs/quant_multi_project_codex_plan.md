@@ -1738,7 +1738,8 @@ quant_factor_validation
     已输出透明 score components
 
 quant_ops_api / quant_ops_web
-    已展示 first-stage score preview 和 artifact ledger preview
+    已展示 first-stage score preview
+    quant_ops_api 已支持 artifact ledger preview / PostgreSQL 只读账本双路径
 ```
 
 后续补强点是：接入外部库 adapter 后，把 Alphalens / Qlib / vectorbt 等结果也统一映射到 `FactorEvaluationResult`，再进入 `FactorComparisonReport` 做跨引擎比较。
