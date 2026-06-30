@@ -5,12 +5,14 @@
 ## 当前规划
 
 ```text
-quant_ops_web/  # 运营 Dashboard / Monitoring UI，当前已落地 Overview 页面
+quant_ops_web/  # 运营 Dashboard / Monitoring UI，当前已落地 Overview、Validation 和 Artifacts 页面
 ```
 
 ## 本地入口
 
 `quant_ops_web` 使用 React、TypeScript 和 Vite，通过 `/ops-api` 代理读取 `quant_ops_api`。
+
+当前 Validation 页通过 BFF 展示因子验证审核摘要、manifest preview、artifact preview，以及 Alphalens / Qlib / vectorbt 标准 payload 对比结果。
 
 ```bash
 make quant-ops-web-up

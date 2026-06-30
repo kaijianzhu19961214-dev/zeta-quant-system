@@ -1,9 +1,17 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
-import { fetchArtifactLedger, fetchFactorValidationReview, fetchOverview } from "./api";
+import {
+  compareExternalPayloads,
+  fetchArtifactLedger,
+  fetchFactorValidationReview,
+  fetchOverview,
+} from "./api";
 import type {
   ArtifactLedgerItem,
   ArtifactLedgerResponse,
+  ExternalPayloadComparisonRequest,
+  FactorComparisonReport,
+  FactorEvaluationResult,
   FactorValidationArtifactSummary,
   FactorValidationReviewResponse,
   OpsOverviewResponse,
@@ -48,6 +56,67 @@ const NAV_ITEMS: NavItem[] = [
   { id: "artifacts", label: "Artifacts", is_enabled: true },
 ];
 
+const SAMPLE_EXTERNAL_COMPARISON_REQUEST: ExternalPayloadComparisonRequest = {
+  factor_name: "momentum_20d",
+  primary_engine: "alphalens",
+  alphalens_payloads: [
+    {
+      factor_name: "momentum_20d",
+      start_date: "2026-01-01",
+      end_date: "2026-03-13",
+      forward_days: 5,
+      sample_count: 180,
+      effective_sample_count: 170,
+      metric_values: {
+        mean_ic: 0.035,
+        rank_ic_mean: 0.06,
+        ic_std: 0.08,
+        ic_ir: 0.4375,
+        mean_return_spread: 0.045,
+      },
+      source_version: "0.4.0",
+      source_run_id: "alphalens_payload_preview",
+    },
+  ],
+  qlib_payloads: [
+    {
+      factor_name: "momentum_20d",
+      start_date: "2026-01-01",
+      end_date: "2026-03-13",
+      forward_days: 5,
+      sample_count: 180,
+      effective_sample_count: 166,
+      metric_values: {
+        ic_mean: 0.033,
+        rank_ic_mean: 0.055,
+        ic_std: 0.08,
+        icir: 0.4125,
+        return_spread: 0.04,
+      },
+      recorder_id: "qlib_recorder_preview",
+      experiment_name: "alpha158_lgbm",
+    },
+  ],
+  vectorbt_payloads: [
+    {
+      factor_name: "momentum_20d",
+      start_date: "2026-01-01",
+      end_date: "2026-03-13",
+      forward_days: 5,
+      sample_count: 120,
+      effective_sample_count: 110,
+      metric_values: {
+        annualized_return: 0.22,
+        sharpe: 1.1,
+        max_dd: -0.08,
+        turnover_ratio: 0.4,
+      },
+      portfolio_name: "momentum_20d_portfolio",
+      parameter_set_id: "lookback_20_hold_5",
+    },
+  ],
+};
+
 export function App() {
   const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [overview, setOverview] = useState<OpsOverviewResponse | null>(null);
@@ -57,6 +126,9 @@ export function App() {
   const [validationReview, setValidationReview] = useState<FactorValidationReviewResponse | null>(null);
   const [validationLoadState, setValidationLoadState] = useState<LoadState>("idle");
   const [validationErrorMessage, setValidationErrorMessage] = useState<string | null>(null);
+  const [externalComparison, setExternalComparison] = useState<FactorComparisonReport | null>(null);
+  const [externalComparisonLoadState, setExternalComparisonLoadState] = useState<LoadState>("idle");
+  const [externalComparisonErrorMessage, setExternalComparisonErrorMessage] = useState<string | null>(null);
   const [artifactLedger, setArtifactLedger] = useState<ArtifactLedgerResponse | null>(null);
   const [artifactLoadState, setArtifactLoadState] = useState<LoadState>("idle");
   const [artifactErrorMessage, setArtifactErrorMessage] = useState<string | null>(null);
@@ -102,6 +174,29 @@ export function App() {
     void loadFactorValidationReview();
   }, [activeView, loadFactorValidationReview, validationReview]);
 
+  const loadExternalPayloadComparison = useCallback(async () => {
+    setExternalComparisonLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setExternalComparisonErrorMessage(null);
+
+    try {
+      const response = await compareExternalPayloads(SAMPLE_EXTERNAL_COMPARISON_REQUEST);
+      setExternalComparison(response);
+      setExternalComparisonLoadState("ready");
+    } catch (error) {
+      setExternalComparisonErrorMessage(
+        error instanceof Error ? error.message : "external payload comparison request failed",
+      );
+      setExternalComparisonLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "factor-validation") return;
+    if (externalComparison !== null) return;
+    if (externalComparisonLoadState !== "idle") return;
+    void loadExternalPayloadComparison();
+  }, [activeView, externalComparison, externalComparisonLoadState, loadExternalPayloadComparison]);
+
   const loadArtifactLedger = useCallback(async () => {
     setArtifactLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
     setArtifactErrorMessage(null);
@@ -128,6 +223,7 @@ export function App() {
   const refreshActiveView = resolveRefreshHandler({
     activeView,
     loadArtifactLedger,
+    loadExternalPayloadComparison,
     loadFactorValidationReview,
     loadOverview,
   });
@@ -212,8 +308,12 @@ export function App() {
         ) : activeView === "factor-validation" ? (
           <section className="validation-view">
             <FactorValidationReviewPanel
+              comparisonErrorMessage={externalComparisonErrorMessage}
+              comparisonLoadState={externalComparisonLoadState}
+              comparisonReport={externalComparison}
               errorMessage={validationErrorMessage}
               loadState={validationLoadState}
+              onRunComparison={loadExternalPayloadComparison}
               review={validationReview}
             />
           </section>
@@ -312,10 +412,18 @@ function FactorValidationReviewPanel({
   review,
   loadState,
   errorMessage,
+  comparisonReport,
+  comparisonLoadState,
+  comparisonErrorMessage,
+  onRunComparison,
 }: {
   review: FactorValidationReviewResponse | null;
   loadState: LoadState;
   errorMessage: string | null;
+  comparisonReport: FactorComparisonReport | null;
+  comparisonLoadState: LoadState;
+  comparisonErrorMessage: string | null;
+  onRunComparison: () => void;
 }) {
   if (loadState === "error") {
     return (
@@ -407,6 +515,13 @@ function FactorValidationReviewPanel({
         </section>
       ) : null}
 
+      <ExternalPayloadComparisonPanel
+        errorMessage={comparisonErrorMessage}
+        loadState={comparisonLoadState}
+        onRunComparison={onRunComparison}
+        report={comparisonReport}
+      />
+
       <section className="service-panel">
         <div className="section-heading">
           <div>
@@ -432,6 +547,94 @@ function FactorValidationReviewPanel({
         </div>
       </section>
     </>
+  );
+}
+
+function ExternalPayloadComparisonPanel({
+  report,
+  loadState,
+  errorMessage,
+  onRunComparison,
+}: {
+  report: FactorComparisonReport | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+  onRunComparison: () => void;
+}) {
+  return (
+    <section className="service-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">External engines</p>
+          <h3>多引擎 payload 对比</h3>
+        </div>
+        <button
+          className="inline-action"
+          disabled={loadState === "loading"}
+          type="button"
+          onClick={onRunComparison}
+        >
+          {loadState === "loading" ? "对比中" : "重新对比"}
+        </button>
+      </div>
+
+      {loadState === "error" ? (
+        <div className="notice error" role="alert">
+          <strong>外部 payload 对比暂时不可用</strong>
+          <span>{errorMessage}</span>
+        </div>
+      ) : null}
+
+      {report === null && loadState !== "error" ? (
+        <div className="empty-state">
+          <strong>等待对比结果</strong>
+          <span>连接 quant_ops_api</span>
+        </div>
+      ) : null}
+
+      {report !== null ? (
+        <>
+          <div className="comparison-ribbon">
+            <MetricTile label="因子" value={report.factor_name} />
+            <MetricTile label="主引擎" value={report.primary_engine} />
+            <MetricTile label="引擎数" value={String(report.engine_count)} />
+            <MetricTile label="分歧" value={report.has_engine_disagreement ? "yes" : "no"} />
+          </div>
+          <div className="engine-matrix">
+            {report.engine_results.map((result) => (
+              <EngineResultCard result={result} key={result.evaluation_engine} />
+            ))}
+          </div>
+          <div className="finding-item severity-info">
+            <strong>comparison_summary</strong>
+            <span>{report.comparison_summary}</span>
+          </div>
+        </>
+      ) : null}
+    </section>
+  );
+}
+
+function EngineResultCard({ result }: { result: FactorEvaluationResult }) {
+  const decision = resolveEngineDecision(result);
+
+  return (
+    <article className="engine-card">
+      <div className="engine-card-heading">
+        <strong>{result.evaluation_engine}</strong>
+        <span className={`status-pill ${resolveDecisionPillClass(decision)}`}>
+          {DECISION_LABELS[decision]}
+        </span>
+      </div>
+      <div className="engine-metrics">
+        <MetricTile label="Score" value={formatNumber(result.score_card?.final_score)} />
+        <MetricTile label="IC" value={formatNumber(result.metrics.ic_mean)} />
+        <MetricTile label="Rank IC" value={formatNumber(result.metrics.rank_ic_mean)} />
+        <MetricTile label="Spread" value={formatNumber(result.metrics.group_return_spread_mean)} />
+        <MetricTile label="Coverage" value={formatRatio(result.metrics.coverage_ratio)} />
+        <MetricTile label="Sample" value={`${result.metrics.effective_sample_count}/${result.metrics.sample_count}`} />
+      </div>
+    </article>
   );
 }
 
@@ -621,16 +824,23 @@ function ArtifactLedgerTable({ artifacts }: { artifacts: ArtifactLedgerItem[] })
 function resolveRefreshHandler({
   activeView,
   loadArtifactLedger,
+  loadExternalPayloadComparison,
   loadFactorValidationReview,
   loadOverview,
 }: {
   activeView: DashboardView;
   loadArtifactLedger: () => void;
+  loadExternalPayloadComparison: () => void;
   loadFactorValidationReview: () => void;
   loadOverview: () => void;
 }) {
   if (activeView === "overview") return loadOverview;
-  if (activeView === "factor-validation") return loadFactorValidationReview;
+  if (activeView === "factor-validation") {
+    return () => {
+      loadFactorValidationReview();
+      loadExternalPayloadComparison();
+    };
+  }
   return loadArtifactLedger;
 }
 
@@ -676,11 +886,23 @@ function formatTime(value: string): string {
 }
 
 function formatRatio(value: number | null): string {
-  if (value === null) return "--";
+  if (value === null || value === undefined) return "--";
   return `${(value * 100).toFixed(1)}%`;
 }
 
-function formatNumber(value: number | null): string {
-  if (value === null) return "--";
+function formatNumber(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "--";
   return value.toFixed(3);
+}
+
+function resolveEngineDecision(result: FactorEvaluationResult): ValidationDecision {
+  if (result.report !== null) return result.report.decision;
+  if (result.score_card !== null) return result.score_card.review_decision;
+  return "review_required";
+}
+
+function resolveDecisionPillClass(decision: ValidationDecision): string {
+  if (decision === "candidate_pass") return "pill-ok";
+  if (decision === "review_required") return "pill-degraded";
+  return "pill-down";
 }

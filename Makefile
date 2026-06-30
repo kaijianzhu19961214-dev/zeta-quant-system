@@ -156,10 +156,10 @@ test-quant-factor-validation-container:
 test-quant-ops-api: test-quant-ops-api-container
 
 test-quant-ops-api-local:
-	PYTHONPATH=services/quant_ops_api/src $(PYTHON) -m unittest discover services/quant_ops_api/tests
+	PYTHONPATH=packages/quant_contracts/src:services/quant_ops_api/src $(PYTHON) -m unittest discover services/quant_ops_api/tests
 
 test-quant-ops-api-container:
-	docker run --rm -e PIP_DISABLE_PIP_VERSION_CHECK=1 -e PIP_ROOT_USER_ACTION=ignore -v "$(CURDIR):/workspace" -w /workspace $(PYTHON_IMAGE) sh -c "python -m pip install -e 'services/quant_ops_api[test]' && python -m unittest discover services/quant_ops_api/tests"
+	docker run --rm -e PIP_DISABLE_PIP_VERSION_CHECK=1 -e PIP_ROOT_USER_ACTION=ignore -v "$(CURDIR):/workspace" -w /workspace $(PYTHON_IMAGE) sh -c "python -m pip install -e packages/quant_contracts -e 'services/quant_ops_api[test]' && python -m unittest discover services/quant_ops_api/tests"
 
 test-quant-ops-web: test-quant-ops-web-container
 

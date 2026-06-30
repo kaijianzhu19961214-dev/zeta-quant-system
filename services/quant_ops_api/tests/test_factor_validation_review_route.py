@@ -2,8 +2,13 @@ from datetime import datetime, timezone
 import unittest
 
 from fastapi.testclient import TestClient
+from quant_contracts import FactorComparisonReport
 
-from quant_ops_api.api.v1.dependencies import get_factor_validation_review_service
+from quant_ops_api.api.v1.dependencies import (
+    get_factor_validation_client,
+    get_factor_validation_review_service,
+)
+from quant_ops_api.clients import FactorValidationClientError
 from quant_ops_api.main import create_app
 from quant_ops_api.schemas import (
     FactorValidationArtifactSummary,
@@ -50,6 +55,25 @@ class FakeFactorValidationReviewService:
         )
 
 
+class FakeFactorValidationClient:
+    async def compare_external_payloads(self, *, request):
+        return FactorComparisonReport(
+            factor_name=request.factor_name,
+            primary_engine=request.primary_engine,
+            engine_count=2,
+            has_engine_disagreement=False,
+            comparison_summary="Evaluation engines agree on the current review decision.",
+        )
+
+
+class RejectingFactorValidationClient:
+    async def compare_external_payloads(self, *, request):
+        raise FactorValidationClientError(
+            status_code=422,
+            message="primary_engine must have at least one matching payload",
+        )
+
+
 class FactorValidationReviewRouteTest(unittest.TestCase):
     def setUp(self) -> None:
         self.app = create_app()
@@ -69,6 +93,70 @@ class FactorValidationReviewRouteTest(unittest.TestCase):
         self.assertEqual(payload["persistence_status"], "not_persisted")
         self.assertEqual(payload["latest_metric"]["decision"], "review_required")
         self.assertEqual(payload["manifest"]["artifact_count"], 1)
+
+    def test_should_proxy_external_payload_comparison(self) -> None:
+        self.app.dependency_overrides[get_factor_validation_client] = lambda: FakeFactorValidationClient()
+
+        response = self.client.post(
+            "/api/v1/factor-validation/external-payloads/compare",
+            json={
+                "factor_name": "momentum_20d",
+                "primary_engine": "alphalens",
+                "alphalens_payloads": [
+                    {
+                        "factor_name": "momentum_20d",
+                        "start_date": "2026-01-01",
+                        "end_date": "2026-03-13",
+                        "forward_days": 5,
+                        "sample_count": 180,
+                        "effective_sample_count": 170,
+                        "metric_values": {"mean_ic": 0.035},
+                    }
+                ],
+                "qlib_payloads": [
+                    {
+                        "factor_name": "momentum_20d",
+                        "start_date": "2026-01-01",
+                        "end_date": "2026-03-13",
+                        "forward_days": 5,
+                        "sample_count": 180,
+                        "effective_sample_count": 166,
+                        "metric_values": {"ic_mean": 0.033},
+                    }
+                ],
+            },
+        )
+
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["factor_name"], "momentum_20d")
+        self.assertEqual(payload["primary_engine"], "alphalens")
+        self.assertEqual(payload["engine_count"], 2)
+
+    def test_should_keep_validation_error_from_external_payload_comparison(self) -> None:
+        self.app.dependency_overrides[get_factor_validation_client] = lambda: RejectingFactorValidationClient()
+
+        response = self.client.post(
+            "/api/v1/factor-validation/external-payloads/compare",
+            json={
+                "factor_name": "momentum_20d",
+                "primary_engine": "vectorbt",
+                "alphalens_payloads": [
+                    {
+                        "factor_name": "momentum_20d",
+                        "start_date": "2026-01-01",
+                        "end_date": "2026-03-13",
+                        "forward_days": 5,
+                        "sample_count": 10,
+                        "effective_sample_count": 8,
+                    }
+                ],
+            },
+        )
+
+        self.assertEqual(response.status_code, 422)
+        self.assertEqual(response.json()["detail"], "primary_engine must have at least one matching payload")
 
 
 if __name__ == "__main__":

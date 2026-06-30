@@ -29,6 +29,34 @@ export type ValidationDecision =
 
 export type PersistenceStatus = "not_persisted" | "persisted";
 export type FindingSeverity = "info" | "warning" | "error";
+export type ExternalEvaluationEngine = "alphalens" | "qlib" | "vectorbt";
+export type ExternalMetricValue = string | number;
+
+export interface ExternalMetricPayload {
+  factor_name: string;
+  start_date: string;
+  end_date: string;
+  forward_days: number;
+  sample_count: number;
+  effective_sample_count: number;
+  metric_values?: Record<string, ExternalMetricValue>;
+  source_version?: string | null;
+  source_run_id?: string | null;
+  recorder_id?: string | null;
+  experiment_name?: string | null;
+  portfolio_name?: string | null;
+  parameter_set_id?: string | null;
+  warnings?: string[];
+  notes?: string[];
+}
+
+export interface ExternalPayloadComparisonRequest {
+  factor_name: string;
+  primary_engine: ExternalEvaluationEngine;
+  alphalens_payloads: ExternalMetricPayload[];
+  qlib_payloads: ExternalMetricPayload[];
+  vectorbt_payloads: ExternalMetricPayload[];
+}
 
 export interface FactorValidationMetricSummary {
   factor_name: string;
@@ -81,6 +109,57 @@ export interface FactorScoreCardSummary {
 
 export interface FactorComparisonSummary {
   primary_engine: string;
+  engine_count: number;
+  has_engine_disagreement: boolean;
+  comparison_summary: string;
+}
+
+export interface FactorValidationMetric {
+  factor_name: string;
+  evaluation_engine: string;
+  start_date: string;
+  end_date: string;
+  forward_days: number;
+  sample_count: number;
+  effective_sample_count: number;
+  coverage_ratio: number | null;
+  missing_ratio: number | null;
+  ic_mean: number | null;
+  rank_ic_mean: number | null;
+  ic_ir: number | null;
+  group_count: number;
+  group_return_spread_mean: number | null;
+}
+
+export interface FactorValidationReport {
+  decision: ValidationDecision;
+  summary: string;
+  findings: FactorValidationFindingSummary[];
+  recommended_actions: string[];
+}
+
+export interface FactorScoreCard {
+  factor_name: string;
+  evaluation_engine: string;
+  final_score: number;
+  max_score: number;
+  review_decision: ValidationDecision;
+  score_components: FactorScoreComponentSummary[];
+  warnings: string[];
+}
+
+export interface FactorEvaluationResult {
+  factor_name: string;
+  evaluation_engine: string;
+  metrics: FactorValidationMetric;
+  report: FactorValidationReport | null;
+  score_card: FactorScoreCard | null;
+}
+
+export interface FactorComparisonReport {
+  factor_name: string;
+  primary_engine: string;
+  engine_results: FactorEvaluationResult[];
   engine_count: number;
   has_engine_disagreement: boolean;
   comparison_summary: string;

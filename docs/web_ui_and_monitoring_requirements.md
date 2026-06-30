@@ -27,10 +27,11 @@ quant_ops_api = 只读优先的运营聚合 API / BFF
 ```text
 GET /api/v1/overview
 GET /api/v1/factor-validation/review
+POST /api/v1/factor-validation/external-payloads/compare
 GET /api/v1/artifacts/ledger
 ```
 
-`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview，以及任务/产物账本预览。
+`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview、Alphalens / Qlib / vectorbt payload 对比结果，以及任务/产物账本预览。
 
 ---
 
@@ -114,7 +115,7 @@ Factor Lab
   因子计算 run_id、factor_name、样本区间、行数、状态
 
 Factor Validation
-  验证报告、decision、findings、IC / Rank IC、分组收益摘要、manifest preview、报告产物链接
+  验证报告、decision、findings、IC / Rank IC、分组收益摘要、多引擎 payload 对比、manifest preview、报告产物链接
 
 Artifacts
   manifest preview、MinIO persisted manifest、latest.json、报告文件索引
@@ -144,7 +145,7 @@ MVP 推荐方案 B：
 
 ```text
 apps/quant_ops_web      # 前端 UI
-services/quant_ops_api  # 只读聚合 API，当前已落地 overview、factor-validation review 和 artifact ledger
+services/quant_ops_api  # 只读聚合 API，当前已落地 overview、factor-validation review、external payload compare 和 artifact ledger
 ```
 
 短期本地开发优先让 `quant_ops_web` 调用 `quant_ops_api`，只有调试单服务时才直接调用业务服务只读接口。
@@ -189,6 +190,7 @@ quant_ops_api
   ├── 读取 quant_data_hub 状态
   ├── 读取 quant_factor_lab 状态
   ├── 读取 quant_factor_validation 报告
+  ├── 代理 quant_factor_validation 外部 payload 对比
   └── 读取 artifact / manifest / task ledger 索引
 ```
 

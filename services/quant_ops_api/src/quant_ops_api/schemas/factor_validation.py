@@ -1,7 +1,7 @@
 from datetime import datetime
 from typing import Literal
 
-from pydantic import BaseModel, Field
+from pydantic import BaseModel, ConfigDict, Field, model_validator
 
 
 ValidationDecision = Literal[
@@ -12,6 +12,38 @@ ValidationDecision = Literal[
 ]
 PersistenceStatus = Literal["not_persisted", "persisted"]
 FindingSeverity = Literal["info", "warning", "error"]
+ExternalEvaluationEngine = Literal["alphalens", "qlib", "vectorbt"]
+ExternalMetricValue = str | int | float
+
+
+class ExternalMetricPayload(BaseModel):
+    model_config = ConfigDict(extra="allow")
+
+    factor_name: str = Field(min_length=1, max_length=128)
+    start_date: str = Field(min_length=1, max_length=32)
+    end_date: str = Field(min_length=1, max_length=32)
+    forward_days: int = Field(default=1, ge=1, le=252)
+    sample_count: int = Field(default=0, ge=0)
+    effective_sample_count: int = Field(default=0, ge=0)
+    metric_values: dict[str, ExternalMetricValue] = Field(default_factory=dict)
+    source_version: str | None = Field(default=None, max_length=64)
+    source_run_id: str | None = Field(default=None, max_length=128)
+    warnings: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+
+class ExternalPayloadComparisonRequest(BaseModel):
+    factor_name: str = Field(min_length=1, max_length=128)
+    primary_engine: ExternalEvaluationEngine = "alphalens"
+    alphalens_payloads: list[ExternalMetricPayload] = Field(default_factory=list)
+    qlib_payloads: list[ExternalMetricPayload] = Field(default_factory=list)
+    vectorbt_payloads: list[ExternalMetricPayload] = Field(default_factory=list)
+
+    @model_validator(mode="after")
+    def validate_payloads(self) -> "ExternalPayloadComparisonRequest":
+        if self.alphalens_payloads or self.qlib_payloads or self.vectorbt_payloads:
+            return self
+        raise ValueError("at least one external payload is required")
 
 
 class FactorValidationMetricSummary(BaseModel):

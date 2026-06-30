@@ -7,10 +7,14 @@ ENV PYTHONDONTWRITEBYTECODE=1 \
 
 WORKDIR /app
 
+COPY packages/quant_contracts/pyproject.toml packages/quant_contracts/pyproject.toml
+COPY packages/quant_contracts/src packages/quant_contracts/src
 COPY services/quant_ops_api/pyproject.toml services/quant_ops_api/pyproject.toml
 COPY services/quant_ops_api/src services/quant_ops_api/src
 
-RUN python -m pip install --no-cache-dir services/quant_ops_api
+RUN python -m pip install --no-cache-dir \
+    packages/quant_contracts \
+    services/quant_ops_api
 
 RUN useradd --create-home --shell /usr/sbin/nologin appuser
 

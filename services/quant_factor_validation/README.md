@@ -37,6 +37,7 @@ artifact manifest
 ```text
 GET  /health
 POST /api/v1/factors/validate
+POST /api/v1/factors/external-payloads/compare
 ```
 
 第一批只计算：
@@ -99,6 +100,8 @@ metadata.row_count
 ```
 
 评分卡当前在线 API 仍使用 `internal` 规则评分引擎，输出透明 `score_components`、`final_score` 和 `review_decision`。服务层已提供 `ExternalFactorValidationSummary -> FactorEvaluationResult` 的标准 adapter，已落地 Alphalens / Qlib / vectorbt payload runner 边界，并可将多引擎 payload 汇总为 `FactorComparisonReport`；Alphalens、Qlib、vectorbt、OpenSourceAP/CrossSection 和 commodity-curve-factors 当前不作为运行依赖。vectorbt 的 Sharpe、回撤、换手等回测指标当前保留在审计 notes 中，暂不直接替代 IC / Rank IC 评分。
+
+`POST /api/v1/factors/external-payloads/compare` 接收 `ExternalPayloadEvaluationSet`，用于把 Alphalens / Qlib / vectorbt 的标准化 payload 汇总成统一 `FactorComparisonReport`。该接口只做协议映射和评分汇总，不直接运行第三方库。
 
 这些字段用于后续无缝接入 MinIO / S3 兼容对象存储和 PostgreSQL `task_artifacts` 账本。当前已接入可插拔 `ValidationPersistenceService` 编排边界，但默认关闭真实持久化。
 
@@ -183,6 +186,30 @@ curl -sS http://127.0.0.1:18020/api/v1/factors/validate \
     "market_start": "2026-03-13",
     "market_end": "2026-03-16",
     "forward_days": 1
+  }'
+```
+
+```bash
+curl -sS http://127.0.0.1:18020/api/v1/factors/external-payloads/compare \
+  -H 'content-type: application/json' \
+  -d '{
+    "factor_name": "momentum_20d",
+    "primary_engine": "alphalens",
+    "alphalens_payloads": [
+      {
+        "factor_name": "momentum_20d",
+        "start_date": "2026-01-01",
+        "end_date": "2026-03-13",
+        "forward_days": 5,
+        "sample_count": 180,
+        "effective_sample_count": 170,
+        "metric_values": {
+          "mean_ic": 0.035,
+          "rank_ic_mean": 0.06,
+          "ic_ir": 0.4375
+        }
+      }
+    ]
   }'
 ```
 

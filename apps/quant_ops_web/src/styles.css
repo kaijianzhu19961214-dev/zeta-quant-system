@@ -168,6 +168,32 @@ h3 {
   outline-offset: 3px;
 }
 
+.inline-action {
+  min-width: 96px;
+  min-height: 36px;
+  border: 1px solid #19211d;
+  background: #ffffff;
+  color: #19211d;
+  cursor: pointer;
+  font-size: 13px;
+  font-weight: 700;
+}
+
+.inline-action:hover:not(:disabled) {
+  background: #19211d;
+  color: #ffffff;
+}
+
+.inline-action:disabled {
+  cursor: default;
+  opacity: 0.62;
+}
+
+.inline-action:focus-visible {
+  outline: 3px solid #2f5fa7;
+  outline-offset: 3px;
+}
+
 .status-band {
   display: grid;
   grid-template-columns: 18px minmax(220px, 1fr) minmax(380px, 0.95fr);
@@ -464,6 +490,73 @@ h3 {
   font-size: 24px;
 }
 
+.comparison-ribbon {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid #d8ded4;
+}
+
+.comparison-ribbon .metric {
+  min-height: 92px;
+}
+
+.comparison-ribbon .metric strong {
+  font-size: 22px;
+}
+
+.engine-matrix {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.engine-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border-left: 4px solid #2f5fa7;
+  background: #f7f9fc;
+}
+
+.engine-card-heading {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.engine-card-heading strong {
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  overflow-wrap: anywhere;
+}
+
+.engine-metrics {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  border: 1px solid #d8ded4;
+  background: #ffffff;
+}
+
+.engine-metrics .metric {
+  min-height: 82px;
+  padding: 12px;
+  border-bottom: 1px solid #d8ded4;
+}
+
+.engine-metrics .metric:nth-child(2n) {
+  border-right: 0;
+}
+
+.engine-metrics .metric:nth-last-child(-n + 2) {
+  border-bottom: 0;
+}
+
+.engine-metrics .metric strong {
+  font-size: 20px;
+}
+
 .finding-list,
 .action-list {
   display: grid;
@@ -604,6 +697,10 @@ h3 {
     grid-template-columns: minmax(190px, 1.5fr) 104px 98px 118px;
     overflow-x: auto;
   }
+
+  .engine-matrix {
+    grid-template-columns: 1fr;
+  }
 }
 
 @media (max-width: 640px) {
@@ -642,6 +739,10 @@ h3 {
   }
 
   .metrics-strip {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .comparison-ribbon {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 

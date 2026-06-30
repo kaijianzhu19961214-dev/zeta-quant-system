@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from quant_ops_api.clients import ServiceHealthClient
+from quant_ops_api.clients import FactorValidationClient, ServiceHealthClient
 from quant_ops_api.core.config import get_settings
 from quant_ops_api.repositories import SqlAlchemyValidationLedgerReader, create_validation_ledger_reader_engine
 from quant_ops_api.services import ArtifactLedgerService, FactorValidationReviewService, OverviewService
@@ -24,6 +24,15 @@ def get_overview_service() -> OverviewService:
 
 def get_factor_validation_review_service() -> FactorValidationReviewService:
     return FactorValidationReviewService()
+
+
+@lru_cache
+def get_factor_validation_client() -> FactorValidationClient:
+    settings = get_settings()
+    return FactorValidationClient(
+        base_url=settings.quant_factor_validation_base_url,
+        timeout_seconds=settings.service_health_timeout_seconds,
+    )
 
 
 @lru_cache
@@ -67,4 +76,5 @@ def get_artifact_ledger_service() -> ArtifactLedgerService:
 def reset_dependencies() -> None:
     get_settings.cache_clear()
     get_service_health_client.cache_clear()
+    get_factor_validation_client.cache_clear()
     get_validation_ledger_engine.cache_clear()

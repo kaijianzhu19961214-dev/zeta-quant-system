@@ -19,6 +19,7 @@
 GET /health
 GET /api/v1/overview
 GET /api/v1/factor-validation/review
+POST /api/v1/factor-validation/external-payloads/compare
 GET /api/v1/artifacts/ledger
 ```
 
@@ -63,6 +64,8 @@ score_card.json
 comparison_report.json
 ```
 
+`/api/v1/factor-validation/external-payloads/compare` 是 Web UI 使用的 BFF 代理接口：请求体采用 `ExternalPayloadComparisonRequest`，由 `quant_ops_api` 转发到 `quant_factor_validation /api/v1/factors/external-payloads/compare`，响应仍复用 `quant_contracts.FactorComparisonReport`。该接口不保存 payload，不直接运行第三方库，不绕过 `quant_factor_validation` 的评分与审核规则。
+
 `/api/v1/artifacts/ledger` 当前返回：
 
 ```text
@@ -95,6 +98,7 @@ ARTIFACT_LEDGER_QUERY_LIMIT=20
 - 不保存 token、password、access key。
 - 不直接 import 业务服务内部 repository / service。
 - 外部状态通过明确 HTTP API 或只读 repository 查询。
+- 外部因子验证 payload 对比必须代理到 `quant_factor_validation`，不能在 BFF 或 Web UI 中重新实现评分逻辑。
 - 当前不替代 Prometheus / Grafana，只作为 Web UI 的轻量 BFF。
 
 ## 运行 / Run
