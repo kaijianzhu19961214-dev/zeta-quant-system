@@ -12,6 +12,7 @@ from quant_contracts.enums import (
 )
 from quant_contracts.schemas.adjustment import QfqBatch
 from quant_contracts.schemas.factor import (
+    ExternalFactorValidationSummary,
     FactorComparisonReport,
     FactorCalculationMeta,
     FactorCalculationRequest,
@@ -41,6 +42,7 @@ __all__ = [
     "AssetClass",
     "ArtifactType",
     "EvaluationEngine",
+    "ExternalFactorValidationSummary",
     "FactorComparisonReport",
     "FactorCalculationMeta",
     "FactorCalculationRequest",

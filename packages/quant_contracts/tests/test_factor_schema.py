@@ -5,6 +5,7 @@ from quant_contracts import (
     ArtifactType,
     AssetClass,
     EvaluationEngine,
+    ExternalFactorValidationSummary,
     FactorComparisonReport,
     FactorCalculationRequest,
     FactorDailyValue,
@@ -203,6 +204,48 @@ class FactorSchemaTest(unittest.TestCase):
 
         self.assertFalse(comparison_report.has_engine_disagreement)
         self.assertEqual(comparison_report.engine_results[0].evaluation_engine, EvaluationEngine.INTERNAL)
+
+    def test_should_accept_external_factor_validation_summary_when_payload_is_valid(self) -> None:
+        summary = ExternalFactorValidationSummary(
+            factor_name="TSMOM_20D",
+            asset_class=AssetClass.FUTURES,
+            factor_mode=FactorMode.TIME_SERIES,
+            factor_family=FactorFamily.PRICE_VOLUME,
+            evaluation_engine=EvaluationEngine.VECTORBT,
+            start_date="2026-01-01",
+            end_date="2026-03-13",
+            forward_days=5,
+            sample_count=120,
+            effective_sample_count=110,
+            coverage_ratio=0.92,
+            missing_ratio=0.03,
+            ic_mean=0.04,
+            rank_ic_mean=0.05,
+            ic_std=0.08,
+            ic_ir=0.5,
+            group_return_spread_mean=0.03,
+            source_library="vectorbt",
+            source_version="0.28.0",
+            source_metric_names=["mean_ic", "rank_ic", "group_return_spread"],
+            warnings=["Turnover is not included in this external summary."],
+        )
+
+        self.assertEqual(summary.factor_name, "tsmom_20d")
+        self.assertEqual(summary.evaluation_engine, EvaluationEngine.VECTORBT)
+        self.assertEqual(summary.source_metric_names[0], "mean_ic")
+
+    def test_should_reject_external_summary_when_engine_is_internal(self) -> None:
+        with self.assertRaises(ValidationError):
+            ExternalFactorValidationSummary(
+                factor_name="momentum_20d",
+                evaluation_engine=EvaluationEngine.INTERNAL,
+                start_date="2026-03-13",
+                end_date="2026-03-16",
+                forward_days=1,
+                sample_count=10,
+                effective_sample_count=8,
+                source_library="internal",
+            )
 
     def test_should_accept_factor_validation_manifest_when_payload_is_valid(self) -> None:
         manifest = FactorValidationManifest(

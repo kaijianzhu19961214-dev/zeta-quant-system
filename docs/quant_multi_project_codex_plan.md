@@ -958,6 +958,7 @@ ICIR：IC 均值 / IC 标准差
 
 ```text
 EvaluationEngine           # internal / alphalens / qlib / vectorbt / opensource_ap / commodity_curve
+ExternalFactorValidationSummary
 FactorEvaluationResult     # 单个验证引擎的标准化结果
 FactorScoreCard            # 可解释评分卡
 FactorComparisonReport     # 多引擎对比报告
@@ -1708,12 +1709,13 @@ AssetClass               # 已落地
 FactorMode               # 已落地
 FactorFamily             # 已落地
 EvaluationEngine         # 已落地，当前运行引擎为 internal
+ExternalFactorValidationSummary # 已落地，用于外部库核心统计摘要标准化
 FactorEvaluationResult   # 已落地
 FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库仍停留在 adapter 入口预留阶段，未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，可将 Alphalens / Qlib / vectorbt 等结果映射到统一评价协议；具体外部库 runner 尚未作为运行依赖接入。
 
 ---
 
@@ -1730,10 +1732,12 @@ FactorComparisonReport   # 已落地
 ```text
 quant_contracts
     已定义 AssetClass / FactorMode / FactorFamily / EvaluationEngine
+    已定义 ExternalFactorValidationSummary
     已定义 FactorEvaluationResult / FactorScoreCard / FactorComparisonReport
 
 quant_factor_validation
     已输出 internal validation 结果
+    已提供 ExternalFactorValidationSummary -> FactorEvaluationResult adapter
     已输出 score_card.json / comparison_report.json
     已输出透明 score components
     101 节点 PostgreSQL schema + MinIO persisted smoke 已通过
@@ -1744,7 +1748,7 @@ quant_ops_api / quant_ops_web
     quant_ops_api 已验证读取 101 真实 task/artifact 账本
 ```
 
-后续补强点是：接入外部库 adapter 后，把 Alphalens / Qlib / vectorbt 等结果也统一映射到 `FactorEvaluationResult`，再进入 `FactorComparisonReport` 做跨引擎比较。
+后续补强点是：为 Alphalens / Qlib / vectorbt 分别补具体 runner，把这些库的原始输出整理成 `ExternalFactorValidationSummary`，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。
 
 本阶段建议接入方式：
 

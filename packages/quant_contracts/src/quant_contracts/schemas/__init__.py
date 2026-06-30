@@ -1,5 +1,6 @@
 from quant_contracts.schemas.adjustment import QfqBatch
 from quant_contracts.schemas.factor import (
+    ExternalFactorValidationSummary,
     FactorComparisonReport,
     FactorCalculationMeta,
     FactorCalculationRequest,
@@ -26,6 +27,7 @@ from quant_contracts.schemas.market_query import (
 )
 
 __all__ = [
+    "ExternalFactorValidationSummary",
     "FactorComparisonReport",
     "FactorCalculationMeta",
     "FactorCalculationRequest",

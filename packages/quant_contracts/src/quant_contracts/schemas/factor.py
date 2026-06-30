@@ -236,6 +236,82 @@ class FactorValidationMetric(ContractModel):
     run_id: str | None = None
 
 
+class ExternalFactorValidationSummary(ContractModel):
+    factor_name: str = Field(min_length=1, max_length=128)
+    asset_class: AssetClass = AssetClass.EQUITY
+    factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
+    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
+    evaluation_engine: EvaluationEngine
+    start_date: date
+    end_date: date
+    forward_days: int = Field(ge=1, le=60)
+    sample_count: int = Field(ge=0)
+    effective_sample_count: int = Field(ge=0)
+    coverage_ratio: float | None = Field(default=None, ge=0.0, le=1.0)
+    missing_ratio: float | None = Field(default=None, ge=0.0, le=1.0)
+    ic_mean: float | None = Field(default=None, ge=-1.0, le=1.0)
+    rank_ic_mean: float | None = Field(default=None, ge=-1.0, le=1.0)
+    ic_std: float | None = Field(default=None, ge=0.0)
+    ic_ir: float | None = None
+    group_count: int = Field(default=5, ge=2, le=20)
+    group_return_spread_mean: float | None = None
+    universe_name: str = Field(default="default", min_length=1, max_length=128)
+    price_mode: PriceMode = PriceMode.RAW
+    dataset_code: str | None = Field(default=None, max_length=128)
+    batch_id: str | None = Field(default=None, max_length=128)
+    validation_version: str = Field(default="v1", min_length=1, max_length=64)
+    run_id: str | None = Field(default=None, max_length=128)
+    source_library: str = Field(min_length=1, max_length=64)
+    source_version: str | None = Field(default=None, max_length=64)
+    source_run_id: str | None = Field(default=None, max_length=128)
+    source_metric_names: list[str] = Field(default_factory=list)
+    warnings: list[str] = Field(default_factory=list)
+    notes: list[str] = Field(default_factory=list)
+
+    @field_validator("factor_name")
+    @classmethod
+    def validate_external_factor_name(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
+            return normalized_value
+        raise ValueError("factor_name must use lowercase letters, numbers, and underscores")
+
+    @field_validator(
+        "universe_name",
+        "validation_version",
+        "run_id",
+        "dataset_code",
+        "batch_id",
+        "source_library",
+        "source_version",
+        "source_run_id",
+    )
+    @classmethod
+    def normalize_external_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.strip()
+        if normalized_value:
+            return normalized_value
+        raise ValueError("value must not be blank")
+
+    @field_validator("source_metric_names", "warnings", "notes")
+    @classmethod
+    def normalize_external_text_list(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
+
+    @model_validator(mode="after")
+    def validate_external_summary(self) -> "ExternalFactorValidationSummary":
+        if self.evaluation_engine == EvaluationEngine.INTERNAL:
+            raise ValueError("external validation summary must use a non-internal evaluation_engine")
+        if self.end_date < self.start_date:
+            raise ValueError("end_date must be greater than or equal to start_date")
+        if self.effective_sample_count > self.sample_count:
+            raise ValueError("effective_sample_count must not exceed sample_count")
+        return self
+
+
 class FactorValidationFinding(ContractModel):
     severity: Literal["info", "warning", "error"] = "info"
     code: str = Field(min_length=1, max_length=64)

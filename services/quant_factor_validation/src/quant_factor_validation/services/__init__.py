@@ -34,6 +34,14 @@ _EXPORTS = {
         "quant_factor_validation.services.factor_scoring",
         "build_factor_comparison_report",
     ),
+    "build_external_factor_evaluation_result": (
+        "quant_factor_validation.services.external_evaluation_adapter",
+        "build_external_factor_evaluation_result",
+    ),
+    "build_external_factor_validation_metric": (
+        "quant_factor_validation.services.external_evaluation_adapter",
+        "build_external_factor_validation_metric",
+    ),
     "build_factor_evaluation_result": (
         "quant_factor_validation.services.factor_scoring",
         "build_factor_evaluation_result",
