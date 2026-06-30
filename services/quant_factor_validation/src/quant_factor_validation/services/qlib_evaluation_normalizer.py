@@ -27,7 +27,7 @@ from quant_factor_validation.services.metric_payload_utils import (
 )
 
 
-class AlphalensMetricPayload(ContractModel):
+class QlibMetricPayload(ContractModel):
     factor_name: str = Field(min_length=1, max_length=128)
     start_date: date
     end_date: date
@@ -38,7 +38,7 @@ class AlphalensMetricPayload(ContractModel):
     group_count: int = Field(default=5, ge=2, le=20)
     asset_class: AssetClass = AssetClass.EQUITY
     factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
-    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
+    factor_family: FactorFamily = FactorFamily.MODEL
     universe_name: str = Field(default="default", min_length=1, max_length=128)
     price_mode: PriceMode = PriceMode.RAW
     dataset_code: str | None = Field(default=None, max_length=128)
@@ -47,6 +47,8 @@ class AlphalensMetricPayload(ContractModel):
     run_id: str | None = Field(default=None, max_length=128)
     source_version: str | None = Field(default=None, max_length=64)
     source_run_id: str | None = Field(default=None, max_length=128)
+    recorder_id: str | None = Field(default=None, max_length=128)
+    experiment_name: str | None = Field(default=None, max_length=128)
     warnings: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 
@@ -63,6 +65,8 @@ class AlphalensMetricPayload(ContractModel):
         "batch_id",
         "source_version",
         "source_run_id",
+        "recorder_id",
+        "experiment_name",
     )
     @classmethod
     def normalize_text(cls, value: str | None) -> str | None:
@@ -82,7 +86,7 @@ class AlphalensMetricPayload(ContractModel):
         return normalize_metric_values(value=value)
 
     @model_validator(mode="after")
-    def validate_metric_payload(self) -> "AlphalensMetricPayload":
+    def validate_metric_payload(self) -> "QlibMetricPayload":
         if self.end_date < self.start_date:
             raise ValueError("end_date must be greater than or equal to start_date")
         if self.effective_sample_count > self.sample_count:
@@ -90,7 +94,7 @@ class AlphalensMetricPayload(ContractModel):
         return self
 
 
-class AlphalensMetricSummary(ContractModel):
+class QlibMetricSummary(ContractModel):
     factor_name: str = Field(min_length=1, max_length=128)
     start_date: date
     end_date: date
@@ -101,13 +105,13 @@ class AlphalensMetricSummary(ContractModel):
     mean_rank_information_coefficient: float | None = Field(default=None, ge=-1.0, le=1.0)
     information_coefficient_std: float | None = Field(default=None, ge=0.0)
     information_coefficient_ir: float | None = None
-    mean_quantile_return_spread: float | None = None
+    mean_long_short_return_spread: float | None = None
     coverage_ratio: float | None = Field(default=None, ge=0.0, le=1.0)
     missing_ratio: float | None = Field(default=None, ge=0.0, le=1.0)
     group_count: int = Field(default=5, ge=2, le=20)
     asset_class: AssetClass = AssetClass.EQUITY
     factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
-    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME
+    factor_family: FactorFamily = FactorFamily.MODEL
     universe_name: str = Field(default="default", min_length=1, max_length=128)
     price_mode: PriceMode = PriceMode.RAW
     dataset_code: str | None = Field(default=None, max_length=128)
@@ -116,6 +120,8 @@ class AlphalensMetricSummary(ContractModel):
     run_id: str | None = Field(default=None, max_length=128)
     source_version: str | None = Field(default=None, max_length=64)
     source_run_id: str | None = Field(default=None, max_length=128)
+    recorder_id: str | None = Field(default=None, max_length=128)
+    experiment_name: str | None = Field(default=None, max_length=128)
     warnings: list[str] = Field(default_factory=list)
     notes: list[str] = Field(default_factory=list)
 
@@ -132,6 +138,8 @@ class AlphalensMetricSummary(ContractModel):
         "batch_id",
         "source_version",
         "source_run_id",
+        "recorder_id",
+        "experiment_name",
     )
     @classmethod
     def normalize_text(cls, value: str | None) -> str | None:
@@ -143,7 +151,7 @@ class AlphalensMetricSummary(ContractModel):
         return normalize_text_list(value=value)
 
     @model_validator(mode="after")
-    def validate_metric_summary(self) -> "AlphalensMetricSummary":
+    def validate_metric_summary(self) -> "QlibMetricSummary":
         if self.end_date < self.start_date:
             raise ValueError("end_date must be greater than or equal to start_date")
         if self.effective_sample_count > self.sample_count:
@@ -151,11 +159,11 @@ class AlphalensMetricSummary(ContractModel):
         return self
 
 
-def build_alphalens_metric_summary_from_payload(
+def build_qlib_metric_summary_from_payload(
     *,
-    payload: AlphalensMetricPayload,
-) -> AlphalensMetricSummary:
-    return AlphalensMetricSummary(
+    payload: QlibMetricPayload,
+) -> QlibMetricSummary:
+    return QlibMetricSummary(
         factor_name=payload.factor_name,
         start_date=payload.start_date,
         end_date=payload.end_date,
@@ -178,9 +186,9 @@ def build_alphalens_metric_summary_from_payload(
             metric_values=payload.metric_values,
             aliases=_IC_IR_ALIASES,
         ),
-        mean_quantile_return_spread=find_optional_float(
+        mean_long_short_return_spread=find_optional_float(
             metric_values=payload.metric_values,
-            aliases=_QUANTILE_SPREAD_ALIASES,
+            aliases=_LONG_SHORT_SPREAD_ALIASES,
         ),
         coverage_ratio=find_optional_ratio(
             metric_values=payload.metric_values,
@@ -205,23 +213,25 @@ def build_alphalens_metric_summary_from_payload(
         validation_version=payload.validation_version,
         run_id=payload.run_id,
         source_version=payload.source_version,
-        source_run_id=payload.source_run_id,
+        source_run_id=payload.source_run_id or payload.recorder_id,
+        recorder_id=payload.recorder_id,
+        experiment_name=payload.experiment_name,
         warnings=payload.warnings,
         notes=payload.notes,
     )
 
 
-def run_alphalens_payload_evaluation(
+def run_qlib_payload_evaluation(
     *,
-    payload: AlphalensMetricPayload,
+    payload: QlibMetricPayload,
 ) -> FactorEvaluationResult:
-    metrics = build_alphalens_metric_summary_from_payload(payload=payload)
-    return build_alphalens_factor_evaluation_result(metrics=metrics)
+    metrics = build_qlib_metric_summary_from_payload(payload=payload)
+    return build_qlib_factor_evaluation_result(metrics=metrics)
 
 
-def build_alphalens_external_summary(
+def build_qlib_external_summary(
     *,
-    metrics: AlphalensMetricSummary,
+    metrics: QlibMetricSummary,
 ) -> ExternalFactorValidationSummary:
     coverage_ratio = _resolve_coverage_ratio(metrics=metrics)
     missing_ratio = _resolve_missing_ratio(metrics=metrics, coverage_ratio=coverage_ratio)
@@ -231,7 +241,7 @@ def build_alphalens_external_summary(
         asset_class=metrics.asset_class,
         factor_mode=metrics.factor_mode,
         factor_family=metrics.factor_family,
-        evaluation_engine=EvaluationEngine.ALPHALENS,
+        evaluation_engine=EvaluationEngine.QLIB,
         start_date=metrics.start_date,
         end_date=metrics.end_date,
         forward_days=metrics.forward_days,
@@ -244,31 +254,31 @@ def build_alphalens_external_summary(
         ic_std=metrics.information_coefficient_std,
         ic_ir=metrics.information_coefficient_ir,
         group_count=metrics.group_count,
-        group_return_spread_mean=metrics.mean_quantile_return_spread,
+        group_return_spread_mean=metrics.mean_long_short_return_spread,
         universe_name=metrics.universe_name,
         price_mode=metrics.price_mode,
         dataset_code=metrics.dataset_code,
         batch_id=metrics.batch_id,
         validation_version=metrics.validation_version,
         run_id=metrics.run_id,
-        source_library="alphalens",
+        source_library="qlib",
         source_version=metrics.source_version,
         source_run_id=metrics.source_run_id,
         source_metric_names=_build_source_metric_names(metrics=metrics),
         warnings=metrics.warnings,
-        notes=metrics.notes,
+        notes=_build_summary_notes(metrics=metrics),
     )
 
 
-def build_alphalens_factor_evaluation_result(
+def build_qlib_factor_evaluation_result(
     *,
-    metrics: AlphalensMetricSummary,
+    metrics: QlibMetricSummary,
 ) -> FactorEvaluationResult:
-    summary = build_alphalens_external_summary(metrics=metrics)
+    summary = build_qlib_external_summary(metrics=metrics)
     return build_external_factor_evaluation_result(summary=summary)
 
 
-def _resolve_coverage_ratio(*, metrics: AlphalensMetricSummary) -> float | None:
+def _resolve_coverage_ratio(*, metrics: QlibMetricSummary) -> float | None:
     if metrics.coverage_ratio is not None:
         return metrics.coverage_ratio
     if metrics.sample_count == 0:
@@ -278,7 +288,7 @@ def _resolve_coverage_ratio(*, metrics: AlphalensMetricSummary) -> float | None:
 
 def _resolve_missing_ratio(
     *,
-    metrics: AlphalensMetricSummary,
+    metrics: QlibMetricSummary,
     coverage_ratio: float | None,
 ) -> float | None:
     if metrics.missing_ratio is not None:
@@ -288,64 +298,80 @@ def _resolve_missing_ratio(
     return round(max(1.0 - coverage_ratio, 0.0), 6)
 
 
-def _build_source_metric_names(*, metrics: AlphalensMetricSummary) -> list[str]:
+def _build_source_metric_names(*, metrics: QlibMetricSummary) -> list[str]:
     source_metric_names: list[str] = []
     if metrics.mean_information_coefficient is not None:
-        source_metric_names.append("mean_information_coefficient")
+        source_metric_names.append("qlib_ic")
     if metrics.mean_rank_information_coefficient is not None:
-        source_metric_names.append("mean_rank_information_coefficient")
+        source_metric_names.append("qlib_rank_ic")
     if metrics.information_coefficient_std is not None:
-        source_metric_names.append("information_coefficient_std")
+        source_metric_names.append("qlib_ic_std")
     if metrics.information_coefficient_ir is not None:
-        source_metric_names.append("information_coefficient_ir")
-    if metrics.mean_quantile_return_spread is not None:
-        source_metric_names.append("mean_quantile_return_spread")
+        source_metric_names.append("qlib_icir")
+    if metrics.mean_long_short_return_spread is not None:
+        source_metric_names.append("qlib_long_short_return")
     return source_metric_names
 
 
+def _build_summary_notes(*, metrics: QlibMetricSummary) -> list[str]:
+    notes = [*metrics.notes]
+    if metrics.recorder_id:
+        notes.append(f"qlib_recorder_id={metrics.recorder_id}")
+    if metrics.experiment_name:
+        notes.append(f"qlib_experiment_name={metrics.experiment_name}")
+    return notes
+
+
 _MEAN_IC_ALIASES = (
-    "mean_information_coefficient",
+    "ic",
+    "IC",
     "mean_ic",
     "ic_mean",
-    "mean_ic_1d",
-    "mean_ic_5d",
-    "IC Mean",
+    "information_coefficient",
+    "mean_information_coefficient",
 )
 _MEAN_RANK_IC_ALIASES = (
-    "mean_rank_information_coefficient",
+    "rank_ic",
+    "Rank IC",
     "mean_rank_ic",
     "rank_ic_mean",
-    "mean_rank_ic_1d",
-    "mean_rank_ic_5d",
-    "Rank IC Mean",
+    "rank_information_coefficient",
+    "mean_rank_information_coefficient",
 )
 _IC_STD_ALIASES = (
-    "information_coefficient_std",
     "ic_std",
     "IC Std.",
+    "ic_standard_deviation",
+    "information_coefficient_std",
 )
 _IC_IR_ALIASES = (
-    "information_coefficient_ir",
+    "icir",
+    "ICIR",
     "ic_ir",
     "IC IR",
+    "information_coefficient_ir",
     "risk_adjusted_ic",
 )
-_QUANTILE_SPREAD_ALIASES = (
-    "mean_quantile_return_spread",
-    "mean_quantile_returns_spread",
-    "quantile_return_spread_mean",
-    "mean_return_spread",
-    "mean_period_wise_return_spread",
+_LONG_SHORT_SPREAD_ALIASES = (
+    "long_short_return",
+    "long_short_mean_return",
+    "long_short_spread",
+    "mean_long_short_return",
+    "mean_long_short_return_spread",
+    "return_spread",
+    "group_return_spread_mean",
 )
 _COVERAGE_RATIO_ALIASES = (
     "coverage_ratio",
     "coverage",
-    "factor_coverage",
+    "prediction_coverage",
+    "label_coverage",
 )
 _MISSING_RATIO_ALIASES = (
     "missing_ratio",
     "missing",
-    "missing_factor_ratio",
+    "prediction_missing_ratio",
+    "label_missing_ratio",
 )
 _GROUP_COUNT_ALIASES = (
     "group_count",
