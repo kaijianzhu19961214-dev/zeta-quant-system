@@ -248,7 +248,7 @@ final_score
 review_decision
 ```
 
-当前在线验证 API 的计算引擎仍是 `internal`。项目已提供 `ExternalFactorValidationSummary` 标准摘要和 adapter，并已落地 Alphalens / Qlib payload runner 边界，可接收 notebook、脚本或 recorder 导出的指标字典；vectorbt、OpenSourceAP/CrossSection 和 commodity-curve-factors 尚未作为运行依赖引入。
+当前在线验证 API 的计算引擎仍是 `internal`。项目已提供 `ExternalFactorValidationSummary` 标准摘要和 adapter，并已落地 Alphalens / Qlib / vectorbt payload runner 边界，可接收 notebook、脚本、recorder 或 portfolio 导出的指标字典；OpenSourceAP/CrossSection 和 commodity-curve-factors 尚未作为运行依赖引入。vectorbt 的 Sharpe、回撤、换手等回测指标当前保留在审计 notes 中，暂不直接替代 IC / Rank IC 评分。
 
 建议评分先使用透明规则：
 
@@ -371,7 +371,7 @@ Evidently drift report
 
 ```text
 1. 为股票截面因子补充 Alphalens / Qlib 第三方库执行层，把原始输出整理成 `ExternalFactorValidationSummary`。
-2. 为期货时序因子设计 vectorbt 或 internal backtest runner，并复用同一 adapter 协议。
+2. 为期货时序因子补充 vectorbt 第三方库执行层，并明确 Sharpe、回撤、换手是否进入下一版评分协议。
 3. 为期货期限结构因子整理 continuous contract、roll rule、carry、slope、curvature 协议。
 4. 在 Web UI 接入真实多引擎对比、规则评分和研究员审核记录。
 5. 沉淀 ResearchReview / ForwardPerformance / MarketRegimeTag / DataQualitySnapshot。

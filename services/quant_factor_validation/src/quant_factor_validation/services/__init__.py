@@ -46,6 +46,14 @@ _EXPORTS = {
         "quant_factor_validation.services.validation_persistence",
         "ValidationPersistenceService",
     ),
+    "VectorbtMetricPayload": (
+        "quant_factor_validation.services.vectorbt_evaluation_normalizer",
+        "VectorbtMetricPayload",
+    ),
+    "VectorbtMetricSummary": (
+        "quant_factor_validation.services.vectorbt_evaluation_normalizer",
+        "VectorbtMetricSummary",
+    ),
     "build_factor_comparison_report": (
         "quant_factor_validation.services.factor_scoring",
         "build_factor_comparison_report",
@@ -102,6 +110,18 @@ _EXPORTS = {
         "quant_factor_validation.services.validation_report",
         "build_validation_report",
     ),
+    "build_vectorbt_external_summary": (
+        "quant_factor_validation.services.vectorbt_evaluation_normalizer",
+        "build_vectorbt_external_summary",
+    ),
+    "build_vectorbt_factor_evaluation_result": (
+        "quant_factor_validation.services.vectorbt_evaluation_normalizer",
+        "build_vectorbt_factor_evaluation_result",
+    ),
+    "build_vectorbt_metric_summary_from_payload": (
+        "quant_factor_validation.services.vectorbt_evaluation_normalizer",
+        "build_vectorbt_metric_summary_from_payload",
+    ),
     "enrich_manifest_with_artifact_payloads": (
         "quant_factor_validation.services.validation_artifacts",
         "enrich_manifest_with_artifact_payloads",
@@ -113,6 +133,10 @@ _EXPORTS = {
     "run_qlib_payload_evaluation": (
         "quant_factor_validation.services.qlib_evaluation_normalizer",
         "run_qlib_payload_evaluation",
+    ),
+    "run_vectorbt_payload_evaluation": (
+        "quant_factor_validation.services.vectorbt_evaluation_normalizer",
+        "run_vectorbt_payload_evaluation",
     ),
 }
 

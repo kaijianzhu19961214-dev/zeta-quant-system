@@ -1697,7 +1697,7 @@ MVP 阶段使用库和参考边界：
 | ---- | ---- | ---- |
 | 股票截面验证 | 先使用自研 `quant_factor_validation` | Alphalens / Qlib payload runner 边界已落地 |
 | 因子模板 | 先实现少量可解释量价因子 | Qlib Alpha158 / Alpha360、OpenSourceAP/CrossSection 作为参考 |
-| 期货时序因子 | 先定义协议和样例字段 | vectorbt 作为后续回测 adapter |
+| 期货时序因子 | 先定义协议和样例字段 | vectorbt payload runner 边界已落地 |
 | 期货期限结构因子 | 先定义 continuous contract、roll rule、term structure 字段 | commodity-curve-factors 作为研究参考 |
 | 实验沉淀 | 先使用 PostgreSQL + MinIO 记录任务和产物 | MLflow / Optuna / Evidently 放到第二阶段 |
 | 缓存与幂等 | 第一版启用 Redis | 缓存元数据、Dashboard 摘要、报告预览、`run_id` 锁和任务状态 |
@@ -1715,7 +1715,7 @@ FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib payload runner 边界；vectorbt 等具体 runner 尚未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；第三方库执行层尚未作为运行依赖接入。
 
 ---
 
@@ -1740,6 +1740,7 @@ quant_factor_validation
     已提供 ExternalFactorValidationSummary -> FactorEvaluationResult adapter
     已提供 AlphalensMetricPayload -> AlphalensMetricSummary -> ExternalFactorValidationSummary payload runner
     已提供 QlibMetricPayload -> QlibMetricSummary -> ExternalFactorValidationSummary payload runner
+    已提供 VectorbtMetricPayload -> VectorbtMetricSummary -> ExternalFactorValidationSummary payload runner
     已输出 score_card.json / comparison_report.json
     已输出透明 score components
     101 节点 PostgreSQL schema + MinIO persisted smoke 已通过
@@ -1750,7 +1751,7 @@ quant_ops_api / quant_ops_web
     quant_ops_api 已验证读取 101 真实 task/artifact 账本
 ```
 
-后续补强点是：为 Alphalens / Qlib 补第三方库执行层，为 vectorbt 补具体 runner，把这些库的原始输出整理成 `ExternalFactorValidationSummary`，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。
+后续补强点是：为 Alphalens / Qlib / vectorbt 补第三方库执行层，把这些库的原始输出整理成 `ExternalFactorValidationSummary`，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。
 
 本阶段建议接入方式：
 
@@ -1758,7 +1759,7 @@ quant_ops_api / quant_ops_web
 | ---- | ---- | ---- |
 | 股票截面验证 | Alphalens、Qlib | 已有 payload runner 边界；后续补第三方库执行层 |
 | 股票资产定价因子 | OpenSourceAP/CrossSection | 参考因子定义和复现实验结构 |
-| 期货时序量价 | vectorbt | 作为时序回测和参数矩阵实验参考 |
+| 期货时序量价 | vectorbt | 已有 payload runner 边界；Sharpe、回撤、换手等先进入审计 notes |
 | 期货期限结构 | commodity-curve-factors | 参考 carry、slope、curvature、TSMOM / XSMOM 定义 |
 
 规则评分先保持透明：
