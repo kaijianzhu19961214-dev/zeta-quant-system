@@ -4,6 +4,7 @@ from quant_ops_api.schemas.artifact_ledger import (
     TaskLedgerItem,
 )
 from quant_ops_api.schemas.factor_validation import (
+    ArtifactReadStatus,
     ExternalMetricPayload,
     ExternalPayloadComparisonRequest,
     ExternalPayloadComparisonPreviewResponse,
@@ -22,6 +23,7 @@ from quant_ops_api.schemas.ops import OpsOverviewResponse, ServiceEndpoint, Serv
 __all__ = [
     "ArtifactLedgerItem",
     "ArtifactLedgerResponse",
+    "ArtifactReadStatus",
     "ExternalMetricPayload",
     "ExternalPayloadComparisonRequest",
     "ExternalPayloadComparisonPreviewResponse",

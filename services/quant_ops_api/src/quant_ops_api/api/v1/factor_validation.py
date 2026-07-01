@@ -12,9 +12,10 @@ from quant_ops_api.api.v1.dependencies import (
 )
 from quant_ops_api.clients import FactorValidationClient, FactorValidationClientError
 from quant_ops_api.schemas import (
-    FactorComparisonArtifactReference,
+    ArtifactReadStatus,
     ExternalPayloadComparisonPreviewResponse,
     ExternalPayloadComparisonRequest,
+    FactorComparisonArtifactReference,
     FactorValidationReviewResponse,
 )
 from quant_ops_api.services import (
@@ -69,6 +70,11 @@ async def read_external_payload_comparison_preview(
             ),
             comparison_report=artifact_read_result.comparison_report,
             artifact_reference=artifact_reference,
+            artifact_read_status=_resolve_artifact_read_status(
+                artifact_read_result=artifact_read_result,
+            ),
+            artifact_read_reason=artifact_read_result.status,
+            artifact_read_message=artifact_read_result.message,
             limitations=_build_preview_limitations(
                 artifact_reference=artifact_reference,
                 artifact_read_result=artifact_read_result,
@@ -89,6 +95,11 @@ async def read_external_payload_comparison_preview(
         ),
         comparison_report=comparison_report,
         artifact_reference=artifact_reference,
+        artifact_read_status=_resolve_artifact_read_status(
+            artifact_read_result=artifact_read_result,
+        ),
+        artifact_read_reason=artifact_read_result.status,
+        artifact_read_message=artifact_read_result.message,
         limitations=_build_preview_limitations(
             artifact_reference=artifact_reference,
             artifact_read_result=artifact_read_result,
@@ -138,6 +149,15 @@ def _resolve_preview_source(
     if artifact_reference.storage_type == "preview_manifest":
         return "quant_ops_api_preview_artifact_reference"
     return "postgres_factor_comparison_artifact_reference"
+
+
+def _resolve_artifact_read_status(
+    *,
+    artifact_read_result: FactorComparisonArtifactReadResult,
+) -> ArtifactReadStatus:
+    if artifact_read_result.is_loaded:
+        return "artifact_loaded"
+    return "preview_fallback"
 
 
 def _build_preview_limitations(

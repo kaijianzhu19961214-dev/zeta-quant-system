@@ -15,6 +15,7 @@ PersistenceStatus = Literal["not_persisted", "persisted"]
 FindingSeverity = Literal["info", "warning", "error"]
 ExternalEvaluationEngine = Literal["alphalens", "qlib", "vectorbt"]
 ExternalMetricValue = str | int | float
+ArtifactReadStatus = Literal["artifact_loaded", "preview_fallback"]
 
 
 class ExternalMetricPayload(BaseModel):
@@ -64,6 +65,9 @@ class ExternalPayloadComparisonPreviewResponse(BaseModel):
     source: str = Field(min_length=1, max_length=128)
     comparison_report: FactorComparisonReport
     artifact_reference: FactorComparisonArtifactReference | None = None
+    artifact_read_status: ArtifactReadStatus = "preview_fallback"
+    artifact_read_reason: str | None = Field(default=None, max_length=128)
+    artifact_read_message: str | None = Field(default=None, max_length=512)
     limitations: list[str] = Field(default_factory=list)
 
 

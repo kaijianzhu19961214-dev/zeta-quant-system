@@ -32,7 +32,7 @@ POST /api/v1/factor-validation/external-payloads/compare
 GET /api/v1/artifacts/ledger
 ```
 
-`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview、Alphalens / Qlib / vectorbt payload 对比结果、`factor_comparison_report.v1` 产物引用或对象内容读取结果，以及任务/产物账本预览。
+`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview、Alphalens / Qlib / vectorbt payload 对比结果、`factor_comparison_report.v1` 产物引用或对象内容读取结果、artifact 读取状态，以及任务/产物账本预览。
 
 ---
 

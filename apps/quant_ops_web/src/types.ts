@@ -31,6 +31,7 @@ export type PersistenceStatus = "not_persisted" | "persisted";
 export type FindingSeverity = "info" | "warning" | "error";
 export type ExternalEvaluationEngine = "alphalens" | "qlib" | "vectorbt";
 export type ExternalMetricValue = string | number;
+export type ArtifactReadStatus = "artifact_loaded" | "preview_fallback";
 
 export interface ExternalMetricPayload {
   factor_name: string;
@@ -182,6 +183,9 @@ export interface ExternalPayloadComparisonPreviewResponse {
   source: string;
   comparison_report: FactorComparisonReport;
   artifact_reference: FactorComparisonArtifactReference | null;
+  artifact_read_status: ArtifactReadStatus;
+  artifact_read_reason: string | null;
+  artifact_read_message: string | null;
   limitations: string[];
 }
 

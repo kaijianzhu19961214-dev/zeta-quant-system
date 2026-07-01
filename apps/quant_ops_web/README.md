@@ -43,7 +43,7 @@ System
 
 当前 Factor Validation 页仍是 `not_persisted` 预览，不表示报告已经入库或上传 MinIO。
 
-当前外部引擎对比区优先展示 `artifact_reference` 指向的标准 `comparison_report.json`；当对象存储未配置、读取失败或 payload 校验失败时，回退读取 BFF 提供的 MVP 预览结果，用于验证 UI -> BFF -> `quant_factor_validation` 链路。后续接入真实研究任务后，应继续通过只读 object-store adapter 读取标准 artifact 或研究员提交的已审核 payload。
+当前外部引擎对比区优先展示 `artifact_reference` 指向的标准 `comparison_report.json`；当对象存储未配置、读取失败或 payload 校验失败时，回退读取 BFF 提供的 MVP 预览结果，用于验证 UI -> BFF -> `quant_factor_validation` 链路。页面会展示 `artifact_read_status` 和 `artifact_read_reason`，用于区分 `artifact_loaded` 与 `preview_fallback`。后续接入真实研究任务后，应继续通过只读 object-store adapter 读取标准 artifact 或研究员提交的已审核 payload。
 
 当前 Artifacts 页同样是 `not_persisted` 预览：它展示的是由因子验证 manifest 映射出的 task/artifact ledger 形态，用于提前固定 Web UI 和 API 协议。后续接入 101 节点 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后，才能作为正式产物账本使用。
 

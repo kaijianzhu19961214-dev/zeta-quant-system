@@ -65,7 +65,7 @@ score_card.json
 comparison_report.json
 ```
 
-`/api/v1/factor-validation/external-payloads/preview` 是 Web UI 使用的只读预览接口：优先通过 `artifact_reference` 读取 `factor_comparison_report.v1` 标准产物；未配置对象存储、读取失败或 payload 校验失败时，回退到 `quant_ops_api` 构造的 MVP 预览 payload，并代理到 `quant_factor_validation /api/v1/factors/external-payloads/compare`。响应包含 `source`、`generated_at`、`comparison_report`、`artifact_reference` 和 `limitations`，其中 `comparison_report` 复用 `quant_contracts.FactorComparisonReport`。该接口用于固定 UI 和 BFF 合同，不直接运行第三方库，不写外部存储。
+`/api/v1/factor-validation/external-payloads/preview` 是 Web UI 使用的只读预览接口：优先通过 `artifact_reference` 读取 `factor_comparison_report.v1` 标准产物；未配置对象存储、读取失败或 payload 校验失败时，回退到 `quant_ops_api` 构造的 MVP 预览 payload，并代理到 `quant_factor_validation /api/v1/factors/external-payloads/compare`。响应包含 `source`、`generated_at`、`comparison_report`、`artifact_reference`、`artifact_read_status`、`artifact_read_reason`、`artifact_read_message` 和 `limitations`，其中 `comparison_report` 复用 `quant_contracts.FactorComparisonReport`。该接口用于固定 UI 和 BFF 合同，不直接运行第三方库，不写外部存储。
 
 `/api/v1/factor-validation/external-payloads/compare` 是后续真实 payload 对比使用的 BFF 代理接口：请求体采用 `ExternalPayloadComparisonRequest`，由 `quant_ops_api` 转发到 `quant_factor_validation /api/v1/factors/external-payloads/compare`。该接口不保存 payload，不直接运行第三方库，不绕过 `quant_factor_validation` 的评分与审核规则。
 

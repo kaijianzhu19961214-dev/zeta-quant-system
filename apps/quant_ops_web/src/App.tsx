@@ -524,6 +524,8 @@ function ExternalPayloadComparisonPanel({
       {preview !== null ? (
         <div className="source-strip">
           <span>{preview.source}</span>
+          <span>{preview.artifact_read_status}</span>
+          <span>{preview.artifact_read_reason ?? "no_reason"}</span>
           <span>{formatDateTime(preview.generated_at)}</span>
         </div>
       ) : null}

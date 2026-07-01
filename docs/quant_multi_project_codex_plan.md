@@ -1752,6 +1752,7 @@ quant_ops_api / quant_ops_web
     已通过 GET /api/v1/factor-validation/external-payloads/preview 提供只读多引擎 payload 对比预览
     preview 响应已携带 factor_comparison_report.v1 artifact_reference
     preview 已具备只读 object-store adapter，优先读取标准 comparison_report.json，失败时回退 BFF MVP payload
+    preview 响应已携带 artifact_read_status / artifact_read_reason，用于区分 artifact_loaded 与 preview_fallback
     已通过 POST /api/v1/factor-validation/external-payloads/compare 代理多引擎 payload 对比
     quant_ops_web 已展示 Alphalens / Qlib / vectorbt 标准 payload 对比矩阵
     quant_ops_web 已展示 comparison_report artifact reference

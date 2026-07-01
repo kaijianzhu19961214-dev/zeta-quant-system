@@ -201,6 +201,8 @@ class FactorValidationReviewRouteTest(unittest.TestCase):
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["source"], "postgres_factor_comparison_artifact_reference")
         self.assertTrue(payload["limitations"])
+        self.assertEqual(payload["artifact_read_status"], "preview_fallback")
+        self.assertEqual(payload["artifact_read_reason"], "object_reader_not_configured")
         self.assertEqual(payload["artifact_reference"]["storage_type"], "minio_s3")
         self.assertEqual(payload["artifact_reference"]["schema_version"], "factor_comparison_report.v1")
         self.assertEqual(payload["comparison_report"]["factor_name"], "momentum_20d")
@@ -219,6 +221,8 @@ class FactorValidationReviewRouteTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["source"], "object_store_factor_comparison_report")
+        self.assertEqual(payload["artifact_read_status"], "artifact_loaded")
+        self.assertEqual(payload["artifact_read_reason"], "loaded")
         self.assertEqual(payload["comparison_report"]["factor_name"], "artifact_loaded_momentum")
         self.assertEqual(payload["comparison_report"]["primary_engine"], "qlib")
         self.assertEqual(payload["artifact_reference"]["schema_version"], "factor_comparison_report.v1")
