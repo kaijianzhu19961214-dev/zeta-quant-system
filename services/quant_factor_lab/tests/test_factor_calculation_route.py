@@ -68,6 +68,44 @@ class FactorCalculationRouteTest(unittest.TestCase):
         self.assertIn("technical.momentum", algorithm_ids)
         self.assertIn("volatility.egarch", algorithm_ids)
 
+    def test_should_preview_algorithm_review_gate_evidence_when_payload_is_valid(self) -> None:
+        response = self.client.post(
+            "/api/v1/algorithms/review-gates/evidence/preview",
+            json={
+                "algorithm_id": "volatility.egarch",
+                "gate_id": "validation_evidence",
+                "submitted_by": "researcher_a",
+                "evidence_type": "validation_report",
+                "evidence_source": "factor_validation/egarch_20d/comparison_report.json",
+                "summary": "Rank IC, IC decay, and turnover evidence for EGARCH.",
+                "artifact_id": "egarch_20d_comparison_report",
+            },
+        )
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["persistence_status"], "not_persisted")
+        self.assertEqual(payload["record"]["algorithm_id"], "volatility.egarch")
+        self.assertEqual(payload["record"]["gate_id"], "validation_evidence")
+        self.assertEqual(payload["record"]["previous_gate_status"], "missing")
+        self.assertEqual(payload["record"]["evidence_status"], "submitted")
+
+    def test_should_return_not_found_when_review_gate_is_unknown(self) -> None:
+        response = self.client.post(
+            "/api/v1/algorithms/review-gates/evidence/preview",
+            json={
+                "algorithm_id": "volatility.egarch",
+                "gate_id": "unknown_gate",
+                "submitted_by": "researcher_a",
+                "evidence_type": "validation_report",
+                "evidence_source": "factor_validation/egarch_20d/comparison_report.json",
+                "summary": "Evidence for an unknown gate.",
+            },
+        )
+
+        self.assertEqual(response.status_code, 404)
+        self.assertIn("review gate not found", response.json()["detail"])
+
     def test_should_return_validation_error_when_factor_is_not_supported(self) -> None:
         response = self.client.post(
             "/api/v1/factors/calculate",

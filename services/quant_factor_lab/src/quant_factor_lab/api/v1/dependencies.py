@@ -2,6 +2,7 @@ from functools import lru_cache
 
 from quant_factor_lab.core.config import get_settings
 from quant_factor_lab.repositories.market_data_reader import QuantDataHubMarketDataReader
+from quant_factor_lab.services.algorithm_review_service import AlgorithmReviewService
 from quant_factor_lab.services.factor_calculation_service import FactorCalculationService
 
 
@@ -17,6 +18,10 @@ def get_market_data_reader() -> QuantDataHubMarketDataReader:
 
 def get_factor_calculation_service() -> FactorCalculationService:
     return FactorCalculationService(market_data_reader=get_market_data_reader())
+
+
+def get_algorithm_review_service() -> AlgorithmReviewService:
+    return AlgorithmReviewService()
 
 
 def reset_dependencies() -> None:

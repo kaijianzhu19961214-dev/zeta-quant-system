@@ -1,8 +1,15 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from quant_contracts import AlgorithmSpec, FactorCalculationRequest, FactorCalculationResponse
+from quant_contracts import (
+    AlgorithmReviewGateEvidenceResponse,
+    AlgorithmReviewGateEvidenceSubmission,
+    AlgorithmSpec,
+    FactorCalculationRequest,
+    FactorCalculationResponse,
+)
 from quant_data_sdk import QuantDataApiError
 
-from quant_factor_lab.api.v1.dependencies import get_factor_calculation_service
+from quant_factor_lab.api.v1.dependencies import get_algorithm_review_service, get_factor_calculation_service
+from quant_factor_lab.services.algorithm_review_service import AlgorithmReviewService, AlgorithmReviewServiceError
 from quant_factor_lab.services.factor_calculation_service import FactorCalculationService
 
 router = APIRouter(prefix="/api/v1", tags=["factor-calculation"])
@@ -18,6 +25,22 @@ def get_algorithm_specs(
     service: FactorCalculationService = Depends(get_factor_calculation_service),
 ) -> list[AlgorithmSpec]:
     return service.list_algorithms()
+
+
+@router.post(
+    "/algorithms/review-gates/evidence/preview",
+    response_model=AlgorithmReviewGateEvidenceResponse,
+    summary="预览算法审核门槛证据记录",
+    description="校验 algorithm_id 和 gate_id，并返回标准化 evidence record。MVP 不持久化记录。",
+)
+def post_algorithm_review_gate_evidence_preview(
+    request: AlgorithmReviewGateEvidenceSubmission,
+    service: AlgorithmReviewService = Depends(get_algorithm_review_service),
+) -> AlgorithmReviewGateEvidenceResponse:
+    try:
+        return service.preview_evidence_record(submission=request)
+    except AlgorithmReviewServiceError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.message) from error
 
 
 @router.post(

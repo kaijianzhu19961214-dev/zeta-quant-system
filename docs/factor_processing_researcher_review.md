@@ -239,6 +239,8 @@ AlgorithmSpec
 AlgorithmCapability
 AlgorithmParameterSpec
 AlgorithmReviewGate
+AlgorithmReviewGateEvidenceSubmission
+AlgorithmReviewGateEvidenceRecord
 FactorAlgorithmAdapter
 FactorAlgorithmRegistry
 ```
@@ -264,6 +266,8 @@ operations：样例数据、单测、产物字段、失败边界和监控字段
 ```
 
 确认后再把 `planned` 算法升级为 `available` adapter，并进入统一 `quant_factor_validation` 评分和审核流程。
+
+当前 `quant_factor_lab` 已提供 evidence preview 入口：研究员可以按 `algorithm_id + gate_id + evidence_type + evidence_source + summary` 提交证据，服务会校验算法和 gate 是否存在，并返回标准 `AlgorithmReviewGateEvidenceRecord`。该接口当前不持久化、不修改 gate 状态，只用于固定提交格式和后续持久化接口的协议。
 
 ---
 

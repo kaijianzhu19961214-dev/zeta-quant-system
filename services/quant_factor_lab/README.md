@@ -18,6 +18,7 @@
 ```text
 GET  /health
 GET  /api/v1/algorithms
+POST /api/v1/algorithms/review-gates/evidence/preview
 POST /api/v1/factors/calculate
 ```
 
@@ -32,6 +33,8 @@ momentum_*d = close_price / close_price.shift(N) - 1
 ```text
 AlgorithmSpec
 AlgorithmReviewGate
+AlgorithmReviewGateEvidenceSubmission
+AlgorithmReviewGateEvidenceRecord
 FactorAlgorithmAdapter
 FactorAlgorithmRegistry
 ```
@@ -47,6 +50,8 @@ FactorAlgorithmRegistry
 
 每个算法会携带 `review_gates`，用于展示从 `planned` 升级到 `available` 前需要满足的门槛。`available` 算法不能存在 required 且 `missing` 的 gate；`planned` 算法只进入清单和研究审核，不会被执行。后续确认输入、参数、诊断指标、验证证据和 `arch` 依赖后，再补具体 adapter。
 
+`POST /api/v1/algorithms/review-gates/evidence/preview` 用于校验研究员提交的 gate evidence，并返回标准 `AlgorithmReviewGateEvidenceRecord`。当前 MVP 只做校验和预览，`persistence_status=not_persisted`，不会修改 gate 状态，也不会写 PostgreSQL / MinIO。
+
 示例：
 
 ```bash
@@ -55,6 +60,20 @@ curl -sS http://127.0.0.1:18010/health
 
 ```bash
 curl -sS http://127.0.0.1:18010/api/v1/algorithms
+```
+
+```bash
+curl -sS http://127.0.0.1:18010/api/v1/algorithms/review-gates/evidence/preview \
+  -H 'content-type: application/json' \
+  -d '{
+    "algorithm_id": "volatility.egarch",
+    "gate_id": "validation_evidence",
+    "submitted_by": "researcher_a",
+    "evidence_type": "validation_report",
+    "evidence_source": "factor_validation/egarch_20d/comparison_report.json",
+    "summary": "Rank IC, decay, turnover and cost sensitivity evidence for EGARCH.",
+    "artifact_id": "egarch_20d_comparison_report"
+  }'
 ```
 
 ```bash

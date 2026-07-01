@@ -39,6 +39,16 @@ AlgorithmReviewGateCategory = Literal[
     "operations",
 ]
 AlgorithmReviewGateStatus = Literal["satisfied", "missing", "not_applicable"]
+AlgorithmReviewEvidenceType = Literal[
+    "research_note",
+    "notebook",
+    "artifact",
+    "validation_report",
+    "external_link",
+    "manual_note",
+]
+AlgorithmReviewEvidenceStatus = Literal["submitted", "accepted", "rejected"]
+AlgorithmReviewEvidencePersistenceStatus = Literal["not_persisted", "persisted"]
 
 
 class AlgorithmParameterSpec(ContractModel):
@@ -93,6 +103,96 @@ class AlgorithmReviewGate(ContractModel):
         if normalized_value:
             return normalized_value
         raise ValueError("value must not be blank")
+
+
+class AlgorithmReviewGateEvidenceSubmission(ContractModel):
+    algorithm_id: str = Field(min_length=1, max_length=128)
+    gate_id: str = Field(min_length=1, max_length=64)
+    submitted_by: str = Field(min_length=1, max_length=128)
+    evidence_type: AlgorithmReviewEvidenceType
+    evidence_source: str = Field(min_length=1, max_length=256)
+    summary: str = Field(min_length=1, max_length=1024)
+    artifact_id: str | None = Field(default=None, max_length=128)
+    artifact_uri: str | None = Field(default=None, max_length=512)
+    source_url: str | None = Field(default=None, max_length=512)
+    notes: list[str] = Field(default_factory=list)
+
+    @field_validator("algorithm_id")
+    @classmethod
+    def validate_submission_algorithm_id(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        comparable_value = normalized_value.replace(".", "_").replace("-", "_")
+        if comparable_value.replace("_", "").isalnum() and comparable_value[0].isalpha():
+            return normalized_value
+        raise ValueError("algorithm_id must use lowercase letters, numbers, underscores, dashes, and dots")
+
+    @field_validator("gate_id")
+    @classmethod
+    def validate_submission_gate_id(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
+            return normalized_value
+        raise ValueError("gate_id must use lowercase letters, numbers, and underscores")
+
+    @field_validator("submitted_by", "evidence_source", "summary", "artifact_id", "artifact_uri", "source_url")
+    @classmethod
+    def normalize_submission_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.strip()
+        if normalized_value:
+            return normalized_value
+        raise ValueError("value must not be blank")
+
+    @field_validator("notes")
+    @classmethod
+    def normalize_submission_notes(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
+
+
+class AlgorithmReviewGateEvidenceRecord(AlgorithmReviewGateEvidenceSubmission):
+    evidence_id: str = Field(min_length=1, max_length=128)
+    gate_category: AlgorithmReviewGateCategory
+    gate_title: str = Field(min_length=1, max_length=128)
+    previous_gate_status: AlgorithmReviewGateStatus
+    evidence_status: AlgorithmReviewEvidenceStatus = "submitted"
+    submitted_at: datetime
+    reviewed_by: str | None = Field(default=None, max_length=128)
+    reviewed_at: datetime | None = None
+    review_comment: str | None = Field(default=None, max_length=512)
+    is_required: bool = True
+
+    @field_validator("evidence_id")
+    @classmethod
+    def validate_evidence_id(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        comparable_value = normalized_value.replace("-", "_")
+        if comparable_value.replace("_", "").isalnum() and comparable_value[0].isalpha():
+            return normalized_value
+        raise ValueError("evidence_id must use lowercase letters, numbers, underscores, and dashes")
+
+    @field_validator("gate_title", "reviewed_by", "review_comment")
+    @classmethod
+    def normalize_record_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.strip()
+        if normalized_value:
+            return normalized_value
+        raise ValueError("value must not be blank")
+
+
+class AlgorithmReviewGateEvidenceResponse(ContractModel):
+    record: AlgorithmReviewGateEvidenceRecord
+    persistence_status: AlgorithmReviewEvidencePersistenceStatus = "not_persisted"
+    limitations: list[str] = Field(default_factory=list)
+
+    @field_validator("limitations")
+    @classmethod
+    def normalize_limitations(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
 
 
 class AlgorithmSpec(ContractModel):
