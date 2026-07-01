@@ -97,6 +97,12 @@ h3 {
   line-height: 1.15;
 }
 
+h4 {
+  margin: 0;
+  font-size: 18px;
+  line-height: 1.15;
+}
+
 .rail-nav {
   display: grid;
   gap: 8px;
@@ -204,6 +210,11 @@ h3 {
   color: #627068;
   font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
   font-size: 12px;
+}
+
+.source-strip span {
+  min-width: 0;
+  overflow-wrap: anywhere;
 }
 
 .status-band {
@@ -569,6 +580,86 @@ h3 {
   font-size: 20px;
 }
 
+.algorithm-grid {
+  display: grid;
+  grid-template-columns: repeat(2, minmax(0, 1fr));
+  gap: 16px;
+}
+
+.algorithm-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border-left: 4px solid #2f5fa7;
+  background: #f7f9fc;
+}
+
+.algorithm-card-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 14px;
+}
+
+.algorithm-card-heading div {
+  display: grid;
+  min-width: 0;
+  gap: 4px;
+}
+
+.algorithm-card-heading span,
+.algorithm-card-heading h4,
+.algorithm-description {
+  overflow-wrap: anywhere;
+}
+
+.algorithm-card-heading div > span {
+  color: #627068;
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 12px;
+}
+
+.algorithm-description {
+  margin-bottom: 0;
+  color: #435047;
+  font-size: 14px;
+  line-height: 1.5;
+}
+
+.algorithm-meta-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  border: 1px solid #d8ded4;
+  background: #ffffff;
+}
+
+.algorithm-meta-grid .metric {
+  min-height: 82px;
+  padding: 12px;
+}
+
+.algorithm-meta-grid .metric strong {
+  font-size: 16px;
+}
+
+.tag-list {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 8px;
+}
+
+.tag-list span {
+  padding: 6px 8px;
+  border: 1px solid #d8ded4;
+  background: #ffffff;
+  color: #435047;
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 12px;
+  overflow-wrap: anywhere;
+}
+
 .finding-list,
 .action-list {
   display: grid;
@@ -712,6 +803,20 @@ h3 {
 
   .engine-matrix {
     grid-template-columns: 1fr;
+  }
+
+  .algorithm-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .algorithm-meta-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
+  .source-strip {
+    display: grid;
+    grid-template-columns: 1fr;
+    justify-content: initial;
   }
 }
 

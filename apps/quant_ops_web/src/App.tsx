@@ -3,10 +3,12 @@ import { useCallback, useEffect, useMemo, useState } from "react";
 import {
   fetchArtifactLedger,
   fetchExternalPayloadComparisonPreview,
+  fetchFactorLabAlgorithms,
   fetchFactorValidationReview,
   fetchOverview,
 } from "./api";
 import type {
+  AlgorithmSpec,
   ArtifactLedgerItem,
   ArtifactLedgerResponse,
   ExternalPayloadComparisonPreviewResponse,
@@ -20,7 +22,7 @@ import type {
 } from "./types";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
-type DashboardView = "overview" | "factor-validation" | "artifacts";
+type DashboardView = "overview" | "factor-lab" | "factor-validation" | "artifacts";
 
 interface NavItem {
   id: DashboardView | "data-hub" | "factor-lab";
@@ -47,10 +49,17 @@ const DECISION_LABELS: Record<ValidationDecision, string> = {
   candidate_reject: "候选拒绝",
 };
 
+const ALGORITHM_STATUS_LABELS: Record<string, string> = {
+  available: "可运行",
+  planned: "候选",
+  disabled: "停用",
+  deprecated: "废弃",
+};
+
 const NAV_ITEMS: NavItem[] = [
   { id: "overview", label: "Overview", is_enabled: true },
   { id: "data-hub", label: "Data Hub", is_enabled: false },
-  { id: "factor-lab", label: "Factor Lab", is_enabled: false },
+  { id: "factor-lab", label: "Factor Lab", is_enabled: true },
   { id: "factor-validation", label: "Validation", is_enabled: true },
   { id: "artifacts", label: "Artifacts", is_enabled: true },
 ];
@@ -68,6 +77,9 @@ export function App() {
     useState<ExternalPayloadComparisonPreviewResponse | null>(null);
   const [externalComparisonLoadState, setExternalComparisonLoadState] = useState<LoadState>("idle");
   const [externalComparisonErrorMessage, setExternalComparisonErrorMessage] = useState<string | null>(null);
+  const [factorAlgorithms, setFactorAlgorithms] = useState<AlgorithmSpec[] | null>(null);
+  const [factorAlgorithmLoadState, setFactorAlgorithmLoadState] = useState<LoadState>("idle");
+  const [factorAlgorithmErrorMessage, setFactorAlgorithmErrorMessage] = useState<string | null>(null);
   const [artifactLedger, setArtifactLedger] = useState<ArtifactLedgerResponse | null>(null);
   const [artifactLoadState, setArtifactLoadState] = useState<LoadState>("idle");
   const [artifactErrorMessage, setArtifactErrorMessage] = useState<string | null>(null);
@@ -136,6 +148,28 @@ export function App() {
     void loadExternalPayloadComparison();
   }, [activeView, externalComparisonPreview, externalComparisonLoadState, loadExternalPayloadComparison]);
 
+  const loadFactorAlgorithms = useCallback(async () => {
+    setFactorAlgorithmLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setFactorAlgorithmErrorMessage(null);
+
+    try {
+      const response = await fetchFactorLabAlgorithms();
+      setFactorAlgorithms(response);
+      setFactorAlgorithmLoadState("ready");
+    } catch (error) {
+      setFactorAlgorithmErrorMessage(
+        error instanceof Error ? error.message : "factor lab algorithms request failed",
+      );
+      setFactorAlgorithmLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "factor-lab") return;
+    if (factorAlgorithms !== null) return;
+    void loadFactorAlgorithms();
+  }, [activeView, factorAlgorithms, loadFactorAlgorithms]);
+
   const loadArtifactLedger = useCallback(async () => {
     setArtifactLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
     setArtifactErrorMessage(null);
@@ -162,6 +196,7 @@ export function App() {
   const refreshActiveView = resolveRefreshHandler({
     activeView,
     loadArtifactLedger,
+    loadFactorAlgorithms,
     loadExternalPayloadComparison,
     loadFactorValidationReview,
     loadOverview,
@@ -256,6 +291,14 @@ export function App() {
               review={validationReview}
             />
           </section>
+        ) : activeView === "factor-lab" ? (
+          <section className="validation-view">
+            <FactorLabAlgorithmsPanel
+              algorithms={factorAlgorithms}
+              errorMessage={factorAlgorithmErrorMessage}
+              loadState={factorAlgorithmLoadState}
+            />
+          </section>
         ) : (
           <section className="validation-view">
             <ArtifactLedgerPanel
@@ -344,6 +387,136 @@ function ServiceTable({ services }: { services: ServiceHealth[] }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function FactorLabAlgorithmsPanel({
+  algorithms,
+  loadState,
+  errorMessage,
+}: {
+  algorithms: AlgorithmSpec[] | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+}) {
+  if (loadState === "error") {
+    return (
+      <section className="notice error" role="alert">
+        <strong>算法清单暂时不可用</strong>
+        <span>{errorMessage}</span>
+      </section>
+    );
+  }
+
+  if (algorithms === null) {
+    return (
+      <section className="notice">
+        <strong>正在读取算法清单</strong>
+        <span>连接 quant_ops_api</span>
+      </section>
+    );
+  }
+
+  const availableCount = algorithms.filter((algorithm) => algorithm.status === "available").length;
+  const plannedCount = algorithms.filter((algorithm) => algorithm.status === "planned").length;
+  const outputKinds = Array.from(
+    new Set(algorithms.flatMap((algorithm) => algorithm.capability.output_kinds)),
+  );
+
+  return (
+    <>
+      <section className="validation-hero">
+        <div>
+          <p className="eyebrow">Factor lab</p>
+          <h3>Algorithm registry</h3>
+          <span className="muted">quant_factor_lab</span>
+        </div>
+        <div className="decision-block">
+          <span>可运行算法</span>
+          <strong>{availableCount}</strong>
+        </div>
+        <div className="metric-grid compact">
+          <MetricTile label="算法数" value={String(algorithms.length)} />
+          <MetricTile label="候选数" value={String(plannedCount)} />
+          <MetricTile label="输出类型" value={String(outputKinds.length)} />
+          <MetricTile label="主库" value={resolvePrimaryAlgorithmLibrary(algorithms)} />
+        </div>
+      </section>
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">Algorithm adapters</p>
+            <h3>算法适配清单</h3>
+          </div>
+          <span className="muted">{availableCount} available / {plannedCount} planned</span>
+        </div>
+        <div className="algorithm-grid">
+          {algorithms.map((algorithm) => (
+            <AlgorithmCard algorithm={algorithm} key={algorithm.algorithm_id} />
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function AlgorithmCard({ algorithm }: { algorithm: AlgorithmSpec }) {
+  const parameters = algorithm.parameters.map((parameter) => (
+    <span key={parameter.name}>
+      {parameter.name}={formatAlgorithmParameterDefault(parameter.default_value)}
+    </span>
+  ));
+  const notes = [...algorithm.research_notes, ...algorithm.limitations];
+
+  return (
+    <article className="algorithm-card">
+      <div className="algorithm-card-heading">
+        <div>
+          <p className="eyebrow">{algorithm.role}</p>
+          <h4>{algorithm.display_name}</h4>
+          <span>{algorithm.algorithm_id}</span>
+        </div>
+        <span className={`status-pill ${resolveAlgorithmStatusPillClass(algorithm.status)}`}>
+          {ALGORITHM_STATUS_LABELS[algorithm.status] ?? algorithm.status}
+        </span>
+      </div>
+
+      <p className="algorithm-description">{algorithm.description}</p>
+
+      <div className="algorithm-meta-grid">
+        <MetricTile label="版本" value={algorithm.version} />
+        <MetricTile label="库" value={algorithm.source_library ?? "internal"} />
+        <MetricTile label="资产" value={formatShortList(algorithm.capability.asset_classes)} />
+        <MetricTile label="模式" value={formatShortList(algorithm.capability.factor_modes)} />
+      </div>
+
+      <div className="source-strip">
+        <span>{formatShortList(algorithm.capability.factor_families)}</span>
+        <span>{formatShortList(algorithm.capability.output_kinds)}</span>
+        <span>{formatShortList(algorithm.capability.timeframes)}</span>
+        <span>{algorithm.adapter_module ?? "pending_adapter"}</span>
+      </div>
+
+      {parameters.length > 0 ? <div className="tag-list">{parameters}</div> : null}
+      {algorithm.tags.length > 0 ? (
+        <div className="tag-list">
+          {algorithm.tags.map((tag) => (
+            <span key={tag}>{tag}</span>
+          ))}
+        </div>
+      ) : null}
+      {notes.length > 0 ? (
+        <div className="finding-list">
+          {notes.slice(0, 3).map((note) => (
+            <div className="finding-item severity-info" key={note}>
+              <strong>review_note</strong>
+              <span>{note}</span>
+            </div>
+          ))}
+        </div>
+      ) : null}
+    </article>
   );
 }
 
@@ -792,17 +965,20 @@ function ArtifactLedgerTable({ artifacts }: { artifacts: ArtifactLedgerItem[] })
 function resolveRefreshHandler({
   activeView,
   loadArtifactLedger,
+  loadFactorAlgorithms,
   loadExternalPayloadComparison,
   loadFactorValidationReview,
   loadOverview,
 }: {
   activeView: DashboardView;
   loadArtifactLedger: () => void;
+  loadFactorAlgorithms: () => void;
   loadExternalPayloadComparison: () => void;
   loadFactorValidationReview: () => void;
   loadOverview: () => void;
 }) {
   if (activeView === "overview") return loadOverview;
+  if (activeView === "factor-lab") return loadFactorAlgorithms;
   if (activeView === "factor-validation") {
     return () => {
       loadFactorValidationReview();
@@ -814,6 +990,7 @@ function resolveRefreshHandler({
 
 function resolvePageTitle(activeView: DashboardView): string {
   if (activeView === "overview") return "核心量化服务状态";
+  if (activeView === "factor-lab") return "因子算法适配清单";
   if (activeView === "factor-validation") return "因子验证审核视图";
   return "任务与产物账本";
 }
@@ -863,6 +1040,23 @@ function formatNumber(value: number | null | undefined): string {
   return value.toFixed(3);
 }
 
+function formatShortList(values: string[]): string {
+  if (values.length === 0) return "--";
+  if (values.length <= 2) return values.join(" / ");
+  return `${values.slice(0, 2).join(" / ")} +${values.length - 2}`;
+}
+
+function formatAlgorithmParameterDefault(value: number | string | boolean | null): string {
+  if (value === null) return "unset";
+  if (typeof value === "boolean") return value ? "true" : "false";
+  return String(value);
+}
+
+function resolvePrimaryAlgorithmLibrary(algorithms: AlgorithmSpec[]): string {
+  const firstExternalLibrary = algorithms.find((algorithm) => algorithm.source_library !== null);
+  return firstExternalLibrary?.source_library ?? "internal";
+}
+
 function resolveEngineDecision(result: FactorEvaluationResult): ValidationDecision {
   if (result.report !== null) return result.report.decision;
   if (result.score_card !== null) return result.score_card.review_decision;
@@ -872,5 +1066,11 @@ function resolveEngineDecision(result: FactorEvaluationResult): ValidationDecisi
 function resolveDecisionPillClass(decision: ValidationDecision): string {
   if (decision === "candidate_pass") return "pill-ok";
   if (decision === "review_required") return "pill-degraded";
+  return "pill-down";
+}
+
+function resolveAlgorithmStatusPillClass(status: string): string {
+  if (status === "available") return "pill-ok";
+  if (status === "planned") return "pill-degraded";
   return "pill-down";
 }

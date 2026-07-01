@@ -1758,6 +1758,8 @@ quant_factor_validation
     101 节点 PostgreSQL schema + MinIO persisted smoke 已通过
 
 quant_ops_api / quant_ops_web
+    quant_ops_api 已提供 GET /api/v1/factor-lab/algorithms 只读代理
+    quant_ops_web 已启用 Factor Lab 页面展示 available / planned AlgorithmSpec registry
     已展示 first-stage score preview
     已通过 GET /api/v1/factor-validation/external-payloads/preview 提供只读多引擎 payload 对比预览
     preview 响应已携带 factor_comparison_report.v1 artifact_reference

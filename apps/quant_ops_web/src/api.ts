@@ -1,4 +1,5 @@
 import type {
+  AlgorithmSpec,
   ArtifactLedgerResponse,
   ExternalPayloadComparisonPreviewResponse,
   ExternalPayloadComparisonRequest,
@@ -49,6 +50,20 @@ export async function fetchArtifactLedger(): Promise<ArtifactLedgerResponse> {
   }
 
   return (await response.json()) as ArtifactLedgerResponse;
+}
+
+export async function fetchFactorLabAlgorithms(): Promise<AlgorithmSpec[]> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/factor-lab/algorithms`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "factor lab algorithms request failed"));
+  }
+
+  return (await response.json()) as AlgorithmSpec[];
 }
 
 export async function fetchExternalPayloadComparisonPreview(): Promise<ExternalPayloadComparisonPreviewResponse> {

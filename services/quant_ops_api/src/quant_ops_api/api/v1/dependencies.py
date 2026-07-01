@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from quant_ops_api.clients import FactorValidationClient, ServiceHealthClient
+from quant_ops_api.clients import FactorLabClient, FactorValidationClient, ServiceHealthClient
 from quant_ops_api.core.config import get_settings
 from quant_ops_api.integrations import MinioArtifactObjectReader, create_minio_client
 from quant_ops_api.repositories import SqlAlchemyValidationLedgerReader, create_validation_ledger_reader_engine
@@ -37,6 +37,15 @@ def get_factor_validation_client() -> FactorValidationClient:
     settings = get_settings()
     return FactorValidationClient(
         base_url=settings.quant_factor_validation_base_url,
+        timeout_seconds=settings.service_health_timeout_seconds,
+    )
+
+
+@lru_cache
+def get_factor_lab_client() -> FactorLabClient:
+    settings = get_settings()
+    return FactorLabClient(
+        base_url=settings.quant_factor_lab_base_url,
         timeout_seconds=settings.service_health_timeout_seconds,
     )
 
@@ -105,6 +114,7 @@ def get_factor_comparison_artifact_service() -> FactorComparisonArtifactService:
 def reset_dependencies() -> None:
     get_settings.cache_clear()
     get_service_health_client.cache_clear()
+    get_factor_lab_client.cache_clear()
     get_factor_validation_client.cache_clear()
     get_validation_ledger_engine.cache_clear()
     get_artifact_object_reader.cache_clear()

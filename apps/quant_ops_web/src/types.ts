@@ -32,6 +32,43 @@ export type FindingSeverity = "info" | "warning" | "error";
 export type ExternalEvaluationEngine = "alphalens" | "qlib" | "vectorbt";
 export type ExternalMetricValue = string | number;
 export type ArtifactReadStatus = "artifact_loaded" | "preview_fallback";
+export type AlgorithmRole = "factor_generator" | "model" | "validation_engine" | "comparison_engine";
+export type AlgorithmStatus = "available" | "planned" | "disabled" | "deprecated";
+export type AlgorithmOutputKind = "factor_values" | "forecast" | "volatility" | "signal" | "diagnostics";
+
+export interface AlgorithmParameterSpec {
+  name: string;
+  value_type: "integer" | "number" | "string" | "boolean";
+  description: string;
+  default_value: number | string | boolean | null;
+  minimum: number | null;
+  maximum: number | null;
+}
+
+export interface AlgorithmCapability {
+  asset_classes: string[];
+  factor_modes: string[];
+  factor_families: string[];
+  timeframes: string[];
+  output_kinds: AlgorithmOutputKind[];
+}
+
+export interface AlgorithmSpec {
+  algorithm_id: string;
+  display_name: string;
+  role: AlgorithmRole;
+  status: AlgorithmStatus;
+  version: string;
+  description: string;
+  source_library: string | null;
+  source_url: string | null;
+  adapter_module: string | null;
+  capability: AlgorithmCapability;
+  parameters: AlgorithmParameterSpec[];
+  tags: string[];
+  research_notes: string[];
+  limitations: string[];
+}
 
 export interface ExternalMetricPayload {
   factor_name: string;

@@ -220,12 +220,13 @@ make smoke-quant-factor-validation-persistence 端到端通过
 
 ```text
 Overview
+Factor Lab algorithm registry
 Factor Validation review
 Artifacts ledger preview
 First-stage score preview
 ```
 
-现阶段 Artifacts 页面默认展示 manifest preview；`quant_ops_api` 已支持 PostgreSQL `task_runs` / `task_artifacts` 只读账本读取路径，配置 `ARTIFACT_LEDGER_DATABASE_URL` 或 `VALIDATION_DATABASE_URL` 后可切换到真实账本。复用 101 旧库时需要同时配置 `ARTIFACT_LEDGER_DATABASE_SCHEMA=zeta_quant_factor_validation` 或 `VALIDATION_DATABASE_SCHEMA=zeta_quant_factor_validation`。
+现阶段 Factor Lab 页面展示的是 `quant_factor_lab` 暴露的 `AlgorithmSpec` registry，用于让研究员查看哪些算法已可运行、哪些仍处于候选 `planned` 状态，以及每个算法的资产类别、因子模式、参数和来源库。Artifacts 页面默认展示 manifest preview；`quant_ops_api` 已支持 PostgreSQL `task_runs` / `task_artifacts` 只读账本读取路径，配置 `ARTIFACT_LEDGER_DATABASE_URL` 或 `VALIDATION_DATABASE_URL` 后可切换到真实账本。复用 101 旧库时需要同时配置 `ARTIFACT_LEDGER_DATABASE_SCHEMA=zeta_quant_factor_validation` 或 `VALIDATION_DATABASE_SCHEMA=zeta_quant_factor_validation`。
 
 ---
 
