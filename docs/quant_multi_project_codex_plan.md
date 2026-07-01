@@ -1753,11 +1753,13 @@ quant_ops_api / quant_ops_web
     preview 响应已携带 factor_comparison_report.v1 artifact_reference
     preview 已具备只读 object-store adapter，优先读取标准 comparison_report.json，失败时回退 BFF MVP payload
     preview 响应已携带 artifact_read_status / artifact_read_reason，用于区分 artifact_loaded 与 preview_fallback
+    已提供 smoke-quant-ops-api-comparison-artifact，只读验证 comparison_report artifact 加载状态
     已通过 POST /api/v1/factor-validation/external-payloads/compare 代理多引擎 payload 对比
     quant_ops_web 已展示 Alphalens / Qlib / vectorbt 标准 payload 对比矩阵
     quant_ops_web 已展示 comparison_report artifact reference
     quant_ops_api 已支持 artifact ledger preview / PostgreSQL 只读账本双路径
     quant_ops_api 已验证读取 101 真实 task/artifact 账本
+    101 已只读确认 comparison_report.json 对象存在，并具备 factor_comparison_report.v1 metadata
 ```
 
 后续补强点是：为 Alphalens / Qlib / vectorbt 补第三方库执行层，把这些库的原始输出整理成 payload，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。

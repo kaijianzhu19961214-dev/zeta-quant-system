@@ -106,6 +106,18 @@ ARTIFACT_OBJECT_STORE_SECURE=false
 
 101 节点已验证 `quant_ops_api` reader 可从 `zeta_quant_factor_validation` schema 读到 `validation_smoke_101_codex` 的 1 个 task 和 6 个 artifact。
 
+101 节点已只读确认 `validation_smoke_101_codex_comparison_report`：
+
+```text
+PostgreSQL schema: zeta_quant_factor_validation
+object_key: factor_validation/smoke_momentum_1d/validation_smoke_101_codex/comparison_report.json
+schema_version: factor_comparison_report.v1
+object_size: 2.7 KiB
+factor_name: smoke_momentum_1d
+primary_engine: internal
+engine_count: 1
+```
+
 ## 约束 / Rules
 
 - 只读，不直接写 PostgreSQL、ClickHouse、MinIO。
@@ -126,4 +138,16 @@ make quant-ops-api-check
 
 ```bash
 make test-quant-ops-api
+```
+
+只读验证 `factor_comparison_report.v1` 是否已从 artifact 加载：
+
+```bash
+make smoke-quant-ops-api-comparison-artifact
+```
+
+默认期望 `artifact_read_status=artifact_loaded`。如果只是验证本地 preview fallback 链路，可以临时设置：
+
+```bash
+QUANT_OPS_EXPECTED_ARTIFACT_READ_STATUS=preview_fallback make smoke-quant-ops-api-comparison-artifact
 ```
