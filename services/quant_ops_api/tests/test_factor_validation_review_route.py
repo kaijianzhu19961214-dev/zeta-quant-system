@@ -6,6 +6,7 @@ from quant_contracts import FactorComparisonReport
 
 from quant_ops_api.api.v1.dependencies import (
     get_artifact_ledger_service,
+    get_factor_comparison_artifact_service,
     get_factor_validation_client,
     get_factor_validation_review_service,
 )
@@ -20,6 +21,7 @@ from quant_ops_api.schemas import (
     FactorValidationMetricSummary,
     FactorValidationReviewResponse,
 )
+from quant_ops_api.services.factor_comparison_artifact_service import FactorComparisonArtifactReadResult
 
 
 class FakeFactorValidationReviewService:
@@ -110,6 +112,25 @@ class FakeArtifactLedgerService:
         )
 
 
+class FakeLoadedFactorComparisonArtifactService:
+    async def read_comparison_report(
+        self,
+        *,
+        artifact_reference: FactorComparisonArtifactReference | None,
+    ) -> FactorComparisonArtifactReadResult:
+        return FactorComparisonArtifactReadResult(
+            status="loaded",
+            message="loaded",
+            comparison_report=FactorComparisonReport(
+                factor_name="artifact_loaded_momentum",
+                primary_engine="qlib",
+                engine_count=1,
+                has_engine_disagreement=False,
+                comparison_summary="Loaded from persisted artifact.",
+            ),
+        )
+
+
 class FactorValidationReviewRouteTest(unittest.TestCase):
     def setUp(self) -> None:
         self.app = create_app()
@@ -185,6 +206,22 @@ class FactorValidationReviewRouteTest(unittest.TestCase):
         self.assertEqual(payload["comparison_report"]["factor_name"], "momentum_20d")
         self.assertEqual(payload["comparison_report"]["primary_engine"], "alphalens")
         self.assertEqual(payload["comparison_report"]["engine_count"], 2)
+
+    def test_should_prefer_loaded_external_payload_comparison_artifact(self) -> None:
+        self.app.dependency_overrides[get_factor_validation_client] = lambda: RejectingFactorValidationClient()
+        self.app.dependency_overrides[get_artifact_ledger_service] = lambda: FakeArtifactLedgerService()
+        self.app.dependency_overrides[get_factor_comparison_artifact_service] = (
+            lambda: FakeLoadedFactorComparisonArtifactService()
+        )
+
+        response = self.client.get("/api/v1/factor-validation/external-payloads/preview")
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["source"], "object_store_factor_comparison_report")
+        self.assertEqual(payload["comparison_report"]["factor_name"], "artifact_loaded_momentum")
+        self.assertEqual(payload["comparison_report"]["primary_engine"], "qlib")
+        self.assertEqual(payload["artifact_reference"]["schema_version"], "factor_comparison_report.v1")
 
     def test_should_keep_validation_error_from_external_payload_comparison(self) -> None:
         self.app.dependency_overrides[get_factor_validation_client] = lambda: RejectingFactorValidationClient()

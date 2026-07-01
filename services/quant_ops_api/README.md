@@ -65,7 +65,7 @@ score_card.json
 comparison_report.json
 ```
 
-`/api/v1/factor-validation/external-payloads/preview` 是 Web UI 使用的只读预览接口：由 `quant_ops_api` 构造 MVP 预览 payload，并代理到 `quant_factor_validation /api/v1/factors/external-payloads/compare`。响应包含 `source`、`generated_at`、`comparison_report`、`artifact_reference` 和 `limitations`，其中 `comparison_report` 复用 `quant_contracts.FactorComparisonReport`，`artifact_reference` 指向 `factor_comparison_report.v1` 产物。该接口用于固定 UI 和 BFF 合同；当前只定位产物引用，尚未读取真实研究产物内容。
+`/api/v1/factor-validation/external-payloads/preview` 是 Web UI 使用的只读预览接口：优先通过 `artifact_reference` 读取 `factor_comparison_report.v1` 标准产物；未配置对象存储、读取失败或 payload 校验失败时，回退到 `quant_ops_api` 构造的 MVP 预览 payload，并代理到 `quant_factor_validation /api/v1/factors/external-payloads/compare`。响应包含 `source`、`generated_at`、`comparison_report`、`artifact_reference` 和 `limitations`，其中 `comparison_report` 复用 `quant_contracts.FactorComparisonReport`。该接口用于固定 UI 和 BFF 合同，不直接运行第三方库，不写外部存储。
 
 `/api/v1/factor-validation/external-payloads/compare` 是后续真实 payload 对比使用的 BFF 代理接口：请求体采用 `ExternalPayloadComparisonRequest`，由 `quant_ops_api` 转发到 `quant_factor_validation /api/v1/factors/external-payloads/compare`。该接口不保存 payload，不直接运行第三方库，不绕过 `quant_factor_validation` 的评分与审核规则。
 
@@ -92,6 +92,17 @@ ARTIFACT_LEDGER_QUERY_LIMIT=20
 ```
 
 如果没有单独配置 `ARTIFACT_LEDGER_DATABASE_URL`，也可以临时复用 `VALIDATION_DATABASE_URL`；如果没有单独配置 `ARTIFACT_LEDGER_DATABASE_SCHEMA`，也会回退读取 `VALIDATION_DATABASE_SCHEMA`。生产环境建议使用只读数据库用户。
+
+配置只读对象存储读取：
+
+```text
+ARTIFACT_OBJECT_STORE_ENDPOINT=http://minio:9000
+ARTIFACT_OBJECT_STORE_ACCESS_KEY=readonly_user
+ARTIFACT_OBJECT_STORE_SECRET_KEY=***
+ARTIFACT_OBJECT_STORE_SECURE=false
+```
+
+如果没有单独配置 `ARTIFACT_OBJECT_STORE_*`，可以复用 `VALIDATION_OBJECT_STORE_*`。该配置只用于读取 `task_artifacts` 指向的标准 JSON 产物；BFF 不写 MinIO，也不保存 access key。
 
 101 节点已验证 `quant_ops_api` reader 可从 `zeta_quant_factor_validation` schema 读到 `validation_smoke_101_codex` 的 1 个 task 和 6 个 artifact。
 

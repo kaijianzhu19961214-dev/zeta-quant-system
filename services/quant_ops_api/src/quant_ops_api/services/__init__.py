@@ -10,6 +10,10 @@ _EXPORTS = {
         "quant_ops_api.services.factor_validation_review_service",
         "FactorValidationReviewService",
     ),
+    "FactorComparisonArtifactService": (
+        "quant_ops_api.services.factor_comparison_artifact_service",
+        "FactorComparisonArtifactService",
+    ),
     "OverviewService": (
         "quant_ops_api.services.overview_service",
         "OverviewService",

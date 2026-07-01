@@ -4,8 +4,14 @@ from sqlalchemy.ext.asyncio import AsyncEngine
 
 from quant_ops_api.clients import FactorValidationClient, ServiceHealthClient
 from quant_ops_api.core.config import get_settings
+from quant_ops_api.integrations import MinioArtifactObjectReader, create_minio_client
 from quant_ops_api.repositories import SqlAlchemyValidationLedgerReader, create_validation_ledger_reader_engine
-from quant_ops_api.services import ArtifactLedgerService, FactorValidationReviewService, OverviewService
+from quant_ops_api.services import (
+    ArtifactLedgerService,
+    FactorComparisonArtifactService,
+    FactorValidationReviewService,
+    OverviewService,
+)
 
 
 @lru_cache
@@ -73,8 +79,32 @@ def get_artifact_ledger_service() -> ArtifactLedgerService:
     )
 
 
+@lru_cache
+def get_artifact_object_reader() -> MinioArtifactObjectReader | None:
+    settings = get_settings()
+    endpoint = settings.artifact_object_store_read_endpoint()
+    access_key = settings.artifact_object_store_read_access_key()
+    secret_key = settings.artifact_object_store_read_secret_key()
+    if endpoint is None or access_key is None or secret_key is None:
+        return None
+
+    return MinioArtifactObjectReader(
+        client=create_minio_client(
+            endpoint=endpoint,
+            access_key=access_key,
+            secret_key=secret_key,
+            secure=settings.artifact_object_store_read_secure(),
+        )
+    )
+
+
+def get_factor_comparison_artifact_service() -> FactorComparisonArtifactService:
+    return FactorComparisonArtifactService(object_reader=get_artifact_object_reader())
+
+
 def reset_dependencies() -> None:
     get_settings.cache_clear()
     get_service_health_client.cache_clear()
     get_factor_validation_client.cache_clear()
     get_validation_ledger_engine.cache_clear()
+    get_artifact_object_reader.cache_clear()

@@ -56,6 +56,39 @@ class SettingsTest(unittest.TestCase):
             "zeta_quant_factor_validation",
         )
 
+    def test_should_prefer_artifact_object_store_config(self) -> None:
+        settings = Settings(
+            ARTIFACT_OBJECT_STORE_ENDPOINT=" http://ops-minio:9000 ",
+            VALIDATION_OBJECT_STORE_ENDPOINT="http://validation-minio:9000",
+            ARTIFACT_OBJECT_STORE_ACCESS_KEY=" ops_reader ",
+            VALIDATION_OBJECT_STORE_ACCESS_KEY="validation_reader",
+            ARTIFACT_OBJECT_STORE_SECRET_KEY=" ops_secret ",
+            VALIDATION_OBJECT_STORE_SECRET_KEY="validation_secret",
+            ARTIFACT_OBJECT_STORE_SECURE=True,
+            VALIDATION_OBJECT_STORE_SECURE=False,
+        )
+
+        self.assertEqual(settings.artifact_object_store_read_endpoint(), "http://ops-minio:9000")
+        self.assertEqual(settings.artifact_object_store_read_access_key(), "ops_reader")
+        self.assertEqual(settings.artifact_object_store_read_secret_key(), "ops_secret")
+        self.assertTrue(settings.artifact_object_store_read_secure())
+
+    def test_should_fall_back_to_validation_object_store_config(self) -> None:
+        settings = Settings(
+            ARTIFACT_OBJECT_STORE_ENDPOINT="",
+            VALIDATION_OBJECT_STORE_ENDPOINT="http://validation-minio:9000",
+            ARTIFACT_OBJECT_STORE_ACCESS_KEY="",
+            VALIDATION_OBJECT_STORE_ACCESS_KEY="validation_reader",
+            ARTIFACT_OBJECT_STORE_SECRET_KEY="",
+            VALIDATION_OBJECT_STORE_SECRET_KEY="validation_secret",
+            VALIDATION_OBJECT_STORE_SECURE=True,
+        )
+
+        self.assertEqual(settings.artifact_object_store_read_endpoint(), "http://validation-minio:9000")
+        self.assertEqual(settings.artifact_object_store_read_access_key(), "validation_reader")
+        self.assertEqual(settings.artifact_object_store_read_secret_key(), "validation_secret")
+        self.assertTrue(settings.artifact_object_store_read_secure())
+
 
 if __name__ == "__main__":
     unittest.main()

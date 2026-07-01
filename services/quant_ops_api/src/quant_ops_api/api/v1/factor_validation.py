@@ -6,6 +6,7 @@ from quant_contracts import FactorComparisonReport
 
 from quant_ops_api.api.v1.dependencies import (
     get_artifact_ledger_service,
+    get_factor_comparison_artifact_service,
     get_factor_validation_client,
     get_factor_validation_review_service,
 )
@@ -16,7 +17,12 @@ from quant_ops_api.schemas import (
     ExternalPayloadComparisonRequest,
     FactorValidationReviewResponse,
 )
-from quant_ops_api.services import ArtifactLedgerService, FactorValidationReviewService
+from quant_ops_api.services import (
+    ArtifactLedgerService,
+    FactorComparisonArtifactService,
+    FactorValidationReviewService,
+)
+from quant_ops_api.services.factor_comparison_artifact_service import FactorComparisonArtifactReadResult
 
 router = APIRouter(prefix="/api/v1/factor-validation", tags=["factor-validation"])
 
@@ -45,20 +51,48 @@ async def read_external_payload_comparison_preview(
         ArtifactLedgerService,
         Depends(get_artifact_ledger_service),
     ],
+    comparison_artifact_service: Annotated[
+        FactorComparisonArtifactService,
+        Depends(get_factor_comparison_artifact_service),
+    ],
 ) -> ExternalPayloadComparisonPreviewResponse:
+    artifact_reference = await artifact_ledger_service.find_latest_factor_comparison_artifact()
+    artifact_read_result = await comparison_artifact_service.read_comparison_report(
+        artifact_reference=artifact_reference,
+    )
+    if artifact_read_result.is_loaded and artifact_read_result.comparison_report is not None:
+        return ExternalPayloadComparisonPreviewResponse(
+            generated_at=datetime.now(timezone.utc),
+            source=_resolve_preview_source(
+                artifact_reference=artifact_reference,
+                artifact_read_result=artifact_read_result,
+            ),
+            comparison_report=artifact_read_result.comparison_report,
+            artifact_reference=artifact_reference,
+            limitations=_build_preview_limitations(
+                artifact_reference=artifact_reference,
+                artifact_read_result=artifact_read_result,
+            ),
+        )
+
     request = review_service.get_external_payload_comparison_preview_request()
     comparison_report = await _compare_external_payloads(
         request=request,
         validation_client=validation_client,
     )
-    artifact_reference = await artifact_ledger_service.find_latest_factor_comparison_artifact()
 
     return ExternalPayloadComparisonPreviewResponse(
         generated_at=datetime.now(timezone.utc),
-        source=_resolve_preview_source(artifact_reference=artifact_reference),
+        source=_resolve_preview_source(
+            artifact_reference=artifact_reference,
+            artifact_read_result=artifact_read_result,
+        ),
         comparison_report=comparison_report,
         artifact_reference=artifact_reference,
-        limitations=_build_preview_limitations(artifact_reference=artifact_reference),
+        limitations=_build_preview_limitations(
+            artifact_reference=artifact_reference,
+            artifact_read_result=artifact_read_result,
+        ),
     )
 
 
@@ -95,7 +129,10 @@ async def _compare_external_payloads(
 def _resolve_preview_source(
     *,
     artifact_reference: FactorComparisonArtifactReference | None,
+    artifact_read_result: FactorComparisonArtifactReadResult,
 ) -> str:
+    if artifact_read_result.is_loaded:
+        return "object_store_factor_comparison_report"
     if artifact_reference is None:
         return "quant_ops_api_mvp_external_payload_preview"
     if artifact_reference.storage_type == "preview_manifest":
@@ -106,11 +143,19 @@ def _resolve_preview_source(
 def _build_preview_limitations(
     *,
     artifact_reference: FactorComparisonArtifactReference | None,
+    artifact_read_result: FactorComparisonArtifactReadResult,
 ) -> list[str]:
+    if artifact_read_result.is_loaded:
+        return [
+            "已通过只读 object-store adapter 读取 factor_comparison_report.v1 标准报告。",
+            "当前接口只读取对象内容，不写 PostgreSQL、ClickHouse 或 MinIO。",
+        ]
+
     if artifact_reference is not None and artifact_reference.storage_type != "preview_manifest":
         return [
             "已定位 task_artifacts 中的 factor_comparison_report.v1 产物引用。",
-            "当前接口尚未读取对象内容，comparison_report 仍来自 BFF MVP 预览 payload。",
+            f"当前未使用对象内容，原因：{artifact_read_result.message}。",
+            "comparison_report 仍来自 BFF MVP 预览 payload。",
             "下一步应通过只读 object-store adapter 读取标准 comparison_report.json。",
         ]
 

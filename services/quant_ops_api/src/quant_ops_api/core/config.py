@@ -28,6 +28,14 @@ class Settings(BaseSettings):
     artifact_ledger_database_schema: str | None = Field(default=None, alias="ARTIFACT_LEDGER_DATABASE_SCHEMA")
     validation_database_schema: str | None = Field(default=None, alias="VALIDATION_DATABASE_SCHEMA")
     artifact_ledger_query_limit: int = Field(default=20, ge=1, le=200, alias="ARTIFACT_LEDGER_QUERY_LIMIT")
+    artifact_object_store_endpoint: str | None = Field(default=None, alias="ARTIFACT_OBJECT_STORE_ENDPOINT")
+    validation_object_store_endpoint: str | None = Field(default=None, alias="VALIDATION_OBJECT_STORE_ENDPOINT")
+    artifact_object_store_access_key: str | None = Field(default=None, alias="ARTIFACT_OBJECT_STORE_ACCESS_KEY")
+    validation_object_store_access_key: str | None = Field(default=None, alias="VALIDATION_OBJECT_STORE_ACCESS_KEY")
+    artifact_object_store_secret_key: str | None = Field(default=None, alias="ARTIFACT_OBJECT_STORE_SECRET_KEY")
+    validation_object_store_secret_key: str | None = Field(default=None, alias="VALIDATION_OBJECT_STORE_SECRET_KEY")
+    artifact_object_store_secure: bool | None = Field(default=None, alias="ARTIFACT_OBJECT_STORE_SECURE")
+    validation_object_store_secure: bool | None = Field(default=None, alias="VALIDATION_OBJECT_STORE_SECURE")
     service_health_timeout_seconds: float = Field(default=5.0, alias="SERVICE_HEALTH_TIMEOUT_SECONDS")
 
     def service_endpoints(self) -> list[ServiceEndpoint]:
@@ -48,6 +56,43 @@ class Settings(BaseSettings):
             if database_schema is not None and database_schema.strip():
                 return database_schema.strip()
         return None
+
+    def artifact_object_store_read_endpoint(self) -> str | None:
+        return _read_first_stripped(
+            values=[
+                self.artifact_object_store_endpoint,
+                self.validation_object_store_endpoint,
+            ]
+        )
+
+    def artifact_object_store_read_access_key(self) -> str | None:
+        return _read_first_stripped(
+            values=[
+                self.artifact_object_store_access_key,
+                self.validation_object_store_access_key,
+            ]
+        )
+
+    def artifact_object_store_read_secret_key(self) -> str | None:
+        return _read_first_stripped(
+            values=[
+                self.artifact_object_store_secret_key,
+                self.validation_object_store_secret_key,
+            ]
+        )
+
+    def artifact_object_store_read_secure(self) -> bool:
+        for is_secure in (self.artifact_object_store_secure, self.validation_object_store_secure):
+            if is_secure is not None:
+                return is_secure
+        return False
+
+
+def _read_first_stripped(*, values: list[str | None]) -> str | None:
+    for value in values:
+        if value is not None and value.strip():
+            return value.strip()
+    return None
 
 
 @lru_cache
