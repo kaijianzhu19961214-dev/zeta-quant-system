@@ -89,6 +89,14 @@ class SettingsTest(unittest.TestCase):
         self.assertEqual(settings.artifact_object_store_read_secret_key(), "validation_secret")
         self.assertTrue(settings.artifact_object_store_read_secure())
 
+    def test_should_treat_blank_artifact_object_store_secure_as_not_configured(self) -> None:
+        settings = Settings(
+            ARTIFACT_OBJECT_STORE_SECURE="",
+            VALIDATION_OBJECT_STORE_SECURE=True,
+        )
+
+        self.assertTrue(settings.artifact_object_store_read_secure())
+
 
 if __name__ == "__main__":
     unittest.main()

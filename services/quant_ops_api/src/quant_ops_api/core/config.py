@@ -1,6 +1,8 @@
 from functools import lru_cache
 
-from pydantic import Field
+from typing import Any
+
+from pydantic import Field, field_validator
 from pydantic_settings import BaseSettings, SettingsConfigDict
 
 from quant_ops_api.schemas import ServiceEndpoint
@@ -37,6 +39,13 @@ class Settings(BaseSettings):
     artifact_object_store_secure: bool | None = Field(default=None, alias="ARTIFACT_OBJECT_STORE_SECURE")
     validation_object_store_secure: bool | None = Field(default=None, alias="VALIDATION_OBJECT_STORE_SECURE")
     service_health_timeout_seconds: float = Field(default=5.0, alias="SERVICE_HEALTH_TIMEOUT_SECONDS")
+
+    @field_validator("artifact_object_store_secure", "validation_object_store_secure", mode="before")
+    @classmethod
+    def normalize_blank_optional_bool(cls, value: Any) -> Any:
+        if isinstance(value, str) and not value.strip():
+            return None
+        return value
 
     def service_endpoints(self) -> list[ServiceEndpoint]:
         return [

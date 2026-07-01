@@ -125,8 +125,8 @@ def create_validation_ledger_reader_engine(
     database_url: str,
     schema_name: str | None = None,
 ) -> AsyncEngine:
-    normalized_database_url = database_url.strip()
-    if not normalized_database_url:
+    normalized_database_url = normalize_async_postgres_database_url(database_url=database_url)
+    if normalized_database_url is None:
         raise ValueError("artifact ledger database URL must not be blank")
 
     normalized_schema_name = apply_validation_ledger_reader_schema(schema_name=schema_name)
@@ -135,6 +135,21 @@ def create_validation_ledger_reader_engine(
         pool_pre_ping=True,
         connect_args=_build_connect_args(schema_name=normalized_schema_name),
     )
+
+
+def normalize_async_postgres_database_url(*, database_url: str | None) -> str | None:
+    if database_url is None or not database_url.strip():
+        return None
+
+    normalized_database_url = database_url.strip()
+    if normalized_database_url.startswith("postgresql+asyncpg://"):
+        return normalized_database_url
+
+    for scheme in ("postgresql://", "postgres://"):
+        if normalized_database_url.startswith(scheme):
+            return f"postgresql+asyncpg://{normalized_database_url.removeprefix(scheme)}"
+
+    return normalized_database_url
 
 
 def normalize_database_schema_name(*, schema_name: str | None) -> str | None:
