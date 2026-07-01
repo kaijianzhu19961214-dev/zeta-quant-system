@@ -1760,6 +1760,7 @@ quant_ops_api / quant_ops_web
     quant_ops_api 已支持 artifact ledger preview / PostgreSQL 只读账本双路径
     quant_ops_api 已验证读取 101 真实 task/artifact 账本
     101 已只读确认 comparison_report.json 对象存在，并具备 factor_comparison_report.v1 metadata
+    本地 quant_ops_api 已通过 SSH tunnel 只读联调 101 artifact，并返回 artifact_loaded
 ```
 
 后续补强点是：为 Alphalens / Qlib / vectorbt 补第三方库执行层，把这些库的原始输出整理成 payload，再通过现有 adapter 进入 `FactorEvaluationResult` 和 `FactorComparisonReport`。

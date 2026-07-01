@@ -118,6 +118,15 @@ primary_engine: internal
 engine_count: 1
 ```
 
+本地 `quant_ops_api` 已通过临时 SSH tunnel 只读联调 101 artifact：
+
+```text
+artifact_read_status: artifact_loaded
+source: object_store_factor_comparison_report
+artifact_id: validation_smoke_101_codex_comparison_report
+factor_name: smoke_momentum_1d
+```
+
 ## 约束 / Rules
 
 - 只读，不直接写 PostgreSQL、ClickHouse、MinIO。
