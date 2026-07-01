@@ -5,6 +5,7 @@ from fastapi.testclient import TestClient
 from quant_contracts import FactorComparisonReport
 
 from quant_ops_api.api.v1.dependencies import (
+    get_artifact_ledger_service,
     get_factor_validation_client,
     get_factor_validation_review_service,
 )
@@ -13,6 +14,7 @@ from quant_ops_api.main import create_app
 from quant_ops_api.schemas import (
     ExternalMetricPayload,
     ExternalPayloadComparisonRequest,
+    FactorComparisonArtifactReference,
     FactorValidationArtifactSummary,
     FactorValidationManifestSummary,
     FactorValidationMetricSummary,
@@ -93,6 +95,21 @@ class RejectingFactorValidationClient:
         )
 
 
+class FakeArtifactLedgerService:
+    async def find_latest_factor_comparison_artifact(self) -> FactorComparisonArtifactReference:
+        return FactorComparisonArtifactReference(
+            artifact_id="validation_run_1_comparison_report",
+            task_id="validation_run_1",
+            storage_type="minio_s3",
+            bucket_name="quant-factor-data",
+            object_key="factor_validation/momentum_20d/validation_run_1/comparison_report.json",
+            uri="s3://quant-factor-data/factor_validation/momentum_20d/validation_run_1/comparison_report.json",
+            file_size_bytes=2048,
+            schema_version="factor_comparison_report.v1",
+            created_at=datetime.now(timezone.utc),
+        )
+
+
 class FactorValidationReviewRouteTest(unittest.TestCase):
     def setUp(self) -> None:
         self.app = create_app()
@@ -155,13 +172,16 @@ class FactorValidationReviewRouteTest(unittest.TestCase):
 
     def test_should_return_external_payload_comparison_preview(self) -> None:
         self.app.dependency_overrides[get_factor_validation_client] = lambda: FakeFactorValidationClient()
+        self.app.dependency_overrides[get_artifact_ledger_service] = lambda: FakeArtifactLedgerService()
 
         response = self.client.get("/api/v1/factor-validation/external-payloads/preview")
         payload = response.json()
 
         self.assertEqual(response.status_code, 200)
-        self.assertEqual(payload["source"], "quant_ops_api_mvp_external_payload_preview")
+        self.assertEqual(payload["source"], "postgres_factor_comparison_artifact_reference")
         self.assertTrue(payload["limitations"])
+        self.assertEqual(payload["artifact_reference"]["storage_type"], "minio_s3")
+        self.assertEqual(payload["artifact_reference"]["schema_version"], "factor_comparison_report.v1")
         self.assertEqual(payload["comparison_report"]["factor_name"], "momentum_20d")
         self.assertEqual(payload["comparison_report"]["primary_engine"], "alphalens")
         self.assertEqual(payload["comparison_report"]["engine_count"], 2)

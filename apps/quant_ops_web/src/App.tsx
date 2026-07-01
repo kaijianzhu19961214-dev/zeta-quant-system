@@ -501,6 +501,7 @@ function ExternalPayloadComparisonPanel({
   onRunComparison: () => void;
 }) {
   const report = preview?.comparison_report ?? null;
+  const artifactReference = preview?.artifact_reference ?? null;
   const limitations = preview?.limitations ?? [];
 
   return (
@@ -524,6 +525,15 @@ function ExternalPayloadComparisonPanel({
         <div className="source-strip">
           <span>{preview.source}</span>
           <span>{formatDateTime(preview.generated_at)}</span>
+        </div>
+      ) : null}
+
+      {artifactReference !== null ? (
+        <div className="source-strip">
+          <span>{artifactReference.artifact_id}</span>
+          <span>{artifactReference.schema_version ?? "unknown_schema"}</span>
+          <span>{artifactReference.storage_type}</span>
+          <span>{artifactReference.object_key ?? artifactReference.uri ?? artifactReference.task_id}</span>
         </div>
       ) : null}
 

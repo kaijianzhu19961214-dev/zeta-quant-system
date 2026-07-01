@@ -44,6 +44,34 @@ class FakeValidationLedgerReader:
         )
 
 
+class FakeComparisonLedgerReader:
+    def __init__(self) -> None:
+        self.latest_limit: int | None = None
+
+    async def read_latest_snapshot(self, *, limit: int) -> ValidationLedgerSnapshot:
+        self.latest_limit = limit
+        generated_at = datetime.now(timezone.utc)
+        return ValidationLedgerSnapshot(
+            generated_at=generated_at,
+            tasks=[],
+            artifacts=[
+                ArtifactLedgerItem(
+                    artifact_id="validation_run_1_comparison_report",
+                    task_id="validation_run_1",
+                    artifact_type="comparison_report",
+                    storage_type="minio_s3",
+                    bucket_name="quant-factor-data",
+                    object_key="factor_validation/momentum_1d/validation_run_1/comparison_report.json",
+                    uri="s3://quant-factor-data/factor_validation/momentum_1d/validation_run_1/comparison_report.json",
+                    file_size_bytes=2048,
+                    schema_version="factor_comparison_report.v1",
+                    metadata={"schema_version": "factor_comparison_report.v1"},
+                    created_at=generated_at,
+                )
+            ],
+        )
+
+
 class ArtifactLedgerServiceTest(unittest.IsolatedAsyncioTestCase):
     async def test_should_return_preview_ledger_from_validation_review(self) -> None:
         service = ArtifactLedgerService(validation_review_service=FactorValidationReviewService())
@@ -63,6 +91,19 @@ class ArtifactLedgerServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.artifacts[5].schema_version, "factor_comparison_report.v1")
         self.assertIn("source_manifest_id", response.artifacts[0].metadata)
 
+    async def test_should_find_preview_factor_comparison_artifact_reference(self) -> None:
+        service = ArtifactLedgerService(validation_review_service=FactorValidationReviewService())
+
+        artifact_reference = await service.find_latest_factor_comparison_artifact()
+
+        self.assertIsNotNone(artifact_reference)
+        self.assertEqual(artifact_reference.storage_type, "preview_manifest")
+        self.assertEqual(artifact_reference.schema_version, "factor_comparison_report.v1")
+        self.assertEqual(
+            artifact_reference.object_key,
+            "factor_validation/momentum_1d/run_validation_preview/comparison_report.json",
+        )
+
     async def test_should_return_persisted_ledger_from_reader_when_configured(self) -> None:
         reader = FakeValidationLedgerReader()
         service = ArtifactLedgerService(
@@ -80,6 +121,26 @@ class ArtifactLedgerServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.tasks[0].task_id, "validation_run_1")
         self.assertEqual(response.artifacts[0].schema_version, "factor_score_card.v1")
         self.assertEqual(reader.latest_limit, 12)
+
+    async def test_should_find_persisted_factor_comparison_artifact_reference(self) -> None:
+        reader = FakeComparisonLedgerReader()
+        service = ArtifactLedgerService(
+            validation_review_service=FactorValidationReviewService(),
+            validation_ledger_reader=reader,
+            query_limit=8,
+        )
+
+        artifact_reference = await service.find_latest_factor_comparison_artifact()
+
+        self.assertIsNotNone(artifact_reference)
+        self.assertEqual(artifact_reference.storage_type, "minio_s3")
+        self.assertEqual(artifact_reference.bucket_name, "quant-factor-data")
+        self.assertEqual(
+            artifact_reference.object_key,
+            "factor_validation/momentum_1d/validation_run_1/comparison_report.json",
+        )
+        self.assertEqual(artifact_reference.file_size_bytes, 2048)
+        self.assertEqual(reader.latest_limit, 8)
 
 
 if __name__ == "__main__":

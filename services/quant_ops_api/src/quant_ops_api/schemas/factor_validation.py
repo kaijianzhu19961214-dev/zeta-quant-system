@@ -47,10 +47,23 @@ class ExternalPayloadComparisonRequest(BaseModel):
         raise ValueError("at least one external payload is required")
 
 
+class FactorComparisonArtifactReference(BaseModel):
+    artifact_id: str = Field(min_length=1, max_length=128)
+    task_id: str = Field(min_length=1, max_length=128)
+    storage_type: str = Field(min_length=1, max_length=32)
+    bucket_name: str | None = Field(default=None, max_length=128)
+    object_key: str | None = Field(default=None, max_length=1024)
+    uri: str | None = Field(default=None, max_length=2048)
+    file_size_bytes: int | None = Field(default=None, ge=0)
+    schema_version: str | None = Field(default=None, max_length=64)
+    created_at: datetime | None = None
+
+
 class ExternalPayloadComparisonPreviewResponse(BaseModel):
     generated_at: datetime
     source: str = Field(min_length=1, max_length=128)
     comparison_report: FactorComparisonReport
+    artifact_reference: FactorComparisonArtifactReference | None = None
     limitations: list[str] = Field(default_factory=list)
 
 

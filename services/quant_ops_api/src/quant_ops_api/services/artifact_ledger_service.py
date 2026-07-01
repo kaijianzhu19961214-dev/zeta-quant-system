@@ -5,6 +5,7 @@ from quant_ops_api.repositories import ValidationLedgerSnapshot
 from quant_ops_api.schemas import (
     ArtifactLedgerItem,
     ArtifactLedgerResponse,
+    FactorComparisonArtifactReference,
     FactorValidationReviewResponse,
     TaskLedgerItem,
 )
@@ -14,6 +15,9 @@ from quant_ops_api.services.factor_validation_review_service import FactorValida
 class ValidationLedgerReader(Protocol):
     async def read_latest_snapshot(self, *, limit: int) -> ValidationLedgerSnapshot:
         raise NotImplementedError
+
+
+COMPARISON_REPORT_SCHEMA_VERSION = "factor_comparison_report.v1"
 
 
 class ArtifactLedgerService:
@@ -34,6 +38,14 @@ class ArtifactLedgerService:
             return _build_persisted_ledger(snapshot=snapshot)
 
         return self._build_preview_ledger()
+
+    async def find_latest_factor_comparison_artifact(self) -> FactorComparisonArtifactReference | None:
+        if self.validation_ledger_reader is not None:
+            snapshot = await self.validation_ledger_reader.read_latest_snapshot(limit=self.query_limit)
+            return _find_comparison_reference(artifacts=snapshot.artifacts)
+
+        preview_ledger = self._build_preview_ledger()
+        return _find_comparison_reference(artifacts=preview_ledger.artifacts)
 
     def _build_preview_ledger(self) -> ArtifactLedgerResponse:
         generated_at = datetime.now(timezone.utc)
@@ -126,3 +138,30 @@ def _build_validation_artifacts(
         )
         for artifact in manifest.artifacts
     ]
+
+
+def _find_comparison_reference(
+    *,
+    artifacts: list[ArtifactLedgerItem],
+) -> FactorComparisonArtifactReference | None:
+    for artifact in artifacts:
+        if artifact.schema_version == COMPARISON_REPORT_SCHEMA_VERSION:
+            return _build_comparison_artifact_reference(artifact=artifact)
+    return None
+
+
+def _build_comparison_artifact_reference(
+    *,
+    artifact: ArtifactLedgerItem,
+) -> FactorComparisonArtifactReference:
+    return FactorComparisonArtifactReference(
+        artifact_id=artifact.artifact_id,
+        task_id=artifact.task_id,
+        storage_type=artifact.storage_type,
+        bucket_name=artifact.bucket_name,
+        object_key=artifact.object_key,
+        uri=artifact.uri,
+        file_size_bytes=artifact.file_size_bytes,
+        schema_version=artifact.schema_version,
+        created_at=artifact.created_at,
+    )

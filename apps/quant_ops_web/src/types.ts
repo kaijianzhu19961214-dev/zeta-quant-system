@@ -165,10 +165,23 @@ export interface FactorComparisonReport {
   comparison_summary: string;
 }
 
+export interface FactorComparisonArtifactReference {
+  artifact_id: string;
+  task_id: string;
+  storage_type: string;
+  bucket_name: string | null;
+  object_key: string | null;
+  uri: string | null;
+  file_size_bytes: number | null;
+  schema_version: string | null;
+  created_at: string | null;
+}
+
 export interface ExternalPayloadComparisonPreviewResponse {
   generated_at: string;
   source: string;
   comparison_report: FactorComparisonReport;
+  artifact_reference: FactorComparisonArtifactReference | null;
   limitations: string[];
 }
 

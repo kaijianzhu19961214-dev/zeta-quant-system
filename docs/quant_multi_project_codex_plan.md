@@ -1715,7 +1715,7 @@ FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare 代理，`quant_ops_web` 已展示标准 `FactorComparisonReport`。第三方库执行层尚未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_validation` 中输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare 代理，并在 preview 响应中携带 `factor_comparison_report.v1` 产物引用；`quant_ops_web` 已展示标准 `FactorComparisonReport` 和对应 artifact reference。第三方库执行层尚未作为运行依赖接入，BFF 当前也尚未读取真实对象内容。
 
 ---
 
@@ -1750,8 +1750,10 @@ quant_factor_validation
 quant_ops_api / quant_ops_web
     已展示 first-stage score preview
     已通过 GET /api/v1/factor-validation/external-payloads/preview 提供只读多引擎 payload 对比预览
+    preview 响应已携带 factor_comparison_report.v1 artifact_reference
     已通过 POST /api/v1/factor-validation/external-payloads/compare 代理多引擎 payload 对比
     quant_ops_web 已展示 Alphalens / Qlib / vectorbt 标准 payload 对比矩阵
+    quant_ops_web 已展示 comparison_report artifact reference
     quant_ops_api 已支持 artifact ledger preview / PostgreSQL 只读账本双路径
     quant_ops_api 已验证读取 101 真实 task/artifact 账本
 ```
