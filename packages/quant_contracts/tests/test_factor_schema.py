@@ -4,6 +4,7 @@ from pydantic import ValidationError
 from quant_contracts import (
     AlgorithmCapability,
     AlgorithmParameterSpec,
+    AlgorithmReviewGate,
     AlgorithmSpec,
     ArtifactType,
     AssetClass,
@@ -57,11 +58,46 @@ class FactorSchemaTest(unittest.TestCase):
                 )
             ],
             tags=[" volatility ", " leverage_effect "],
+            review_gates=[
+                AlgorithmReviewGate(
+                    gate_id="validation_evidence",
+                    category="validation",
+                    title="Validation evidence",
+                    description="IC, Rank IC, decay, and portfolio diagnostics are required before promotion.",
+                    status="missing",
+                )
+            ],
         )
 
         self.assertEqual(spec.algorithm_id, "volatility.egarch")
         self.assertEqual(spec.parameters[0].name, "p")
         self.assertEqual(spec.tags, ["volatility", "leverage_effect"])
+        self.assertEqual(spec.review_gates[0].gate_id, "validation_evidence")
+
+    def test_should_reject_available_algorithm_when_required_review_gate_is_missing(self) -> None:
+        with self.assertRaises(ValidationError):
+            AlgorithmSpec(
+                algorithm_id="technical.example",
+                display_name="Example factor",
+                status="available",
+                description="Example algorithm with an incomplete review gate.",
+                capability=AlgorithmCapability(
+                    asset_classes=[AssetClass.EQUITY],
+                    factor_modes=[FactorMode.CROSS_SECTIONAL],
+                    factor_families=[FactorFamily.PRICE_VOLUME],
+                    timeframes=[Timeframe.DAY_1],
+                    output_kinds=["factor_values"],
+                ),
+                review_gates=[
+                    AlgorithmReviewGate(
+                        gate_id="leakage_audit",
+                        category="leakage",
+                        title="Leakage audit",
+                        description="Future-function and tradability checks must be documented.",
+                        status="missing",
+                    )
+                ],
+            )
 
     def test_should_normalize_factor_request_when_payload_is_valid(self) -> None:
         request = FactorCalculationRequest(

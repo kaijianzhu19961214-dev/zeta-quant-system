@@ -38,6 +38,7 @@ tests/
 - `AlgorithmSpec`
 - `AlgorithmCapability`
 - `AlgorithmParameterSpec`
+- `AlgorithmReviewGate`
 - `FactorDailyValue`
 - `FactorCalculationRequest`
 - `FactorCalculationMeta`

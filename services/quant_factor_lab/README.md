@@ -31,6 +31,7 @@ momentum_*d = close_price / close_price.shift(N) - 1
 
 ```text
 AlgorithmSpec
+AlgorithmReviewGate
 FactorAlgorithmAdapter
 FactorAlgorithmRegistry
 ```
@@ -44,7 +45,7 @@ FactorAlgorithmRegistry
 | `volatility.gjr_garch` | `planned` | GJR-GARCH 非对称波动候选算法 |
 | `volatility.aparch` | `planned` | APARCH 非对称幂 ARCH 候选算法 |
 
-`planned` 算法只进入清单和研究审核，不会被执行；后续确认输入、参数、诊断指标和 `arch` 依赖后，再补具体 adapter。
+每个算法会携带 `review_gates`，用于展示从 `planned` 升级到 `available` 前需要满足的门槛。`available` 算法不能存在 required 且 `missing` 的 gate；`planned` 算法只进入清单和研究审核，不会被执行。后续确认输入、参数、诊断指标、验证证据和 `arch` 依赖后，再补具体 adapter。
 
 示例：
 

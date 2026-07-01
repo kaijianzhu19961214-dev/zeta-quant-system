@@ -30,6 +30,15 @@ AlgorithmOutputKind = Literal[
     "diagnostics",
 ]
 AlgorithmParameterValueType = Literal["integer", "number", "string", "boolean"]
+AlgorithmReviewGateCategory = Literal[
+    "hypothesis",
+    "data",
+    "construction",
+    "leakage",
+    "validation",
+    "operations",
+]
+AlgorithmReviewGateStatus = Literal["satisfied", "missing", "not_applicable"]
 
 
 class AlgorithmParameterSpec(ContractModel):
@@ -57,6 +66,35 @@ class AlgorithmCapability(ContractModel):
     output_kinds: list[AlgorithmOutputKind] = Field(min_length=1)
 
 
+class AlgorithmReviewGate(ContractModel):
+    gate_id: str = Field(min_length=1, max_length=64)
+    category: AlgorithmReviewGateCategory
+    title: str = Field(min_length=1, max_length=128)
+    description: str = Field(min_length=1, max_length=512)
+    status: AlgorithmReviewGateStatus = "missing"
+    evidence: str | None = Field(default=None, max_length=512)
+    is_required: bool = True
+
+    @field_validator("gate_id")
+    @classmethod
+    def validate_gate_id(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
+            return normalized_value
+        raise ValueError("gate_id must use lowercase letters, numbers, and underscores")
+
+    @field_validator("title", "description", "evidence")
+    @classmethod
+    def normalize_review_gate_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.strip()
+        if normalized_value:
+            return normalized_value
+        raise ValueError("value must not be blank")
+
+
 class AlgorithmSpec(ContractModel):
     algorithm_id: str = Field(min_length=1, max_length=128)
     display_name: str = Field(min_length=1, max_length=128)
@@ -72,6 +110,7 @@ class AlgorithmSpec(ContractModel):
     tags: list[str] = Field(default_factory=list)
     research_notes: list[str] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
+    review_gates: list[AlgorithmReviewGate] = Field(default_factory=list)
 
     @field_validator("algorithm_id")
     @classmethod
@@ -104,6 +143,20 @@ class AlgorithmSpec(ContractModel):
     @classmethod
     def normalize_algorithm_text_list(cls, value: list[str]) -> list[str]:
         return [item.strip() for item in value if item.strip()]
+
+    @model_validator(mode="after")
+    def validate_available_algorithm_review_gates(self) -> "AlgorithmSpec":
+        if self.status != "available":
+            return self
+
+        missing_gate_ids = [
+            gate.gate_id
+            for gate in self.review_gates
+            if gate.is_required and gate.status == "missing"
+        ]
+        if not missing_gate_ids:
+            return self
+        raise ValueError("available algorithm must not have missing required review gates")
 
 
 class FactorCalculationRequest(ContractModel):

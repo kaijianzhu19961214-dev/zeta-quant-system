@@ -7,6 +7,7 @@ from quant_contracts import (
     FactorMode,
     Timeframe,
 )
+from quant_factor_lab.algorithms.review_gates import build_planned_volatility_review_gates
 
 
 def build_planned_garch_algorithm_specs() -> list[AlgorithmSpec]:
@@ -97,4 +98,5 @@ def _build_garch_spec(
             "Adapter output should include predicted volatility, standardized residuals, and fit diagnostics.",
         ],
         limitations=limitations,
+        review_gates=build_planned_volatility_review_gates(),
     )

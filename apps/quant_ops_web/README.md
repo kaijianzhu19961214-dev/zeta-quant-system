@@ -35,7 +35,7 @@ System
 - 通过 Vite 代理 `/ops-api` 读取 `quant_ops_api /api/v1/overview`。
 - 展示整体状态、最后刷新时间、健康服务数量、异常服务数量。
 - 展示 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation` 的状态表。
-- 通过 `quant_ops_api /api/v1/factor-lab/algorithms` 展示 Factor Lab 算法 registry，包括 `available` / `planned` `AlgorithmSpec`。
+- 通过 `quant_ops_api /api/v1/factor-lab/algorithms` 展示 Factor Lab 算法 registry，包括 `available` / `planned` `AlgorithmSpec` 和 `review_gates` 准入门槛。
 - 通过 `quant_ops_api /api/v1/factor-validation/review` 展示因子验证审核摘要。
 - 展示 `decision`、IC / Rank IC、分组收益差、findings、recommended actions 和 manifest artifact preview。
 - 通过 `quant_ops_api /api/v1/factor-validation/external-payloads/preview` 展示 Alphalens / Qlib / vectorbt payload 的统一 `FactorComparisonReport` 预览，并展示对应 `factor_comparison_report.v1` 产物引用。

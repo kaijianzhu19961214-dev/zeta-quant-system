@@ -644,6 +644,89 @@ h4 {
   font-size: 16px;
 }
 
+.algorithm-readiness {
+  display: flex;
+  align-items: center;
+  justify-content: space-between;
+  gap: 12px;
+  padding: 10px 12px;
+  border: 1px solid #d8ded4;
+  background: #ffffff;
+}
+
+.algorithm-readiness div {
+  display: grid;
+  gap: 4px;
+}
+
+.algorithm-readiness span {
+  color: #627068;
+  font-size: 12px;
+}
+
+.algorithm-readiness strong {
+  color: #18231d;
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 18px;
+}
+
+.review-gate-list {
+  display: grid;
+  gap: 8px;
+}
+
+.review-gate {
+  display: grid;
+  grid-template-columns: minmax(0, 1fr) auto;
+  gap: 6px 12px;
+  padding: 10px 12px;
+  border-left: 4px solid #7b8a80;
+  background: #ffffff;
+}
+
+.review-gate div {
+  display: grid;
+  min-width: 0;
+  gap: 3px;
+}
+
+.review-gate strong,
+.review-gate span,
+.review-gate p {
+  overflow-wrap: anywhere;
+}
+
+.review-gate div span,
+.review-gate p {
+  color: #627068;
+  font-size: 12px;
+}
+
+.review-gate p {
+  grid-column: 1 / -1;
+  margin: 0;
+  line-height: 1.45;
+}
+
+.review-gate-status {
+  justify-self: end;
+  color: #18231d;
+  font-weight: 700;
+}
+
+.review-gate-ok {
+  border-color: #2f7d55;
+}
+
+.review-gate-warning {
+  border-color: #b7791f;
+  background: #fff9ef;
+}
+
+.review-gate-muted {
+  border-color: #7b8a80;
+}
+
 .tag-list {
   display: flex;
   flex-wrap: wrap;
@@ -877,6 +960,18 @@ h4 {
 
   .artifact-table {
     overflow-x: auto;
+  }
+
+  .algorithm-readiness {
+    align-items: flex-start;
+  }
+
+  .review-gate {
+    grid-template-columns: 1fr;
+  }
+
+  .review-gate-status {
+    justify-self: start;
   }
 
   .service-row {

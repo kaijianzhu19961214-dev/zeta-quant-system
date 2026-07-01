@@ -15,6 +15,7 @@ from quant_contracts import (
 )
 
 from quant_factor_lab.factors import calculate_momentum_factor
+from quant_factor_lab.algorithms.review_gates import build_momentum_review_gates
 
 MOMENTUM_FACTOR_PATTERN = re.compile(r"^momentum_(?P<window>[1-9][0-9]*)d$")
 MOMENTUM_ALGORITHM_ID = "technical.momentum"
@@ -50,6 +51,7 @@ class MomentumAlgorithmAdapter:
                 "Baseline adapter used to verify the algorithm registry contract.",
                 "Does not use future prices because each row only references earlier closes.",
             ],
+            review_gates=build_momentum_review_gates(),
         )
 
     def can_handle(self, *, request: FactorCalculationRequest) -> bool:

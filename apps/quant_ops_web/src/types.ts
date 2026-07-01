@@ -35,6 +35,14 @@ export type ArtifactReadStatus = "artifact_loaded" | "preview_fallback";
 export type AlgorithmRole = "factor_generator" | "model" | "validation_engine" | "comparison_engine";
 export type AlgorithmStatus = "available" | "planned" | "disabled" | "deprecated";
 export type AlgorithmOutputKind = "factor_values" | "forecast" | "volatility" | "signal" | "diagnostics";
+export type AlgorithmReviewGateCategory =
+  | "hypothesis"
+  | "data"
+  | "construction"
+  | "leakage"
+  | "validation"
+  | "operations";
+export type AlgorithmReviewGateStatus = "satisfied" | "missing" | "not_applicable";
 
 export interface AlgorithmParameterSpec {
   name: string;
@@ -53,6 +61,16 @@ export interface AlgorithmCapability {
   output_kinds: AlgorithmOutputKind[];
 }
 
+export interface AlgorithmReviewGate {
+  gate_id: string;
+  category: AlgorithmReviewGateCategory;
+  title: string;
+  description: string;
+  status: AlgorithmReviewGateStatus;
+  evidence: string | null;
+  is_required: boolean;
+}
+
 export interface AlgorithmSpec {
   algorithm_id: string;
   display_name: string;
@@ -68,6 +86,7 @@ export interface AlgorithmSpec {
   tags: string[];
   research_notes: string[];
   limitations: string[];
+  review_gates: AlgorithmReviewGate[];
 }
 
 export interface ExternalMetricPayload {

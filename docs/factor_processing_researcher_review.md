@@ -238,6 +238,7 @@ First-stage score preview
 AlgorithmSpec
 AlgorithmCapability
 AlgorithmParameterSpec
+AlgorithmReviewGate
 FactorAlgorithmAdapter
 FactorAlgorithmRegistry
 ```
@@ -251,16 +252,15 @@ FactorAlgorithmRegistry
 | `volatility.gjr_garch` | `planned` | 非对称 GARCH 模型 | 候选时序波动率因子 |
 | `volatility.aparch` | `planned` | 非对称幂 ARCH 模型 | 候选时序波动率因子 |
 
-`planned` 表示已进入研究候选清单，但不会在生产 API 中执行。研究员需要补充：
+`planned` 表示已进入研究候选清单，但不会在生产 API 中执行。当前每个算法会暴露 `review_gates`，用于展示从候选升级为可运行 adapter 前缺少什么证据。研究员需要优先补充：
 
 ```text
-输入收益率口径
-拟合窗口长度
-残差分布假设
-参数显著性和稳定性要求
-输出字段：预测波动率 / 标准化残差 / 杠杆效应强度 / 诊断指标
-如何转换为可验证 factor_value
-是否用于股票截面排序、期货单品种时序信号，或风险过滤
+hypothesis：经济含义、预测方向、适用资产和持有周期
+data：输入收益率口径、复权口径、最小历史长度、缺失值处理
+construction：拟合窗口、重估频率、输出字段和 factor_value 映射
+leakage：同日可交易性、拟合窗口对齐、期货换月和幸存者偏差
+validation：IC / Rank IC、衰减、分组单调性、换手和成本敏感性
+operations：样例数据、单测、产物字段、失败边界和监控字段
 ```
 
 确认后再把 `planned` 算法升级为 `available` adapter，并进入统一 `quant_factor_validation` 评分和审核流程。

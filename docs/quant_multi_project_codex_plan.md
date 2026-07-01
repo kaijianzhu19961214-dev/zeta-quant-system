@@ -1711,6 +1711,7 @@ FactorFamily             # 已落地
 AlgorithmSpec            # 已落地，用于登记可用 / planned 算法
 AlgorithmCapability      # 已落地，用于声明资产类别、因子模式、输出类型和支持频率
 AlgorithmParameterSpec   # 已落地，用于声明算法参数和默认值
+AlgorithmReviewGate      # 已落地，用于声明 planned -> available 的准入门槛
 EvaluationEngine         # 已落地，当前运行引擎为 internal
 ExternalFactorValidationSummary # 已落地，用于外部库核心统计摘要标准化
 FactorEvaluationResult   # 已落地
@@ -1718,7 +1719,7 @@ FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，后续确认输入、参数、诊断指标和 `arch` 依赖后再补具体执行层。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport` 和对应 artifact reference。第三方库执行层尚未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。后续确认输入、参数、诊断指标、验证证据和 `arch` 依赖后再补具体执行层。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport` 和对应 artifact reference。第三方库执行层尚未作为运行依赖接入。
 
 ---
 
@@ -1736,6 +1737,7 @@ FactorComparisonReport   # 已落地
 quant_contracts
     已定义 AssetClass / FactorMode / FactorFamily / EvaluationEngine
     已定义 AlgorithmSpec / AlgorithmCapability / AlgorithmParameterSpec
+    已定义 AlgorithmReviewGate，用于 planned -> available 准入门槛
     已定义 ExternalFactorValidationSummary
     已定义 FactorEvaluationResult / FactorScoreCard / FactorComparisonReport
 
@@ -1744,6 +1746,7 @@ quant_factor_lab
     已建立 FactorAlgorithmAdapter / FactorAlgorithmRegistry
     已将 technical.momentum 迁入 registry adapter
     已登记 volatility.egarch / volatility.gjr_garch / volatility.aparch planned specs
+    已为算法 registry 输出 hypothesis / data / construction / leakage / validation / operations review gates
 
 quant_factor_validation
     已输出 internal validation 结果
@@ -1759,7 +1762,7 @@ quant_factor_validation
 
 quant_ops_api / quant_ops_web
     quant_ops_api 已提供 GET /api/v1/factor-lab/algorithms 只读代理
-    quant_ops_web 已启用 Factor Lab 页面展示 available / planned AlgorithmSpec registry
+    quant_ops_web 已启用 Factor Lab 页面展示 available / planned AlgorithmSpec registry 和 review gates
     已展示 first-stage score preview
     已通过 GET /api/v1/factor-validation/external-payloads/preview 提供只读多引擎 payload 对比预览
     preview 响应已携带 factor_comparison_report.v1 artifact_reference

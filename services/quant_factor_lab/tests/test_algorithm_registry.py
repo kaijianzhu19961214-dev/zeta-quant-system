@@ -17,6 +17,42 @@ class AlgorithmRegistryTest(unittest.TestCase):
         self.assertIn("volatility.gjr_garch", algorithm_ids)
         self.assertIn("volatility.aparch", algorithm_ids)
 
+    def test_should_mark_available_algorithms_without_missing_required_gates(self) -> None:
+        registry = create_default_algorithm_registry()
+
+        available_specs = [
+            spec
+            for spec in registry.list_specs(include_planned=True)
+            if spec.status == "available"
+        ]
+
+        self.assertGreaterEqual(len(available_specs), 1)
+        for spec in available_specs:
+            missing_required_gates = [
+                gate
+                for gate in spec.review_gates
+                if gate.is_required and gate.status == "missing"
+            ]
+            self.assertEqual(missing_required_gates, [])
+
+    def test_should_expose_missing_review_gates_for_planned_garch_algorithms(self) -> None:
+        registry = create_default_algorithm_registry()
+
+        egarch_spec = next(
+            spec
+            for spec in registry.list_specs(include_planned=True)
+            if spec.algorithm_id == "volatility.egarch"
+        )
+        missing_gate_ids = [
+            gate.gate_id
+            for gate in egarch_spec.review_gates
+            if gate.status == "missing"
+        ]
+
+        self.assertEqual(egarch_spec.status, "planned")
+        self.assertIn("data_policy_fixed", missing_gate_ids)
+        self.assertIn("validation_evidence", missing_gate_ids)
+
     def test_should_resolve_momentum_adapter_from_factor_name(self) -> None:
         registry = create_default_algorithm_registry()
         request = FactorCalculationRequest(

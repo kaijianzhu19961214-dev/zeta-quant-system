@@ -45,7 +45,7 @@ degraded_count
 down_count
 ```
 
-`/api/v1/factor-lab/algorithms` 是 Factor Lab 算法 registry 的只读 BFF 代理接口：由 `quant_ops_api` 转发读取 `quant_factor_lab /api/v1/algorithms`，响应复用 `quant_contracts.AlgorithmSpec[]`。该接口只展示 `available` / `planned` 算法能力、参数、来源库和状态，不直接安装第三方库，不执行候选算法，也不绕过 `quant_factor_lab` 的 adapter registry。
+`/api/v1/factor-lab/algorithms` 是 Factor Lab 算法 registry 的只读 BFF 代理接口：由 `quant_ops_api` 转发读取 `quant_factor_lab /api/v1/algorithms`，响应复用 `quant_contracts.AlgorithmSpec[]`。该接口只展示 `available` / `planned` 算法能力、参数、来源库、状态和 `review_gates` 准入门槛，不直接安装第三方库，不执行候选算法，也不绕过 `quant_factor_lab` 的 adapter registry。
 
 `/api/v1/factor-validation/review` 当前返回：
 

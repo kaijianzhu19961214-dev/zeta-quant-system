@@ -8,6 +8,7 @@ import {
   fetchOverview,
 } from "./api";
 import type {
+  AlgorithmReviewGate,
   AlgorithmSpec,
   ArtifactLedgerItem,
   ArtifactLedgerResponse,
@@ -54,6 +55,12 @@ const ALGORITHM_STATUS_LABELS: Record<string, string> = {
   planned: "候选",
   disabled: "停用",
   deprecated: "废弃",
+};
+
+const ALGORITHM_REVIEW_GATE_STATUS_LABELS: Record<string, string> = {
+  satisfied: "已满足",
+  missing: "缺证据",
+  not_applicable: "不适用",
 };
 
 const NAV_ITEMS: NavItem[] = [
@@ -468,6 +475,10 @@ function AlgorithmCard({ algorithm }: { algorithm: AlgorithmSpec }) {
     </span>
   ));
   const notes = [...algorithm.research_notes, ...algorithm.limitations];
+  const requiredReviewGateCount = algorithm.review_gates.filter((gate) => gate.is_required).length;
+  const missingRequiredReviewGateCount = algorithm.review_gates.filter(
+    (gate) => gate.is_required && gate.status === "missing",
+  ).length;
 
   return (
     <article className="algorithm-card">
@@ -498,6 +509,27 @@ function AlgorithmCard({ algorithm }: { algorithm: AlgorithmSpec }) {
         <span>{algorithm.adapter_module ?? "pending_adapter"}</span>
       </div>
 
+      {algorithm.review_gates.length > 0 ? (
+        <div className="algorithm-readiness">
+          <div>
+            <span>准入门槛</span>
+            <strong>
+              {requiredReviewGateCount - missingRequiredReviewGateCount}/{requiredReviewGateCount}
+            </strong>
+          </div>
+          <span className={`status-pill ${missingRequiredReviewGateCount === 0 ? "pill-ok" : "pill-degraded"}`}>
+            {resolveAlgorithmReadinessLabel({
+              algorithmStatus: algorithm.status,
+              missingRequiredReviewGateCount,
+            })}
+          </span>
+        </div>
+      ) : null}
+
+      {algorithm.review_gates.length > 0 ? (
+        <AlgorithmReviewGateList gates={algorithm.review_gates} />
+      ) : null}
+
       {parameters.length > 0 ? <div className="tag-list">{parameters}</div> : null}
       {algorithm.tags.length > 0 ? (
         <div className="tag-list">
@@ -517,6 +549,25 @@ function AlgorithmCard({ algorithm }: { algorithm: AlgorithmSpec }) {
         </div>
       ) : null}
     </article>
+  );
+}
+
+function AlgorithmReviewGateList({ gates }: { gates: AlgorithmReviewGate[] }) {
+  return (
+    <div className="review-gate-list">
+      {gates.map((gate) => (
+        <div className={`review-gate ${resolveReviewGateClass(gate.status)}`} key={gate.gate_id}>
+          <div>
+            <strong>{gate.title}</strong>
+            <span>{gate.category}</span>
+          </div>
+          <span className="review-gate-status">
+            {ALGORITHM_REVIEW_GATE_STATUS_LABELS[gate.status] ?? gate.status}
+          </span>
+          <p>{gate.evidence ?? gate.description}</p>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1073,4 +1124,22 @@ function resolveAlgorithmStatusPillClass(status: string): string {
   if (status === "available") return "pill-ok";
   if (status === "planned") return "pill-degraded";
   return "pill-down";
+}
+
+function resolveAlgorithmReadinessLabel({
+  algorithmStatus,
+  missingRequiredReviewGateCount,
+}: {
+  algorithmStatus: string;
+  missingRequiredReviewGateCount: number;
+}): string {
+  if (missingRequiredReviewGateCount > 0) return `${missingRequiredReviewGateCount} 项待补`;
+  if (algorithmStatus === "planned") return "可升级";
+  return "已满足";
+}
+
+function resolveReviewGateClass(status: string): string {
+  if (status === "satisfied") return "review-gate-ok";
+  if (status === "missing") return "review-gate-warning";
+  return "review-gate-muted";
 }
