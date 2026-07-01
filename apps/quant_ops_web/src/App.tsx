@@ -1,16 +1,15 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
-  compareExternalPayloads,
   fetchArtifactLedger,
+  fetchExternalPayloadComparisonPreview,
   fetchFactorValidationReview,
   fetchOverview,
 } from "./api";
 import type {
   ArtifactLedgerItem,
   ArtifactLedgerResponse,
-  ExternalPayloadComparisonRequest,
-  FactorComparisonReport,
+  ExternalPayloadComparisonPreviewResponse,
   FactorEvaluationResult,
   FactorValidationArtifactSummary,
   FactorValidationReviewResponse,
@@ -56,67 +55,6 @@ const NAV_ITEMS: NavItem[] = [
   { id: "artifacts", label: "Artifacts", is_enabled: true },
 ];
 
-const SAMPLE_EXTERNAL_COMPARISON_REQUEST: ExternalPayloadComparisonRequest = {
-  factor_name: "momentum_20d",
-  primary_engine: "alphalens",
-  alphalens_payloads: [
-    {
-      factor_name: "momentum_20d",
-      start_date: "2026-01-01",
-      end_date: "2026-03-13",
-      forward_days: 5,
-      sample_count: 180,
-      effective_sample_count: 170,
-      metric_values: {
-        mean_ic: 0.035,
-        rank_ic_mean: 0.06,
-        ic_std: 0.08,
-        ic_ir: 0.4375,
-        mean_return_spread: 0.045,
-      },
-      source_version: "0.4.0",
-      source_run_id: "alphalens_payload_preview",
-    },
-  ],
-  qlib_payloads: [
-    {
-      factor_name: "momentum_20d",
-      start_date: "2026-01-01",
-      end_date: "2026-03-13",
-      forward_days: 5,
-      sample_count: 180,
-      effective_sample_count: 166,
-      metric_values: {
-        ic_mean: 0.033,
-        rank_ic_mean: 0.055,
-        ic_std: 0.08,
-        icir: 0.4125,
-        return_spread: 0.04,
-      },
-      recorder_id: "qlib_recorder_preview",
-      experiment_name: "alpha158_lgbm",
-    },
-  ],
-  vectorbt_payloads: [
-    {
-      factor_name: "momentum_20d",
-      start_date: "2026-01-01",
-      end_date: "2026-03-13",
-      forward_days: 5,
-      sample_count: 120,
-      effective_sample_count: 110,
-      metric_values: {
-        annualized_return: 0.22,
-        sharpe: 1.1,
-        max_dd: -0.08,
-        turnover_ratio: 0.4,
-      },
-      portfolio_name: "momentum_20d_portfolio",
-      parameter_set_id: "lookback_20_hold_5",
-    },
-  ],
-};
-
 export function App() {
   const [activeView, setActiveView] = useState<DashboardView>("overview");
   const [overview, setOverview] = useState<OpsOverviewResponse | null>(null);
@@ -126,7 +64,8 @@ export function App() {
   const [validationReview, setValidationReview] = useState<FactorValidationReviewResponse | null>(null);
   const [validationLoadState, setValidationLoadState] = useState<LoadState>("idle");
   const [validationErrorMessage, setValidationErrorMessage] = useState<string | null>(null);
-  const [externalComparison, setExternalComparison] = useState<FactorComparisonReport | null>(null);
+  const [externalComparisonPreview, setExternalComparisonPreview] =
+    useState<ExternalPayloadComparisonPreviewResponse | null>(null);
   const [externalComparisonLoadState, setExternalComparisonLoadState] = useState<LoadState>("idle");
   const [externalComparisonErrorMessage, setExternalComparisonErrorMessage] = useState<string | null>(null);
   const [artifactLedger, setArtifactLedger] = useState<ArtifactLedgerResponse | null>(null);
@@ -179,8 +118,8 @@ export function App() {
     setExternalComparisonErrorMessage(null);
 
     try {
-      const response = await compareExternalPayloads(SAMPLE_EXTERNAL_COMPARISON_REQUEST);
-      setExternalComparison(response);
+      const response = await fetchExternalPayloadComparisonPreview();
+      setExternalComparisonPreview(response);
       setExternalComparisonLoadState("ready");
     } catch (error) {
       setExternalComparisonErrorMessage(
@@ -192,10 +131,10 @@ export function App() {
 
   useEffect(() => {
     if (activeView !== "factor-validation") return;
-    if (externalComparison !== null) return;
+    if (externalComparisonPreview !== null) return;
     if (externalComparisonLoadState !== "idle") return;
     void loadExternalPayloadComparison();
-  }, [activeView, externalComparison, externalComparisonLoadState, loadExternalPayloadComparison]);
+  }, [activeView, externalComparisonPreview, externalComparisonLoadState, loadExternalPayloadComparison]);
 
   const loadArtifactLedger = useCallback(async () => {
     setArtifactLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
@@ -310,7 +249,7 @@ export function App() {
             <FactorValidationReviewPanel
               comparisonErrorMessage={externalComparisonErrorMessage}
               comparisonLoadState={externalComparisonLoadState}
-              comparisonReport={externalComparison}
+              comparisonPreview={externalComparisonPreview}
               errorMessage={validationErrorMessage}
               loadState={validationLoadState}
               onRunComparison={loadExternalPayloadComparison}
@@ -412,7 +351,7 @@ function FactorValidationReviewPanel({
   review,
   loadState,
   errorMessage,
-  comparisonReport,
+  comparisonPreview,
   comparisonLoadState,
   comparisonErrorMessage,
   onRunComparison,
@@ -420,7 +359,7 @@ function FactorValidationReviewPanel({
   review: FactorValidationReviewResponse | null;
   loadState: LoadState;
   errorMessage: string | null;
-  comparisonReport: FactorComparisonReport | null;
+  comparisonPreview: ExternalPayloadComparisonPreviewResponse | null;
   comparisonLoadState: LoadState;
   comparisonErrorMessage: string | null;
   onRunComparison: () => void;
@@ -519,7 +458,7 @@ function FactorValidationReviewPanel({
         errorMessage={comparisonErrorMessage}
         loadState={comparisonLoadState}
         onRunComparison={onRunComparison}
-        report={comparisonReport}
+        preview={comparisonPreview}
       />
 
       <section className="service-panel">
@@ -551,16 +490,19 @@ function FactorValidationReviewPanel({
 }
 
 function ExternalPayloadComparisonPanel({
-  report,
+  preview,
   loadState,
   errorMessage,
   onRunComparison,
 }: {
-  report: FactorComparisonReport | null;
+  preview: ExternalPayloadComparisonPreviewResponse | null;
   loadState: LoadState;
   errorMessage: string | null;
   onRunComparison: () => void;
 }) {
+  const report = preview?.comparison_report ?? null;
+  const limitations = preview?.limitations ?? [];
+
   return (
     <section className="service-panel">
       <div className="section-heading">
@@ -577,6 +519,13 @@ function ExternalPayloadComparisonPanel({
           {loadState === "loading" ? "对比中" : "重新对比"}
         </button>
       </div>
+
+      {preview !== null ? (
+        <div className="source-strip">
+          <span>{preview.source}</span>
+          <span>{formatDateTime(preview.generated_at)}</span>
+        </div>
+      ) : null}
 
       {loadState === "error" ? (
         <div className="notice error" role="alert">
@@ -609,6 +558,13 @@ function ExternalPayloadComparisonPanel({
             <strong>comparison_summary</strong>
             <span>{report.comparison_summary}</span>
           </div>
+          {limitations.length > 0 ? (
+            <div className="action-list">
+              {limitations.map((limitation) => (
+                <span key={limitation}>{limitation}</span>
+              ))}
+            </div>
+          ) : null}
         </>
       ) : null}
     </section>

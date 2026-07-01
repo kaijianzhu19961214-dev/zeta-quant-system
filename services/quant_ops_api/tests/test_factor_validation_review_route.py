@@ -11,6 +11,8 @@ from quant_ops_api.api.v1.dependencies import (
 from quant_ops_api.clients import FactorValidationClientError
 from quant_ops_api.main import create_app
 from quant_ops_api.schemas import (
+    ExternalMetricPayload,
+    ExternalPayloadComparisonRequest,
     FactorValidationArtifactSummary,
     FactorValidationManifestSummary,
     FactorValidationMetricSummary,
@@ -52,6 +54,23 @@ class FakeFactorValidationReviewService:
                     )
                 ],
             ),
+        )
+
+    def get_external_payload_comparison_preview_request(self) -> ExternalPayloadComparisonRequest:
+        return ExternalPayloadComparisonRequest(
+            factor_name="momentum_20d",
+            primary_engine="alphalens",
+            alphalens_payloads=[
+                ExternalMetricPayload(
+                    factor_name="momentum_20d",
+                    start_date="2026-01-01",
+                    end_date="2026-03-13",
+                    forward_days=5,
+                    sample_count=180,
+                    effective_sample_count=170,
+                    metric_values={"mean_ic": 0.035},
+                )
+            ],
         )
 
 
@@ -133,6 +152,19 @@ class FactorValidationReviewRouteTest(unittest.TestCase):
         self.assertEqual(payload["factor_name"], "momentum_20d")
         self.assertEqual(payload["primary_engine"], "alphalens")
         self.assertEqual(payload["engine_count"], 2)
+
+    def test_should_return_external_payload_comparison_preview(self) -> None:
+        self.app.dependency_overrides[get_factor_validation_client] = lambda: FakeFactorValidationClient()
+
+        response = self.client.get("/api/v1/factor-validation/external-payloads/preview")
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["source"], "quant_ops_api_mvp_external_payload_preview")
+        self.assertTrue(payload["limitations"])
+        self.assertEqual(payload["comparison_report"]["factor_name"], "momentum_20d")
+        self.assertEqual(payload["comparison_report"]["primary_engine"], "alphalens")
+        self.assertEqual(payload["comparison_report"]["engine_count"], 2)
 
     def test_should_keep_validation_error_from_external_payload_comparison(self) -> None:
         self.app.dependency_overrides[get_factor_validation_client] = lambda: RejectingFactorValidationClient()

@@ -165,6 +165,13 @@ export interface FactorComparisonReport {
   comparison_summary: string;
 }
 
+export interface ExternalPayloadComparisonPreviewResponse {
+  generated_at: string;
+  source: string;
+  comparison_report: FactorComparisonReport;
+  limitations: string[];
+}
+
 export interface FactorValidationManifestSummary {
   manifest_id: string;
   task_id: string;

@@ -37,13 +37,13 @@ System
 - 展示 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation` 的状态表。
 - 通过 `quant_ops_api /api/v1/factor-validation/review` 展示因子验证审核摘要。
 - 展示 `decision`、IC / Rank IC、分组收益差、findings、recommended actions 和 manifest artifact preview。
-- 通过 `quant_ops_api /api/v1/factor-validation/external-payloads/compare` 展示 Alphalens / Qlib / vectorbt payload 的统一 `FactorComparisonReport`。
+- 通过 `quant_ops_api /api/v1/factor-validation/external-payloads/preview` 展示 Alphalens / Qlib / vectorbt payload 的统一 `FactorComparisonReport` 预览。
 - 通过 `quant_ops_api /api/v1/artifacts/ledger` 展示任务账本和产物账本预览。
 - 提供加载、刷新和错误态，保持只读边界。
 
 当前 Factor Validation 页仍是 `not_persisted` 预览，不表示报告已经入库或上传 MinIO。
 
-当前外部引擎对比区使用一组固定示例 payload 验证 UI -> BFF -> `quant_factor_validation` 链路；后续接入真实研究任务后，应改为读取标准 artifact 或研究员提交的已审核 payload。
+当前外部引擎对比区读取 BFF 提供的 MVP 预览结果，用于验证 UI -> BFF -> `quant_factor_validation` 链路；后续接入真实研究任务后，应改为读取标准 artifact 或研究员提交的已审核 payload。
 
 当前 Artifacts 页同样是 `not_persisted` 预览：它展示的是由因子验证 manifest 映射出的 task/artifact ledger 形态，用于提前固定 Web UI 和 API 协议。后续接入 101 节点 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后，才能作为正式产物账本使用。
 

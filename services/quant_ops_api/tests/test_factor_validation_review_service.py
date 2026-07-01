@@ -30,6 +30,18 @@ class FactorValidationReviewServiceTest(unittest.TestCase):
         )
         self.assertTrue(response.limitations)
 
+    def test_should_return_external_payload_comparison_preview_request(self) -> None:
+        service = FactorValidationReviewService()
+
+        request = service.get_external_payload_comparison_preview_request()
+
+        self.assertEqual(request.factor_name, "momentum_20d")
+        self.assertEqual(request.primary_engine, "alphalens")
+        self.assertEqual(len(request.alphalens_payloads), 1)
+        self.assertEqual(len(request.qlib_payloads), 1)
+        self.assertEqual(len(request.vectorbt_payloads), 1)
+        self.assertEqual(request.vectorbt_payloads[0].parameter_set_id, "lookback_20_hold_5")
+
 
 if __name__ == "__main__":
     unittest.main()

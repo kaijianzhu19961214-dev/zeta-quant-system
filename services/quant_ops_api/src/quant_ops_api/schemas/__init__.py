@@ -6,6 +6,7 @@ from quant_ops_api.schemas.artifact_ledger import (
 from quant_ops_api.schemas.factor_validation import (
     ExternalMetricPayload,
     ExternalPayloadComparisonRequest,
+    ExternalPayloadComparisonPreviewResponse,
     FactorComparisonSummary,
     FactorScoreCardSummary,
     FactorScoreComponentSummary,
@@ -22,6 +23,7 @@ __all__ = [
     "ArtifactLedgerResponse",
     "ExternalMetricPayload",
     "ExternalPayloadComparisonRequest",
+    "ExternalPayloadComparisonPreviewResponse",
     "FactorComparisonSummary",
     "FactorScoreCardSummary",
     "FactorScoreComponentSummary",

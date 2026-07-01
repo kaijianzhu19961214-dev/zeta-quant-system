@@ -27,6 +27,7 @@ quant_ops_api = 只读优先的运营聚合 API / BFF
 ```text
 GET /api/v1/overview
 GET /api/v1/factor-validation/review
+GET /api/v1/factor-validation/external-payloads/preview
 POST /api/v1/factor-validation/external-payloads/compare
 GET /api/v1/artifacts/ledger
 ```
@@ -145,7 +146,7 @@ MVP 推荐方案 B：
 
 ```text
 apps/quant_ops_web      # 前端 UI
-services/quant_ops_api  # 只读聚合 API，当前已落地 overview、factor-validation review、external payload compare 和 artifact ledger
+services/quant_ops_api  # 只读聚合 API，当前已落地 overview、factor-validation review、external payload preview/compare 和 artifact ledger
 ```
 
 短期本地开发优先让 `quant_ops_web` 调用 `quant_ops_api`，只有调试单服务时才直接调用业务服务只读接口。

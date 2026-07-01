@@ -2,6 +2,7 @@ from datetime import datetime
 from typing import Literal
 
 from pydantic import BaseModel, ConfigDict, Field, model_validator
+from quant_contracts import FactorComparisonReport
 
 
 ValidationDecision = Literal[
@@ -44,6 +45,13 @@ class ExternalPayloadComparisonRequest(BaseModel):
         if self.alphalens_payloads or self.qlib_payloads or self.vectorbt_payloads:
             return self
         raise ValueError("at least one external payload is required")
+
+
+class ExternalPayloadComparisonPreviewResponse(BaseModel):
+    generated_at: datetime
+    source: str = Field(min_length=1, max_length=128)
+    comparison_report: FactorComparisonReport
+    limitations: list[str] = Field(default_factory=list)
 
 
 class FactorValidationMetricSummary(BaseModel):

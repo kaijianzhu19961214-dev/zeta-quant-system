@@ -1,5 +1,6 @@
 import type {
   ArtifactLedgerResponse,
+  ExternalPayloadComparisonPreviewResponse,
   ExternalPayloadComparisonRequest,
   FactorComparisonReport,
   FactorValidationReviewResponse,
@@ -48,6 +49,20 @@ export async function fetchArtifactLedger(): Promise<ArtifactLedgerResponse> {
   }
 
   return (await response.json()) as ArtifactLedgerResponse;
+}
+
+export async function fetchExternalPayloadComparisonPreview(): Promise<ExternalPayloadComparisonPreviewResponse> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/factor-validation/external-payloads/preview`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "external payload comparison preview failed"));
+  }
+
+  return (await response.json()) as ExternalPayloadComparisonPreviewResponse;
 }
 
 export async function compareExternalPayloads(
