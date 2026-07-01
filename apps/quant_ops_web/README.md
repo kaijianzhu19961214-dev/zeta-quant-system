@@ -47,6 +47,12 @@ System
 
 当前 Artifacts 页同样是 `not_persisted` 预览：它展示的是由因子验证 manifest 映射出的 task/artifact ledger 形态，用于提前固定 Web UI 和 API 协议。后续接入 101 节点 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后，才能作为正式产物账本使用。
 
+本地验证 101 只读 artifact 展示时，使用仓库根目录命令：
+
+```bash
+make quant-ops-101-readonly-up
+```
+
 ## 本地运行
 
 ```bash

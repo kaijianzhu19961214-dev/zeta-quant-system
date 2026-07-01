@@ -54,8 +54,19 @@ class FactorCalculationRouteTest(unittest.TestCase):
 
         self.assertEqual(response.status_code, 200)
         self.assertEqual(payload["meta"]["factor_name"], "momentum_2d")
+        self.assertEqual(payload["meta"]["algorithm_id"], "technical.momentum")
         self.assertEqual(payload["meta"]["row_count"], 3)
         self.assertEqual(payload["rows"][2]["factor_value"], "0.5")
+
+    def test_should_list_algorithm_specs(self) -> None:
+        response = self.client.get("/api/v1/algorithms")
+        payload = response.json()
+
+        algorithm_ids = [item["algorithm_id"] for item in payload]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertIn("technical.momentum", algorithm_ids)
+        self.assertIn("volatility.egarch", algorithm_ids)
 
     def test_should_return_validation_error_when_factor_is_not_supported(self) -> None:
         response = self.client.post(

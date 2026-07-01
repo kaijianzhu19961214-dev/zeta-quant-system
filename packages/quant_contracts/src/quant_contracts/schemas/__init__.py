@@ -1,5 +1,8 @@
 from quant_contracts.schemas.adjustment import QfqBatch
 from quant_contracts.schemas.factor import (
+    AlgorithmCapability,
+    AlgorithmParameterSpec,
+    AlgorithmSpec,
     ExternalFactorValidationSummary,
     FactorComparisonReport,
     FactorCalculationMeta,
@@ -27,6 +30,9 @@ from quant_contracts.schemas.market_query import (
 )
 
 __all__ = [
+    "AlgorithmCapability",
+    "AlgorithmParameterSpec",
+    "AlgorithmSpec",
     "ExternalFactorValidationSummary",
     "FactorComparisonReport",
     "FactorCalculationMeta",

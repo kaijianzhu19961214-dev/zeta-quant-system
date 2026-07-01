@@ -162,6 +162,18 @@ make quant-ops-web-up
 make quant-ops-web-check
 ```
 
+启动 101 节点只读 Ops 联调：
+
+Start read-only Ops integration against the 101 data node:
+
+```bash
+make quant-ops-101-readonly-up
+```
+
+该命令只建立本机 SSH tunnel、读取 101 远程 env 到当前进程、启动 `quant_ops_api` / `quant_ops_web` 并运行 artifact smoke test；不会把真实密钥写入仓库。
+
+This command only opens local SSH tunnels, reads remote 101 env values into the current process, starts `quant_ops_api` / `quant_ops_web`, and runs the artifact smoke test. It does not write real secrets into the repository.
+
 默认访问地址：
 
 Default URL:

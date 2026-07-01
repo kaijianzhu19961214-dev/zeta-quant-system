@@ -127,6 +127,14 @@ artifact_id: validation_smoke_101_codex_comparison_report
 factor_name: smoke_momentum_1d
 ```
 
+后续本地复现使用统一命令：
+
+```bash
+make quant-ops-101-readonly-up
+```
+
+该命令只在当前进程注入 101 只读配置，不会把 PostgreSQL / MinIO 密钥写入本地文件或 Git。
+
 ## 约束 / Rules
 
 - 只读，不直接写 PostgreSQL、ClickHouse、MinIO。

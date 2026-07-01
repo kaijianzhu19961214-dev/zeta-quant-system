@@ -1,11 +1,23 @@
 from fastapi import APIRouter, Depends, HTTPException, status
-from quant_contracts import FactorCalculationRequest, FactorCalculationResponse
+from quant_contracts import AlgorithmSpec, FactorCalculationRequest, FactorCalculationResponse
 from quant_data_sdk import QuantDataApiError
 
 from quant_factor_lab.api.v1.dependencies import get_factor_calculation_service
 from quant_factor_lab.services.factor_calculation_service import FactorCalculationService
 
 router = APIRouter(prefix="/api/v1", tags=["factor-calculation"])
+
+
+@router.get(
+    "/algorithms",
+    response_model=list[AlgorithmSpec],
+    summary="列出算法适配器",
+    description="返回 quant_factor_lab 当前可用和计划接入的因子算法规格。",
+)
+def get_algorithm_specs(
+    service: FactorCalculationService = Depends(get_factor_calculation_service),
+) -> list[AlgorithmSpec]:
+    return service.list_algorithms()
 
 
 @router.post(

@@ -2,6 +2,9 @@ import unittest
 
 from pydantic import ValidationError
 from quant_contracts import (
+    AlgorithmCapability,
+    AlgorithmParameterSpec,
+    AlgorithmSpec,
     ArtifactType,
     AssetClass,
     EvaluationEngine,
@@ -29,15 +32,48 @@ from quant_contracts import (
 
 
 class FactorSchemaTest(unittest.TestCase):
+    def test_should_accept_algorithm_spec_when_payload_is_valid(self) -> None:
+        spec = AlgorithmSpec(
+            algorithm_id="volatility.egarch",
+            display_name="EGARCH volatility model",
+            status="planned",
+            description="Models asymmetric conditional volatility and leverage effects.",
+            source_library="arch",
+            capability=AlgorithmCapability(
+                asset_classes=[AssetClass.EQUITY, AssetClass.FUTURES],
+                factor_modes=[FactorMode.TIME_SERIES],
+                factor_families=[FactorFamily.PRICE_VOLUME, FactorFamily.MODEL],
+                timeframes=[Timeframe.DAY_1],
+                output_kinds=["volatility", "diagnostics"],
+            ),
+            parameters=[
+                AlgorithmParameterSpec(
+                    name="p",
+                    value_type="integer",
+                    description="ARCH lag order.",
+                    default_value=1,
+                    minimum=1,
+                    maximum=5,
+                )
+            ],
+            tags=[" volatility ", " leverage_effect "],
+        )
+
+        self.assertEqual(spec.algorithm_id, "volatility.egarch")
+        self.assertEqual(spec.parameters[0].name, "p")
+        self.assertEqual(spec.tags, ["volatility", "leverage_effect"])
+
     def test_should_normalize_factor_request_when_payload_is_valid(self) -> None:
         request = FactorCalculationRequest(
             factor_name="Momentum_20D",
+            algorithm_id="Technical.Momentum",
             symbols=[" 000001.sz ", "000651.SZ"],
             start="2026-01-01",
             end="2026-03-13",
         )
 
         self.assertEqual(request.factor_name, "momentum_20d")
+        self.assertEqual(request.algorithm_id, "technical.momentum")
         self.assertEqual(request.symbols, ["000001.SZ", "000651.SZ"])
         self.assertEqual(request.asset_class, AssetClass.EQUITY)
         self.assertEqual(request.factor_mode, FactorMode.CROSS_SECTIONAL)

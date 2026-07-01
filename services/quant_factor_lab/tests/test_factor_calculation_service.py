@@ -42,7 +42,26 @@ class FactorCalculationServiceTest(unittest.IsolatedAsyncioTestCase):
         response = await service.calculate(request=request)
 
         self.assertEqual(reader.queries[0].fields, ["symbol", "trade_date", "close_price", "volume", "turnover"])
+        self.assertEqual(response.meta.algorithm_id, "technical.momentum")
         self.assertEqual(response.meta.dataset_code, "a_share_1d")
+        self.assertEqual(str(response.rows[2].factor_value), "0.5")
+
+    async def test_should_calculate_momentum_with_explicit_algorithm_id(self) -> None:
+        reader = FakeMarketDataReader()
+        service = FactorCalculationService(market_data_reader=reader)
+        request = FactorCalculationRequest(
+            factor_name="momentum_2d",
+            algorithm_id="technical.momentum",
+            symbols=["000001.SZ"],
+            start="2026-03-11",
+            end="2026-03-13",
+            lookback_window=2,
+        )
+
+        response = await service.calculate(request=request)
+
+        self.assertEqual(response.meta.algorithm_id, "technical.momentum")
+        self.assertEqual(response.meta.algorithm_version, "v1")
         self.assertEqual(str(response.rows[2].factor_value), "0.5")
 
     async def test_should_reject_request_when_factor_window_does_not_match_name(self) -> None:

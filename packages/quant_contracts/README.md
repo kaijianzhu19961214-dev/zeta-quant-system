@@ -35,6 +35,9 @@ tests/
 - `MarketBarsMeta`
 - `MarketBarsResponse`
 - `QfqBatch`
+- `AlgorithmSpec`
+- `AlgorithmCapability`
+- `AlgorithmParameterSpec`
 - `FactorDailyValue`
 - `FactorCalculationRequest`
 - `FactorCalculationMeta`

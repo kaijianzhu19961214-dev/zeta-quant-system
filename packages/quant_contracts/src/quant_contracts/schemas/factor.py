@@ -15,10 +15,101 @@ FactorReviewDecision = Literal[
     "candidate_pass",
     "candidate_reject",
 ]
+AlgorithmRole = Literal[
+    "factor_generator",
+    "model",
+    "validation_engine",
+    "comparison_engine",
+]
+AlgorithmStatus = Literal["available", "planned", "disabled", "deprecated"]
+AlgorithmOutputKind = Literal[
+    "factor_values",
+    "forecast",
+    "volatility",
+    "signal",
+    "diagnostics",
+]
+AlgorithmParameterValueType = Literal["integer", "number", "string", "boolean"]
+
+
+class AlgorithmParameterSpec(ContractModel):
+    name: str = Field(min_length=1, max_length=64)
+    value_type: AlgorithmParameterValueType
+    description: str = Field(min_length=1, max_length=256)
+    default_value: int | float | str | bool | None = None
+    minimum: float | None = None
+    maximum: float | None = None
+
+    @field_validator("name")
+    @classmethod
+    def validate_parameter_name(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
+            return normalized_value
+        raise ValueError("parameter name must use lowercase letters, numbers, and underscores")
+
+
+class AlgorithmCapability(ContractModel):
+    asset_classes: list[AssetClass] = Field(min_length=1)
+    factor_modes: list[FactorMode] = Field(min_length=1)
+    factor_families: list[FactorFamily] = Field(min_length=1)
+    timeframes: list[Timeframe] = Field(min_length=1)
+    output_kinds: list[AlgorithmOutputKind] = Field(min_length=1)
+
+
+class AlgorithmSpec(ContractModel):
+    algorithm_id: str = Field(min_length=1, max_length=128)
+    display_name: str = Field(min_length=1, max_length=128)
+    role: AlgorithmRole = "factor_generator"
+    status: AlgorithmStatus = "available"
+    version: str = Field(default="v1", min_length=1, max_length=64)
+    description: str = Field(min_length=1, max_length=512)
+    source_library: str | None = Field(default=None, max_length=64)
+    source_url: str | None = Field(default=None, max_length=512)
+    adapter_module: str | None = Field(default=None, max_length=256)
+    capability: AlgorithmCapability
+    parameters: list[AlgorithmParameterSpec] = Field(default_factory=list)
+    tags: list[str] = Field(default_factory=list)
+    research_notes: list[str] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+
+    @field_validator("algorithm_id")
+    @classmethod
+    def validate_algorithm_id(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        comparable_value = normalized_value.replace(".", "_").replace("-", "_")
+        if comparable_value.replace("_", "").isalnum() and comparable_value[0].isalpha():
+            return normalized_value
+        raise ValueError("algorithm_id must use lowercase letters, numbers, underscores, dashes, and dots")
+
+    @field_validator(
+        "display_name",
+        "version",
+        "description",
+        "source_library",
+        "source_url",
+        "adapter_module",
+    )
+    @classmethod
+    def normalize_algorithm_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.strip()
+        if normalized_value:
+            return normalized_value
+        raise ValueError("value must not be blank")
+
+    @field_validator("tags", "research_notes", "limitations")
+    @classmethod
+    def normalize_algorithm_text_list(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
 
 
 class FactorCalculationRequest(ContractModel):
     factor_name: str = Field(min_length=1, max_length=128)
+    algorithm_id: str | None = Field(default=None, max_length=128)
+    algorithm_parameters: dict[str, int | float | str | bool] = Field(default_factory=dict)
     symbols: list[str] = Field(min_length=1, max_length=500)
     start: date | str
     end: date | str
@@ -37,7 +128,7 @@ class FactorCalculationRequest(ContractModel):
     run_id: str | None = Field(default=None, max_length=128)
     limit: int = Field(default=100000, ge=1, le=500000)
 
-    @field_validator("factor_name", "universe_name", "data_source", "factor_version", "run_id")
+    @field_validator("factor_name", "algorithm_id", "universe_name", "data_source", "factor_version", "run_id")
     @classmethod
     def normalize_text(cls, value: str | None) -> str | None:
         if value is None:
@@ -54,6 +145,18 @@ class FactorCalculationRequest(ContractModel):
         if value.replace("_", "").isalnum() and value[0].isalpha():
             return value.lower()
         raise ValueError("factor_name must use lowercase letters, numbers, and underscores")
+
+    @field_validator("algorithm_id")
+    @classmethod
+    def validate_calculation_algorithm_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.lower()
+        comparable_value = normalized_value.replace(".", "_").replace("-", "_")
+        if comparable_value.replace("_", "").isalnum() and comparable_value[0].isalpha():
+            return normalized_value
+        raise ValueError("algorithm_id must use lowercase letters, numbers, underscores, dashes, and dots")
 
     @field_validator("symbols")
     @classmethod
@@ -108,6 +211,9 @@ class FactorDailyValue(ContractModel):
 
 class FactorCalculationMeta(ContractModel):
     factor_name: str
+    algorithm_id: str | None = None
+    algorithm_version: str | None = None
+    algorithm_source_library: str | None = None
     asset_class: AssetClass = AssetClass.EQUITY
     factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL
     factor_family: FactorFamily = FactorFamily.PRICE_VOLUME

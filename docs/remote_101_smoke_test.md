@@ -1,6 +1,6 @@
 # 101 只读 Smoke Test
 
-> 目标：验证 Mac 本地 `quant_data_hub` 容器可以通过 API 只读查询 101 节点 ClickHouse，不复制真实数据到本地。
+> 目标：验证 Mac 本地服务可以只读查询 101 节点数据与研究产物，不复制真实数据到本地。
 
 ---
 
@@ -83,3 +83,49 @@ POST /api/v1/market-bars/query qfq 1d sample
 - 不导出数据文件。
 - 不写 PostgreSQL、ClickHouse 或 MinIO。
 - 不打印密码、token、access key。
+
+---
+
+## 5. 启动 Ops API / Web 只读产物联调
+
+`quant_ops_api` / `quant_ops_web` 可以通过本地 SSH tunnel 读取 101 节点上的 PostgreSQL task/artifact ledger 和 MinIO `factor_comparison_report.v1` 产物。
+
+一键启动：
+
+```bash
+make quant-ops-101-readonly-up
+```
+
+该命令会：
+
+```text
+1. 打开 PostgreSQL tunnel: 127.0.0.1:15433 -> 101:5432
+2. 打开 MinIO tunnel:      127.0.0.1:19001 -> 101:9000
+3. 打开 ClickHouse tunnel: 127.0.0.1:18123 -> 101:18123
+4. 从 101 节点读取远程 env，并只在当前 shell 进程中注入必要配置
+5. 重启 quant_ops_api / quant_ops_web
+6. 运行 factor_comparison_report.v1 artifact smoke test
+```
+
+默认验证目标：
+
+```text
+artifact_read_status: artifact_loaded
+source: object_store_factor_comparison_report
+artifact_id: validation_smoke_101_codex_comparison_report
+factor_name: smoke_momentum_1d
+```
+
+打开页面：
+
+```text
+http://127.0.0.1:18040
+```
+
+运行约束：
+
+- 只读 PostgreSQL 和 MinIO。
+- 不把 101 节点真实 env 写入本地文件。
+- 不把密码、token、access key 打印到终端或提交到 Git。
+- 不复制大规模行情数据到 Mac。
+- `RUN_SMOKE=0 make quant-ops-101-readonly-up` 可只启动服务，不执行 smoke。

@@ -17,6 +17,7 @@
 
 ```text
 GET  /health
+GET  /api/v1/algorithms
 POST /api/v1/factors/calculate
 ```
 
@@ -26,10 +27,33 @@ POST /api/v1/factors/calculate
 momentum_*d = close_price / close_price.shift(N) - 1
 ```
 
+同时已建立第一阶段算法适配层：
+
+```text
+AlgorithmSpec
+FactorAlgorithmAdapter
+FactorAlgorithmRegistry
+```
+
+当前 registry 中：
+
+| algorithm_id | 状态 | 用途 |
+| ---- | ---- | ---- |
+| `technical.momentum` | `available` | 现有 momentum 因子计算 adapter |
+| `volatility.egarch` | `planned` | EGARCH 波动率和杠杆效应候选算法 |
+| `volatility.gjr_garch` | `planned` | GJR-GARCH 非对称波动候选算法 |
+| `volatility.aparch` | `planned` | APARCH 非对称幂 ARCH 候选算法 |
+
+`planned` 算法只进入清单和研究审核，不会被执行；后续确认输入、参数、诊断指标和 `arch` 依赖后，再补具体 adapter。
+
 示例：
 
 ```bash
 curl -sS http://127.0.0.1:18010/health
+```
+
+```bash
+curl -sS http://127.0.0.1:18010/api/v1/algorithms
 ```
 
 ```bash

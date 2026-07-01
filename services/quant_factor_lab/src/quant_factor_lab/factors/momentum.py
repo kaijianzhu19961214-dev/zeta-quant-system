@@ -3,7 +3,7 @@ from collections.abc import Sequence
 from datetime import date
 from decimal import Decimal
 
-from quant_contracts import FactorDailyValue, MarketBar
+from quant_contracts import AssetClass, FactorDailyValue, FactorFamily, FactorMode, MarketBar
 
 
 def calculate_momentum_factor(
@@ -16,6 +16,9 @@ def calculate_momentum_factor(
     data_version: str | None,
     factor_version: str,
     run_id: str | None,
+    asset_class: AssetClass = AssetClass.EQUITY,
+    factor_mode: FactorMode = FactorMode.CROSS_SECTIONAL,
+    factor_family: FactorFamily = FactorFamily.PRICE_VOLUME,
 ) -> list[FactorDailyValue]:
     if lookback_window < 1:
         raise ValueError("lookback_window must be greater than 0")
@@ -43,6 +46,9 @@ def calculate_momentum_factor(
                     trade_date=current_trade_date,
                     factor_name=factor_name,
                     factor_value=factor_value,
+                    asset_class=asset_class,
+                    factor_mode=factor_mode,
+                    factor_family=factor_family,
                     universe_name=universe_name,
                     data_source=data_source,
                     data_version=data_version,
