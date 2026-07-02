@@ -241,6 +241,8 @@ AlgorithmParameterSpec
 AlgorithmReviewGate
 AlgorithmReviewGateEvidenceSubmission
 AlgorithmReviewGateEvidenceRecord
+AlgorithmGatePromotionFinding
+AlgorithmPromotionReadinessResponse
 FactorAlgorithmAdapter
 FactorAlgorithmRegistry
 ```
@@ -267,7 +269,19 @@ operations：样例数据、单测、产物字段、失败边界和监控字段
 
 确认后再把 `planned` 算法升级为 `available` adapter，并进入统一 `quant_factor_validation` 评分和审核流程。
 
-当前 `quant_factor_lab` 已提供 evidence preview、submit、list 和 review 入口：研究员可以按 `algorithm_id + gate_id + evidence_type + evidence_source + summary` 提交证据，服务会校验算法和 gate 是否存在，并返回标准 `AlgorithmReviewGateEvidenceRecord`。101 真实因子流转 smoke 已能把 `quant_factor_validation` 生成的 validation artifact 自动映射为 `technical.momentum / validation_evidence` gate evidence，并默认写入本地 PostgreSQL `algorithm_review_gate_evidence` 表。review decision 只把 evidence record 标记为 `accepted` 或 `rejected`，不直接修改 gate 状态；gate promotion 仍由后续规则评估。
+当前 `quant_factor_lab` 已提供 evidence preview、submit、list、review 和 promotion readiness 入口：研究员可以按 `algorithm_id + gate_id + evidence_type + evidence_source + summary` 提交证据，服务会校验算法和 gate 是否存在，并返回标准 `AlgorithmReviewGateEvidenceRecord`。101 真实因子流转 smoke 已能把 `quant_factor_validation` 生成的 validation artifact 自动映射为 `technical.momentum / validation_evidence` gate evidence，并默认写入本地 PostgreSQL `algorithm_review_gate_evidence` 表。review decision 只把 evidence record 标记为 `accepted` 或 `rejected`，不直接修改 gate 状态；promotion readiness 会只读合并 registry gate 状态和已审核证据，输出 `promotable` / `blocked`、required gate 完成数、缺失 gate 和 rejected gate 清单。
+
+当前晋级评估规则：
+
+```text
+required gate 已在 registry 标记 satisfied -> 视为已满足
+required gate 仍为 missing，但存在 accepted evidence -> 视为证据补齐
+required gate 最新证据 rejected 且没有 accepted evidence -> 阻塞
+required gate 没有 accepted evidence -> 阻塞
+not_applicable 或非 required gate -> 不阻塞晋级
+```
+
+该评估只作为“是否具备进入下一阶段”的只读报告，不会自动把 `planned` 算法升级为 `available`，最终升级仍需要研究负责人或工程负责人显式确认。
 
 ---
 

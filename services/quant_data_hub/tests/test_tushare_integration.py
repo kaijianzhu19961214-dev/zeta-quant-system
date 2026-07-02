@@ -4,7 +4,10 @@ from typing import Any
 
 from quant_data_hub.integrations.tushare import (
     TushareDailyBarsRequest,
+    TushareHttpProxyError,
+    TushareTableFrame,
     TushareMarketDataClient,
+    build_records_from_tushare_http_payload,
     resolve_price_factor,
 )
 
@@ -172,6 +175,38 @@ class TushareIntegrationTest(unittest.TestCase):
         )
 
         self.assertEqual(factor, Decimal("1"))
+
+    def test_should_build_records_from_tushare_http_payload(self) -> None:
+        records = build_records_from_tushare_http_payload(
+            payload={
+                "code": 0,
+                "msg": "",
+                "data": {
+                    "fields": ["ts_code", "trade_date", "close"],
+                    "items": [["000001.SZ", "20240614", 10.18]],
+                },
+            }
+        )
+
+        self.assertEqual(
+            records,
+            [{"ts_code": "000001.SZ", "trade_date": "20240614", "close": 10.18}],
+        )
+
+    def test_should_raise_proxy_error_when_tushare_http_payload_has_error_code(self) -> None:
+        with self.assertRaises(TushareHttpProxyError):
+            build_records_from_tushare_http_payload(
+                payload={
+                    "code": -2001,
+                    "msg": "接口没权限",
+                }
+            )
+
+    def test_should_expose_proxy_rows_as_dataframe_records(self) -> None:
+        frame = TushareTableFrame(rows=[{"ts_code": "000001.SZ"}])
+
+        self.assertFalse(frame.empty)
+        self.assertEqual(frame.to_dict("records"), [{"ts_code": "000001.SZ"}])
 
 
 if __name__ == "__main__":

@@ -162,6 +162,56 @@ class FactorLabClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.record.evidence_status, "accepted")
         self.assertEqual(response.record.reviewed_by, "researcher_lead")
 
+    async def test_should_parse_algorithm_promotion_readiness(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(
+                str(request.url),
+                "http://quant-factor-lab/api/v1/algorithms/technical.momentum/promotion/readiness?limit=200",
+            )
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "algorithm_id": "technical.momentum",
+                    "current_status": "available",
+                    "decision": "promotable",
+                    "can_promote": True,
+                    "required_gate_count": 6,
+                    "met_required_gate_count": 6,
+                    "missing_required_gate_ids": [],
+                    "rejected_required_gate_ids": [],
+                    "findings": [
+                        {
+                            "gate_id": "validation_evidence",
+                            "gate_title": "Validation evidence",
+                            "gate_status": "satisfied",
+                            "decision": "met_by_registry",
+                            "is_required": True,
+                            "is_met": True,
+                            "accepted_evidence_count": 1,
+                            "latest_evidence_status": "accepted",
+                            "message": "Registry review gate is already marked satisfied.",
+                        }
+                    ],
+                    "generated_at": "2026-07-02T10:30:00+00:00",
+                    "limitations": [
+                        "Promotion readiness is a read-only evaluation; it does not mutate AlgorithmSpec.status.",
+                    ],
+                },
+            )
+
+        client = FactorLabClient(
+            base_url="http://quant-factor-lab",
+            timeout_seconds=5,
+            transport=httpx.MockTransport(handler),
+        )
+
+        response = await client.get_algorithm_promotion_readiness(algorithm_id="technical.momentum")
+
+        self.assertEqual(response.algorithm_id, "technical.momentum")
+        self.assertEqual(response.decision, "promotable")
+        self.assertTrue(response.can_promote)
+        self.assertEqual(response.findings[0].decision, "met_by_registry")
+
 
 if __name__ == "__main__":
     unittest.main()

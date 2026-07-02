@@ -125,6 +125,21 @@ class FactorCalculationRouteTest(unittest.TestCase):
         self.assertIn("technical.momentum", algorithm_ids)
         self.assertIn("volatility.egarch", algorithm_ids)
 
+    def test_should_return_algorithm_promotion_readiness_when_called(self) -> None:
+        response = self.client.get("/api/v1/algorithms/technical.momentum/promotion/readiness")
+        payload = response.json()
+
+        finding_ids = [item["gate_id"] for item in payload["findings"]]
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["algorithm_id"], "technical.momentum")
+        self.assertEqual(payload["decision"], "promotable")
+        self.assertTrue(payload["can_promote"])
+        self.assertEqual(payload["required_gate_count"], 6)
+        self.assertEqual(payload["met_required_gate_count"], 6)
+        self.assertEqual(payload["missing_required_gate_ids"], [])
+        self.assertIn("validation_evidence", finding_ids)
+
     def test_should_preview_algorithm_review_gate_evidence_when_payload_is_valid(self) -> None:
         response = self.client.post(
             "/api/v1/algorithms/review-gates/evidence/preview",

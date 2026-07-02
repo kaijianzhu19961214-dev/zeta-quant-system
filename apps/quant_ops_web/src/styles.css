@@ -676,10 +676,19 @@ h4 {
   font-size: 12px;
 }
 
+.algorithm-readiness .status-pill {
+  color: #ffffff;
+}
+
 .algorithm-readiness strong {
   color: #18231d;
   font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
   font-size: 18px;
+}
+
+.promotion-readiness {
+  border-color: #bfd0dd;
+  background: #fbfdff;
 }
 
 .review-gate-list {

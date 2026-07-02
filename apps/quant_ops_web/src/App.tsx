@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  fetchAlgorithmPromotionReadiness,
   fetchAlgorithmReviewGateEvidence,
   fetchArtifactLedger,
   fetchExternalPayloadComparisonPreview,
@@ -9,6 +10,7 @@ import {
   fetchOverview,
 } from "./api";
 import type {
+  AlgorithmPromotionReadinessResponse,
   AlgorithmReviewGate,
   AlgorithmReviewGateEvidenceListResponse,
   AlgorithmReviewGateEvidenceRecord,
@@ -70,6 +72,11 @@ const ALGORITHM_REVIEW_EVIDENCE_STATUS_LABELS: Record<string, string> = {
   submitted: bilingualLabel("待审核", "Submitted"),
   accepted: bilingualLabel("已接受", "Accepted"),
   rejected: bilingualLabel("已驳回", "Rejected"),
+};
+
+const ALGORITHM_PROMOTION_DECISION_LABELS: Record<string, string> = {
+  promotable: bilingualLabel("可晋级", "Promotable"),
+  blocked: bilingualLabel("被阻塞", "Blocked"),
 };
 
 const ALGORITHM_REVIEW_GATE_TITLE_LABELS: Record<string, string> = {
@@ -141,6 +148,8 @@ export function App() {
   const [factorAlgorithms, setFactorAlgorithms] = useState<AlgorithmSpec[] | null>(null);
   const [algorithmEvidenceById, setAlgorithmEvidenceById] =
     useState<Record<string, AlgorithmReviewGateEvidenceListResponse>>({});
+  const [algorithmPromotionReadinessById, setAlgorithmPromotionReadinessById] =
+    useState<Record<string, AlgorithmPromotionReadinessResponse>>({});
   const [factorAlgorithmLoadState, setFactorAlgorithmLoadState] = useState<LoadState>("idle");
   const [factorAlgorithmErrorMessage, setFactorAlgorithmErrorMessage] = useState<string | null>(null);
   const [artifactLedger, setArtifactLedger] = useState<ArtifactLedgerResponse | null>(null);
@@ -224,13 +233,26 @@ export function App() {
           return [algorithm.algorithm_id, evidence] as const;
         }),
       );
+      const readinessResults = await Promise.allSettled(
+        response.map(async (algorithm) => {
+          const readiness = await fetchAlgorithmPromotionReadiness(algorithm.algorithm_id);
+          return [algorithm.algorithm_id, readiness] as const;
+        }),
+      );
       const nextEvidenceById: Record<string, AlgorithmReviewGateEvidenceListResponse> = {};
       evidenceResults.forEach((result) => {
         if (result.status !== "fulfilled") return;
         const [algorithmId, evidence] = result.value;
         nextEvidenceById[algorithmId] = evidence;
       });
+      const nextPromotionReadinessById: Record<string, AlgorithmPromotionReadinessResponse> = {};
+      readinessResults.forEach((result) => {
+        if (result.status !== "fulfilled") return;
+        const [algorithmId, readiness] = result.value;
+        nextPromotionReadinessById[algorithmId] = readiness;
+      });
       setAlgorithmEvidenceById(nextEvidenceById);
+      setAlgorithmPromotionReadinessById(nextPromotionReadinessById);
       setFactorAlgorithmLoadState("ready");
     } catch (error) {
       setFactorAlgorithmErrorMessage(
@@ -374,6 +396,7 @@ export function App() {
               evidenceByAlgorithmId={algorithmEvidenceById}
               errorMessage={factorAlgorithmErrorMessage}
               loadState={factorAlgorithmLoadState}
+              promotionReadinessByAlgorithmId={algorithmPromotionReadinessById}
             />
           </section>
         ) : (
@@ -470,11 +493,13 @@ function ServiceTable({ services }: { services: ServiceHealth[] }) {
 function FactorLabAlgorithmsPanel({
   algorithms,
   evidenceByAlgorithmId,
+  promotionReadinessByAlgorithmId,
   loadState,
   errorMessage,
 }: {
   algorithms: AlgorithmSpec[] | null;
   evidenceByAlgorithmId: Record<string, AlgorithmReviewGateEvidenceListResponse>;
+  promotionReadinessByAlgorithmId: Record<string, AlgorithmPromotionReadinessResponse>;
   loadState: LoadState;
   errorMessage: string | null;
 }) {
@@ -536,6 +561,7 @@ function FactorLabAlgorithmsPanel({
               algorithm={algorithm}
               evidence={evidenceByAlgorithmId[algorithm.algorithm_id] ?? null}
               key={algorithm.algorithm_id}
+              promotionReadiness={promotionReadinessByAlgorithmId[algorithm.algorithm_id] ?? null}
             />
           ))}
         </div>
@@ -547,9 +573,11 @@ function FactorLabAlgorithmsPanel({
 function AlgorithmCard({
   algorithm,
   evidence,
+  promotionReadiness,
 }: {
   algorithm: AlgorithmSpec;
   evidence: AlgorithmReviewGateEvidenceListResponse | null;
+  promotionReadiness: AlgorithmPromotionReadinessResponse | null;
 }) {
   const parameters = algorithm.parameters.map((parameter) => (
     <span key={parameter.name}>
@@ -604,6 +632,21 @@ function AlgorithmCard({
               algorithmStatus: algorithm.status,
               missingRequiredReviewGateCount,
             })}
+          </span>
+        </div>
+      ) : null}
+
+      {promotionReadiness !== null ? (
+        <div className="algorithm-readiness promotion-readiness">
+          <div>
+            <span>{bilingualLabel("晋级评估", "Promotion Readiness")}</span>
+            <strong>
+              {promotionReadiness.met_required_gate_count}/{promotionReadiness.required_gate_count}
+            </strong>
+            <span>{resolvePromotionReadinessSummary(promotionReadiness)}</span>
+          </div>
+          <span className={`status-pill ${resolvePromotionDecisionPillClass(promotionReadiness.decision)}`}>
+            {ALGORITHM_PROMOTION_DECISION_LABELS[promotionReadiness.decision] ?? promotionReadiness.decision}
           </span>
         </div>
       ) : null}
@@ -1253,6 +1296,25 @@ function resolveAlgorithmReadinessLabel({
   }
   if (algorithmStatus === "planned") return bilingualLabel("可升级", "Ready to Promote");
   return bilingualLabel("已满足", "Ready");
+}
+
+function resolvePromotionDecisionPillClass(decision: string): string {
+  if (decision === "promotable") return "pill-ok";
+  return "pill-degraded";
+}
+
+function resolvePromotionReadinessSummary(readiness: AlgorithmPromotionReadinessResponse): string {
+  if (readiness.can_promote) return bilingualLabel("所有必需门槛已满足", "All required gates met");
+  if (readiness.rejected_required_gate_ids.length > 0) {
+    return bilingualLabel(
+      `驳回 ${readiness.rejected_required_gate_ids.length} 项`,
+      `${readiness.rejected_required_gate_ids.length} rejected`,
+    );
+  }
+  return bilingualLabel(
+    `待补 ${readiness.missing_required_gate_ids.length} 项`,
+    `${readiness.missing_required_gate_ids.length} missing`,
+  );
 }
 
 function resolveReviewGateClass(status: string): string {

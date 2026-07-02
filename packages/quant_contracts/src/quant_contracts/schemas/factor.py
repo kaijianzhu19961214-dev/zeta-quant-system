@@ -50,6 +50,14 @@ AlgorithmReviewEvidenceType = Literal[
 AlgorithmReviewEvidenceStatus = Literal["submitted", "accepted", "rejected"]
 AlgorithmReviewEvidenceDecision = Literal["accepted", "rejected"]
 AlgorithmReviewEvidencePersistenceStatus = Literal["not_persisted", "persisted"]
+AlgorithmGatePromotionDecision = Literal[
+    "met_by_registry",
+    "met_by_accepted_evidence",
+    "blocked_missing_evidence",
+    "blocked_rejected_evidence",
+    "not_applicable",
+]
+AlgorithmPromotionDecision = Literal["promotable", "blocked"]
 
 
 class AlgorithmParameterSpec(ContractModel):
@@ -240,6 +248,67 @@ class AlgorithmReviewGateEvidenceListResponse(ContractModel):
         if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
             return normalized_value
         raise ValueError("gate_id must use lowercase letters, numbers, and underscores")
+
+    @field_validator("limitations")
+    @classmethod
+    def normalize_limitations(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
+
+
+class AlgorithmGatePromotionFinding(ContractModel):
+    gate_id: str = Field(min_length=1, max_length=64)
+    gate_title: str = Field(min_length=1, max_length=128)
+    gate_status: AlgorithmReviewGateStatus
+    decision: AlgorithmGatePromotionDecision
+    is_required: bool = True
+    is_met: bool = False
+    accepted_evidence_count: int = Field(default=0, ge=0)
+    latest_evidence_status: AlgorithmReviewEvidenceStatus | None = None
+    message: str = Field(min_length=1, max_length=512)
+
+    @field_validator("gate_id")
+    @classmethod
+    def validate_gate_id(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
+            return normalized_value
+        raise ValueError("gate_id must use lowercase letters, numbers, and underscores")
+
+    @field_validator("gate_title", "message")
+    @classmethod
+    def normalize_text(cls, value: str) -> str:
+        normalized_value = value.strip()
+        if normalized_value:
+            return normalized_value
+        raise ValueError("value must not be blank")
+
+
+class AlgorithmPromotionReadinessResponse(ContractModel):
+    algorithm_id: str = Field(min_length=1, max_length=128)
+    current_status: AlgorithmStatus
+    decision: AlgorithmPromotionDecision
+    can_promote: bool
+    required_gate_count: int = Field(default=0, ge=0)
+    met_required_gate_count: int = Field(default=0, ge=0)
+    missing_required_gate_ids: list[str] = Field(default_factory=list)
+    rejected_required_gate_ids: list[str] = Field(default_factory=list)
+    findings: list[AlgorithmGatePromotionFinding] = Field(default_factory=list)
+    generated_at: datetime
+    limitations: list[str] = Field(default_factory=list)
+
+    @field_validator("algorithm_id")
+    @classmethod
+    def validate_algorithm_id(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        comparable_value = normalized_value.replace(".", "_").replace("-", "_")
+        if comparable_value.replace("_", "").isalnum() and comparable_value[0].isalpha():
+            return normalized_value
+        raise ValueError("algorithm_id must use lowercase letters, numbers, underscores, dashes, and dots")
+
+    @field_validator("missing_required_gate_ids", "rejected_required_gate_ids")
+    @classmethod
+    def normalize_gate_ids(cls, value: list[str]) -> list[str]:
+        return [item.strip().lower() for item in value if item.strip()]
 
     @field_validator("limitations")
     @classmethod

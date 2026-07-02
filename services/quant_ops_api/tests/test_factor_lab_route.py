@@ -3,6 +3,8 @@ import unittest
 from fastapi.testclient import TestClient
 from quant_contracts import (
     AlgorithmCapability,
+    AlgorithmGatePromotionFinding,
+    AlgorithmPromotionReadinessResponse,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceRecord,
     AlgorithmReviewGateEvidenceReviewRequest,
@@ -93,6 +95,40 @@ class FakeFactorLabClient:
             persistence_status="persisted",
         )
 
+    async def get_algorithm_promotion_readiness(
+        self,
+        *,
+        algorithm_id: str,
+        limit: int = 200,
+    ) -> AlgorithmPromotionReadinessResponse:
+        return AlgorithmPromotionReadinessResponse(
+            algorithm_id=algorithm_id,
+            current_status="available",
+            decision="promotable",
+            can_promote=True,
+            required_gate_count=6,
+            met_required_gate_count=6,
+            missing_required_gate_ids=[],
+            rejected_required_gate_ids=[],
+            findings=[
+                AlgorithmGatePromotionFinding(
+                    gate_id="validation_evidence",
+                    gate_title="Validation evidence",
+                    gate_status="satisfied",
+                    decision="met_by_registry",
+                    is_required=True,
+                    is_met=True,
+                    accepted_evidence_count=1,
+                    latest_evidence_status="accepted",
+                    message="Registry review gate is already marked satisfied.",
+                )
+            ],
+            generated_at="2026-07-02T10:30:00+00:00",
+            limitations=[
+                "Promotion readiness is a read-only evaluation; it does not mutate AlgorithmSpec.status.",
+            ],
+        )
+
 
 class FactorLabRouteTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -139,6 +175,17 @@ class FactorLabRouteTest(unittest.TestCase):
         self.assertEqual(payload["persistence_status"], "persisted")
         self.assertEqual(payload["record"]["evidence_status"], "accepted")
         self.assertEqual(payload["record"]["reviewed_by"], "researcher_lead")
+
+    def test_should_return_algorithm_promotion_readiness_when_called(self) -> None:
+        response = self.client.get("/api/v1/factor-lab/algorithms/technical.momentum/promotion/readiness")
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["algorithm_id"], "technical.momentum")
+        self.assertEqual(payload["decision"], "promotable")
+        self.assertTrue(payload["can_promote"])
+        self.assertEqual(payload["required_gate_count"], 6)
+        self.assertEqual(payload["findings"][0]["decision"], "met_by_registry")
 
 
 if __name__ == "__main__":

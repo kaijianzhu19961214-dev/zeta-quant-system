@@ -2,6 +2,8 @@ from quant_contracts.schemas.adjustment import QfqBatch
 from quant_contracts.schemas.factor import (
     AlgorithmCapability,
     AlgorithmParameterSpec,
+    AlgorithmGatePromotionFinding,
+    AlgorithmPromotionReadinessResponse,
     AlgorithmReviewGate,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceRecord,
@@ -38,6 +40,8 @@ from quant_contracts.schemas.market_query import (
 __all__ = [
     "AlgorithmCapability",
     "AlgorithmParameterSpec",
+    "AlgorithmGatePromotionFinding",
+    "AlgorithmPromotionReadinessResponse",
     "AlgorithmReviewGate",
     "AlgorithmReviewGateEvidenceListResponse",
     "AlgorithmReviewGateEvidenceRecord",

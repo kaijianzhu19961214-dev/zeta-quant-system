@@ -96,6 +96,7 @@ make smoke-tushare-factor-sample
 用途：
 
 - 使用本机环境变量 `TUSHARE_TOKEN` 通过 Tushare SDK 读取一小段真实 A 股日线和 `adj_factor`。
+- 如果使用兼容 Tushare HTTP 协议的代理 Key，需要同时设置 `TUSHARE_PROXY_BASE_URL`，例如 `https://tt.xiaodefa.cn` 或访问更快的同类域名。
 - 将 Tushare 字段转换为 `quant_contracts.MarketBar`，再复用 `quant_factor_lab` 的 momentum 纯函数和 `quant_factor_validation` 的 IC / Rank IC 指标函数。
 - 默认不落盘、不写 PostgreSQL / ClickHouse / MinIO、不打印明细行情和 token。
 
@@ -103,6 +104,7 @@ make smoke-tushare-factor-sample
 
 ```bash
 export TUSHARE_TOKEN="<your_local_token>"
+export TUSHARE_PROXY_BASE_URL="https://tt.xiaodefa.cn"  # 使用代理 Key 时配置；官方 Tushare token 可不配
 export TUSHARE_SMOKE_SYMBOLS="000001.SZ,000651.SZ,000333.SZ,600000.SH,600519.SH"
 export TUSHARE_SMOKE_START_DATE="20260601"
 export TUSHARE_SMOKE_END_DATE="20260610"
@@ -112,6 +114,7 @@ export TUSHARE_SMOKE_PRICE_MODE="qfq"
 说明：
 
 - `TUSHARE_TOKEN` 只能放在本机 shell、`.env` 或部署平台密钥管理中，不能提交到 Git。
+- 官方 Tushare token 默认走 `tushare.pro_api(token)`；代理 Key 必须走 `TUSHARE_PROXY_BASE_URL`，否则官方 SDK 会返回 token 不正确。
 - qfq 模式必须同时读取 `adj_factor`；缺少复权因子时 smoke 会失败，避免用 raw price 冒充前复权数据。
 - 该 smoke 只是本地集成验证入口，生产级 Tushare 入库仍应落在 `quant_data_hub` ingestion adapter，而不是让 `quant_factor_lab` 直接依赖 Tushare SDK。
 

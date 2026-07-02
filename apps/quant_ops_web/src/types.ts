@@ -44,6 +44,13 @@ export type AlgorithmReviewGateCategory =
   | "operations";
 export type AlgorithmReviewGateStatus = "satisfied" | "missing" | "not_applicable";
 export type AlgorithmReviewEvidenceStatus = "submitted" | "accepted" | "rejected";
+export type AlgorithmGatePromotionDecision =
+  | "met_by_registry"
+  | "met_by_accepted_evidence"
+  | "blocked_missing_evidence"
+  | "blocked_rejected_evidence"
+  | "not_applicable";
+export type AlgorithmPromotionDecision = "promotable" | "blocked";
 export type AlgorithmReviewEvidenceType =
   | "research_note"
   | "notebook"
@@ -108,6 +115,32 @@ export interface AlgorithmReviewGateEvidenceListResponse {
   records: AlgorithmReviewGateEvidenceRecord[];
   total_count: number;
   persistence_status: PersistenceStatus;
+  limitations: string[];
+}
+
+export interface AlgorithmGatePromotionFinding {
+  gate_id: string;
+  gate_title: string;
+  gate_status: AlgorithmReviewGateStatus;
+  decision: AlgorithmGatePromotionDecision;
+  is_required: boolean;
+  is_met: boolean;
+  accepted_evidence_count: number;
+  latest_evidence_status: AlgorithmReviewEvidenceStatus | null;
+  message: string;
+}
+
+export interface AlgorithmPromotionReadinessResponse {
+  algorithm_id: string;
+  current_status: AlgorithmStatus;
+  decision: AlgorithmPromotionDecision;
+  can_promote: boolean;
+  required_gate_count: number;
+  met_required_gate_count: number;
+  missing_required_gate_ids: string[];
+  rejected_required_gate_ids: string[];
+  findings: AlgorithmGatePromotionFinding[];
+  generated_at: string;
   limitations: string[];
 }
 

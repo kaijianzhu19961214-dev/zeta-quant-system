@@ -2,6 +2,7 @@ from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from quant_contracts import (
+    AlgorithmPromotionReadinessResponse,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceReviewRequest,
     AlgorithmReviewGateEvidenceResponse,
@@ -61,6 +62,26 @@ async def review_factor_lab_algorithm_review_gate_evidence(
         return await factor_lab_client.review_algorithm_review_gate_evidence(
             evidence_id=evidence_id,
             request=request,
+        )
+    except FactorLabClientError as error:
+        if error.status_code == status.HTTP_504_GATEWAY_TIMEOUT:
+            raise HTTPException(status_code=error.status_code, detail=error.message) from error
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error.message) from error
+
+
+@router.get(
+    "/algorithms/{algorithm_id}/promotion/readiness",
+    response_model=AlgorithmPromotionReadinessResponse,
+)
+async def read_factor_lab_algorithm_promotion_readiness(
+    algorithm_id: str,
+    factor_lab_client: Annotated[FactorLabClient, Depends(get_factor_lab_client)],
+    limit: int = Query(default=200, ge=1, le=500),
+) -> AlgorithmPromotionReadinessResponse:
+    try:
+        return await factor_lab_client.get_algorithm_promotion_readiness(
+            algorithm_id=algorithm_id,
+            limit=limit,
         )
     except FactorLabClientError as error:
         if error.status_code == status.HTTP_504_GATEWAY_TIMEOUT:

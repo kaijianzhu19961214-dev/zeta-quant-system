@@ -2,7 +2,10 @@ from __future__ import annotations
 
 from datetime import date, datetime
 from decimal import Decimal, InvalidOperation
+import gzip
+import json
 from typing import Any, Literal, Protocol
+import urllib.request
 
 from pydantic import BaseModel, Field, field_validator, model_validator
 from quant_contracts import MarketBar
@@ -13,6 +16,10 @@ TusharePriceMode = Literal["raw", "qfq"]
 
 class TushareSdkUnavailableError(RuntimeError):
     """Raised when the optional Tushare SDK is not installed."""
+
+
+class TushareHttpProxyError(RuntimeError):
+    """Raised when a Tushare-compatible HTTP proxy returns an error."""
 
 
 class TushareProClient(Protocol):
@@ -68,6 +75,8 @@ class TushareMarketDataClient:
         *,
         token: str | None = None,
         pro_client: TushareProClient | None = None,
+        proxy_base_url: str | None = None,
+        timeout_seconds: float = 30,
     ) -> None:
         if pro_client is not None:
             self.pro_client = pro_client
@@ -75,6 +84,14 @@ class TushareMarketDataClient:
 
         if not token:
             raise ValueError("token is required when pro_client is not provided")
+
+        if proxy_base_url:
+            self.pro_client = TushareHttpProxyClient(
+                token=token,
+                base_url=proxy_base_url,
+                timeout_seconds=timeout_seconds,
+            )
+            return
 
         self.pro_client = build_tushare_pro_client(token=token)
 
@@ -151,6 +168,119 @@ def build_tushare_pro_client(*, token: str) -> TushareProClient:
         ) from error
 
     return ts.pro_api(token)
+
+
+class TushareTableFrame:
+    def __init__(self, *, rows: list[dict[str, Any]]) -> None:
+        self.rows = rows
+        self.empty = len(rows) == 0
+
+    def to_dict(self, orient: str) -> list[dict[str, Any]]:
+        if orient != "records":
+            raise ValueError("TushareTableFrame only supports records orient")
+        return self.rows
+
+
+class TushareHttpProxyClient:
+    def __init__(
+        self,
+        *,
+        token: str,
+        base_url: str,
+        timeout_seconds: float = 30,
+    ) -> None:
+        self.token = token
+        self.base_url = base_url.rstrip("/") + "/"
+        self.timeout_seconds = timeout_seconds
+
+    def daily(self, *, ts_code: str, start_date: str, end_date: str) -> TushareTableFrame:
+        return self.query(
+            api_name="daily",
+            params={
+                "ts_code": ts_code,
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+            fields="ts_code,trade_date,open,high,low,close,pre_close,change,pct_chg,vol,amount",
+        )
+
+    def adj_factor(self, *, ts_code: str, start_date: str, end_date: str) -> TushareTableFrame:
+        return self.query(
+            api_name="adj_factor",
+            params={
+                "ts_code": ts_code,
+                "start_date": start_date,
+                "end_date": end_date,
+            },
+            fields="ts_code,trade_date,adj_factor",
+        )
+
+    def query(
+        self,
+        *,
+        api_name: str,
+        params: dict[str, Any],
+        fields: str,
+    ) -> TushareTableFrame:
+        payload = {
+            "api_name": api_name,
+            "token": self.token,
+            "params": params,
+            "fields": fields,
+        }
+        response_payload = post_tushare_proxy_json(
+            base_url=self.base_url,
+            payload=payload,
+            timeout_seconds=self.timeout_seconds,
+        )
+        rows = build_records_from_tushare_http_payload(payload=response_payload)
+        return TushareTableFrame(rows=rows)
+
+
+def post_tushare_proxy_json(
+    *,
+    base_url: str,
+    payload: dict[str, Any],
+    timeout_seconds: float,
+) -> dict[str, Any]:
+    request = urllib.request.Request(
+        base_url,
+        data=json.dumps(payload).encode("utf-8"),
+        headers={
+            "content-type": "application/json",
+            "accept-encoding": "gzip",
+        },
+        method="POST",
+    )
+    with urllib.request.urlopen(request, timeout=timeout_seconds) as response:
+        raw_body = response.read()
+        if response.headers.get("Content-Encoding") == "gzip":
+            raw_body = gzip.decompress(raw_body)
+        response_payload = json.loads(raw_body.decode("utf-8"))
+        if isinstance(response_payload, dict):
+            return response_payload
+    raise TushareHttpProxyError("Tushare HTTP proxy returned a non-object JSON response")
+
+
+def build_records_from_tushare_http_payload(*, payload: dict[str, Any]) -> list[dict[str, Any]]:
+    code = payload.get("code")
+    if code not in (0, "0", None):
+        raise TushareHttpProxyError(str(payload.get("msg") or f"Tushare HTTP proxy error: {code}"))
+
+    data = payload.get("data")
+    if not isinstance(data, dict):
+        return []
+
+    fields = data.get("fields")
+    items = data.get("items")
+    if not isinstance(fields, list) or not isinstance(items, list):
+        return []
+
+    return [
+        dict(zip([str(field) for field in fields], item))
+        for item in items
+        if isinstance(item, list)
+    ]
 
 
 def dataframe_records(dataframe: Any) -> list[dict[str, Any]]:

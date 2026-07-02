@@ -3,6 +3,8 @@ import hashlib
 from typing import Protocol
 
 from quant_contracts import (
+    AlgorithmGatePromotionFinding,
+    AlgorithmPromotionReadinessResponse,
     AlgorithmReviewGate,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceRecord,
@@ -187,6 +189,68 @@ class AlgorithmReviewService:
             ],
         )
 
+    async def evaluate_promotion_readiness(
+        self,
+        *,
+        algorithm_id: str,
+        limit: int = 200,
+        generated_at: datetime | None = None,
+    ) -> AlgorithmPromotionReadinessResponse:
+        algorithm_spec = self._get_algorithm_spec(algorithm_id=algorithm_id)
+        records: list[AlgorithmReviewGateEvidenceRecord] = []
+        limitations: list[str] = [
+            "Promotion readiness is a read-only evaluation; it does not mutate AlgorithmSpec.status.",
+        ]
+
+        if self.evidence_repository is None:
+            limitations.append("Algorithm review evidence repository is not configured.")
+        else:
+            try:
+                records = await self.evidence_repository.list_evidence(
+                    algorithm_id=algorithm_spec.algorithm_id,
+                    limit=limit,
+                )
+            except Exception as error:
+                raise AlgorithmReviewServiceError(
+                    status_code=502,
+                    message="failed to list algorithm review evidence for promotion readiness",
+                ) from error
+
+        findings = [
+            _build_gate_promotion_finding(
+                gate=gate,
+                records=[record for record in records if record.gate_id == gate.gate_id],
+            )
+            for gate in algorithm_spec.review_gates
+        ]
+        required_findings = [finding for finding in findings if finding.is_required]
+        unmet_required_findings = [finding for finding in required_findings if not finding.is_met]
+        rejected_required_gate_ids = [
+            finding.gate_id
+            for finding in unmet_required_findings
+            if finding.decision == "blocked_rejected_evidence"
+        ]
+        missing_required_gate_ids = [
+            finding.gate_id
+            for finding in unmet_required_findings
+            if finding.decision != "blocked_rejected_evidence"
+        ]
+        can_promote = len(unmet_required_findings) == 0
+
+        return AlgorithmPromotionReadinessResponse(
+            algorithm_id=algorithm_spec.algorithm_id,
+            current_status=algorithm_spec.status,
+            decision="promotable" if can_promote else "blocked",
+            can_promote=can_promote,
+            required_gate_count=len(required_findings),
+            met_required_gate_count=len(required_findings) - len(unmet_required_findings),
+            missing_required_gate_ids=missing_required_gate_ids,
+            rejected_required_gate_ids=rejected_required_gate_ids,
+            findings=findings,
+            generated_at=generated_at or datetime.now(tz=UTC),
+            limitations=limitations,
+        )
+
     def _build_evidence_record(
         self,
         *,
@@ -248,3 +312,87 @@ def _build_evidence_id(
     )
     digest = hashlib.sha256(raw_value.encode("utf-8")).hexdigest()[:16]
     return f"algorithm_gate_evidence_{digest}"
+
+
+def _build_gate_promotion_finding(
+    *,
+    gate: AlgorithmReviewGate,
+    records: list[AlgorithmReviewGateEvidenceRecord],
+) -> AlgorithmGatePromotionFinding:
+    accepted_evidence_count = sum(1 for record in records if record.evidence_status == "accepted")
+    latest_record = _select_latest_evidence_record(records=records)
+    latest_evidence_status = latest_record.evidence_status if latest_record is not None else None
+
+    if not gate.is_required or gate.status == "not_applicable":
+        return AlgorithmGatePromotionFinding(
+            gate_id=gate.gate_id,
+            gate_title=gate.title,
+            gate_status=gate.status,
+            decision="not_applicable",
+            is_required=gate.is_required,
+            is_met=True,
+            accepted_evidence_count=accepted_evidence_count,
+            latest_evidence_status=latest_evidence_status,
+            message="Gate is not required for promotion readiness.",
+        )
+
+    if gate.status == "satisfied":
+        return AlgorithmGatePromotionFinding(
+            gate_id=gate.gate_id,
+            gate_title=gate.title,
+            gate_status=gate.status,
+            decision="met_by_registry",
+            is_required=True,
+            is_met=True,
+            accepted_evidence_count=accepted_evidence_count,
+            latest_evidence_status=latest_evidence_status,
+            message="Registry review gate is already marked satisfied.",
+        )
+
+    if latest_evidence_status == "rejected" and accepted_evidence_count == 0:
+        return AlgorithmGatePromotionFinding(
+            gate_id=gate.gate_id,
+            gate_title=gate.title,
+            gate_status=gate.status,
+            decision="blocked_rejected_evidence",
+            is_required=True,
+            is_met=False,
+            accepted_evidence_count=accepted_evidence_count,
+            latest_evidence_status=latest_evidence_status,
+            message="Latest reviewed evidence was rejected and no accepted evidence is available.",
+        )
+
+    if accepted_evidence_count > 0:
+        return AlgorithmGatePromotionFinding(
+            gate_id=gate.gate_id,
+            gate_title=gate.title,
+            gate_status=gate.status,
+            decision="met_by_accepted_evidence",
+            is_required=True,
+            is_met=True,
+            accepted_evidence_count=accepted_evidence_count,
+            latest_evidence_status=latest_evidence_status,
+            message="Accepted evidence satisfies the missing required gate.",
+        )
+
+    return AlgorithmGatePromotionFinding(
+        gate_id=gate.gate_id,
+        gate_title=gate.title,
+        gate_status=gate.status,
+        decision="blocked_missing_evidence",
+        is_required=True,
+        is_met=False,
+        accepted_evidence_count=accepted_evidence_count,
+        latest_evidence_status=latest_evidence_status,
+        message="Required gate is missing accepted evidence.",
+    )
+
+
+def _select_latest_evidence_record(
+    *,
+    records: list[AlgorithmReviewGateEvidenceRecord],
+) -> AlgorithmReviewGateEvidenceRecord | None:
+    if not records:
+        return None
+
+    return max(records, key=lambda record: record.reviewed_at or record.submitted_at)

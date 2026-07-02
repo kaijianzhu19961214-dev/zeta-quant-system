@@ -236,6 +236,107 @@ class AlgorithmReviewServicePersistenceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(reviewed_response.record.reviewed_by, "researcher_lead")
         self.assertEqual(reviewed_response.record.review_comment, "Evidence accepted.")
 
+    async def test_should_mark_available_algorithm_promotable_when_required_gates_are_satisfied(self) -> None:
+        service = AlgorithmReviewService()
+
+        response = await service.evaluate_promotion_readiness(algorithm_id="technical.momentum")
+
+        self.assertTrue(response.can_promote)
+        self.assertEqual(response.decision, "promotable")
+        self.assertEqual(response.current_status, "available")
+        self.assertEqual(response.required_gate_count, 6)
+        self.assertEqual(response.met_required_gate_count, 6)
+        self.assertEqual(response.missing_required_gate_ids, [])
+        self.assertEqual(response.rejected_required_gate_ids, [])
+        self.assertTrue(all(finding.decision == "met_by_registry" for finding in response.findings))
+
+    async def test_should_block_planned_algorithm_when_required_evidence_is_missing(self) -> None:
+        repository = FakeEvidenceRepository()
+        service = AlgorithmReviewService(evidence_repository=repository)
+
+        response = await service.evaluate_promotion_readiness(algorithm_id="volatility.egarch")
+
+        data_policy_finding = next(
+            finding for finding in response.findings if finding.gate_id == "data_policy_fixed"
+        )
+
+        self.assertFalse(response.can_promote)
+        self.assertEqual(response.decision, "blocked")
+        self.assertEqual(response.current_status, "planned")
+        self.assertEqual(response.required_gate_count, 6)
+        self.assertEqual(response.met_required_gate_count, 1)
+        self.assertIn("data_policy_fixed", response.missing_required_gate_ids)
+        self.assertEqual(data_policy_finding.decision, "blocked_missing_evidence")
+
+    async def test_should_count_accepted_evidence_for_missing_gate_when_reviewed(self) -> None:
+        repository = FakeEvidenceRepository()
+        service = AlgorithmReviewService(evidence_repository=repository)
+        submission = AlgorithmReviewGateEvidenceSubmission(
+            algorithm_id="volatility.egarch",
+            gate_id="data_policy_fixed",
+            submitted_by="researcher_a",
+            evidence_type="research_note",
+            evidence_source="research_notes/egarch_data_policy.md",
+            summary="Return input, adjustment mode, and minimum history policy are fixed.",
+        )
+        submitted_response = await service.submit_evidence_record(submission=submission)
+        review_request = AlgorithmReviewGateEvidenceReviewRequest(
+            reviewed_by="researcher_lead",
+            evidence_status="accepted",
+            review_comment="Data policy evidence accepted.",
+        )
+        await service.review_evidence_record(
+            evidence_id=submitted_response.record.evidence_id,
+            request=review_request,
+        )
+
+        response = await service.evaluate_promotion_readiness(algorithm_id="volatility.egarch")
+        data_policy_finding = next(
+            finding for finding in response.findings if finding.gate_id == "data_policy_fixed"
+        )
+
+        self.assertFalse(response.can_promote)
+        self.assertEqual(response.decision, "blocked")
+        self.assertEqual(response.met_required_gate_count, 2)
+        self.assertNotIn("data_policy_fixed", response.missing_required_gate_ids)
+        self.assertIn("validation_evidence", response.missing_required_gate_ids)
+        self.assertEqual(data_policy_finding.decision, "met_by_accepted_evidence")
+        self.assertEqual(data_policy_finding.accepted_evidence_count, 1)
+        self.assertEqual(data_policy_finding.latest_evidence_status, "accepted")
+
+    async def test_should_report_rejected_required_gate_when_latest_evidence_is_rejected(self) -> None:
+        repository = FakeEvidenceRepository()
+        service = AlgorithmReviewService(evidence_repository=repository)
+        submission = AlgorithmReviewGateEvidenceSubmission(
+            algorithm_id="volatility.egarch",
+            gate_id="validation_evidence",
+            submitted_by="researcher_a",
+            evidence_type="validation_report",
+            evidence_source="factor_validation/egarch_20d/comparison_report.json",
+            summary="Rank IC and turnover evidence for EGARCH candidate.",
+        )
+        submitted_response = await service.submit_evidence_record(submission=submission)
+        review_request = AlgorithmReviewGateEvidenceReviewRequest(
+            reviewed_by="researcher_lead",
+            evidence_status="rejected",
+            review_comment="Validation window is too short.",
+        )
+        await service.review_evidence_record(
+            evidence_id=submitted_response.record.evidence_id,
+            request=review_request,
+        )
+
+        response = await service.evaluate_promotion_readiness(algorithm_id="volatility.egarch")
+        validation_finding = next(
+            finding for finding in response.findings if finding.gate_id == "validation_evidence"
+        )
+
+        self.assertFalse(response.can_promote)
+        self.assertIn("validation_evidence", response.rejected_required_gate_ids)
+        self.assertNotIn("validation_evidence", response.missing_required_gate_ids)
+        self.assertEqual(validation_finding.decision, "blocked_rejected_evidence")
+        self.assertEqual(validation_finding.latest_evidence_status, "rejected")
+
 
 if __name__ == "__main__":
     unittest.main()

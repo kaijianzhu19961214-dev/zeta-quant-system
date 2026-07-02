@@ -67,8 +67,9 @@ def run_smoke_test() -> list[str]:
     forward_days = int(os.environ.get("TUSHARE_SMOKE_FORWARD_DAYS", "1"))
     group_count = int(os.environ.get("TUSHARE_SMOKE_GROUP_COUNT", "5"))
     run_id = os.environ.get("TUSHARE_SMOKE_RUN_ID", DEFAULT_RUN_ID)
+    proxy_base_url = os.environ.get("TUSHARE_PROXY_BASE_URL")
 
-    client = TushareMarketDataClient(token=token)
+    client = TushareMarketDataClient(token=token, proxy_base_url=proxy_base_url)
     daily_response = client.fetch_daily_bars(
         request=TushareDailyBarsRequest(
             symbols=symbols,

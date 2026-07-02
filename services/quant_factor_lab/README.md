@@ -19,6 +19,10 @@
 GET  /health
 GET  /api/v1/algorithms
 POST /api/v1/algorithms/review-gates/evidence/preview
+POST /api/v1/algorithms/review-gates/evidence
+GET  /api/v1/algorithms/{algorithm_id}/review-gates/evidence
+POST /api/v1/algorithms/review-gates/evidence/{evidence_id}/review
+GET  /api/v1/algorithms/{algorithm_id}/promotion/readiness
 POST /api/v1/factors/calculate
 ```
 
@@ -50,7 +54,7 @@ FactorAlgorithmRegistry
 
 每个算法会携带 `review_gates`，用于展示从 `planned` 升级到 `available` 前需要满足的门槛。`available` 算法不能存在 required 且 `missing` 的 gate；`planned` 算法只进入清单和研究审核，不会被执行。后续确认输入、参数、诊断指标、验证证据和 `arch` 依赖后，再补具体 adapter。
 
-`POST /api/v1/algorithms/review-gates/evidence/preview` 用于校验研究员提交的 gate evidence，并返回标准 `AlgorithmReviewGateEvidenceRecord`；该接口不持久化。`POST /api/v1/algorithms/review-gates/evidence` 会写入 PostgreSQL `algorithm_review_gate_evidence` 表。`POST /api/v1/algorithms/review-gates/evidence/{evidence_id}/review` 用于将证据显式标记为 `accepted` 或 `rejected`，但不会自动修改 gate 状态。
+`POST /api/v1/algorithms/review-gates/evidence/preview` 用于校验研究员提交的 gate evidence，并返回标准 `AlgorithmReviewGateEvidenceRecord`；该接口不持久化。`POST /api/v1/algorithms/review-gates/evidence` 会写入 PostgreSQL `algorithm_review_gate_evidence` 表。`POST /api/v1/algorithms/review-gates/evidence/{evidence_id}/review` 用于将证据显式标记为 `accepted` 或 `rejected`，但不会自动修改 gate 状态。`GET /api/v1/algorithms/{algorithm_id}/promotion/readiness` 会只读合并 registry gate 状态和已审核证据，返回 `promotable` / `blocked`、required gate 完成数和阻塞原因。
 
 示例：
 
@@ -102,6 +106,10 @@ curl -sS http://127.0.0.1:18010/api/v1/algorithms/review-gates/evidence/algorith
     "evidence_status": "accepted",
     "review_comment": "Validation evidence accepted for smoke verification."
   }'
+```
+
+```bash
+curl -sS http://127.0.0.1:18010/api/v1/algorithms/technical.momentum/promotion/readiness
 ```
 
 ```bash

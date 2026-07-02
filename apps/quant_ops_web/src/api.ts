@@ -1,4 +1,5 @@
 import type {
+  AlgorithmPromotionReadinessResponse,
   AlgorithmReviewGateEvidenceListResponse,
   AlgorithmSpec,
   ArtifactLedgerResponse,
@@ -84,6 +85,25 @@ export async function fetchAlgorithmReviewGateEvidence(
   }
 
   return (await response.json()) as AlgorithmReviewGateEvidenceListResponse;
+}
+
+export async function fetchAlgorithmPromotionReadiness(
+  algorithmId: string,
+): Promise<AlgorithmPromotionReadinessResponse> {
+  const response = await fetch(
+    `${API_BASE_PATH}/api/v1/factor-lab/algorithms/${encodeURIComponent(algorithmId)}/promotion/readiness`,
+    {
+      headers: {
+        accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "algorithm promotion readiness request failed"));
+  }
+
+  return (await response.json()) as AlgorithmPromotionReadinessResponse;
 }
 
 export async function fetchExternalPayloadComparisonPreview(): Promise<ExternalPayloadComparisonPreviewResponse> {

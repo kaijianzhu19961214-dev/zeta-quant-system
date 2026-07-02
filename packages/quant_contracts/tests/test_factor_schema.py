@@ -3,7 +3,9 @@ import unittest
 from pydantic import ValidationError
 from quant_contracts import (
     AlgorithmCapability,
+    AlgorithmGatePromotionFinding,
     AlgorithmParameterSpec,
+    AlgorithmPromotionReadinessResponse,
     AlgorithmReviewGate,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceRecord,
@@ -188,6 +190,34 @@ class FactorSchemaTest(unittest.TestCase):
                 reviewed_by="researcher_lead",
                 evidence_status="submitted",
             )
+
+    def test_should_accept_algorithm_promotion_readiness_response_when_payload_is_valid(self) -> None:
+        finding = AlgorithmGatePromotionFinding(
+            gate_id="validation_evidence",
+            gate_title="Validation evidence",
+            gate_status="missing",
+            decision="met_by_accepted_evidence",
+            is_met=True,
+            accepted_evidence_count=1,
+            latest_evidence_status="accepted",
+            message="Accepted validation evidence satisfies the missing gate.",
+        )
+        response = AlgorithmPromotionReadinessResponse(
+            algorithm_id="Volatility.EGARCH",
+            current_status="planned",
+            decision="promotable",
+            can_promote=True,
+            required_gate_count=1,
+            met_required_gate_count=1,
+            findings=[finding],
+            generated_at="2026-07-02T10:00:00+08:00",
+            limitations=[" gate status is not mutated "],
+        )
+
+        self.assertEqual(response.algorithm_id, "volatility.egarch")
+        self.assertTrue(response.can_promote)
+        self.assertEqual(response.findings[0].decision, "met_by_accepted_evidence")
+        self.assertEqual(response.limitations, ["gate status is not mutated"])
 
     def test_should_normalize_factor_request_when_payload_is_valid(self) -> None:
         request = FactorCalculationRequest(

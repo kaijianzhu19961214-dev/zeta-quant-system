@@ -1,5 +1,6 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from quant_contracts import (
+    AlgorithmPromotionReadinessResponse,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceReviewRequest,
     AlgorithmReviewGateEvidenceResponse,
@@ -94,6 +95,26 @@ async def get_algorithm_review_gate_evidence(
         return await service.list_evidence_records(
             algorithm_id=algorithm_id,
             gate_id=gate_id,
+            limit=limit,
+        )
+    except AlgorithmReviewServiceError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.message) from error
+
+
+@router.get(
+    "/algorithms/{algorithm_id}/promotion/readiness",
+    response_model=AlgorithmPromotionReadinessResponse,
+    summary="评估算法晋级准备度",
+    description="基于 registry review gates 和 accepted evidence 计算 planned -> available 晋级准备度，不修改状态。",
+)
+async def get_algorithm_promotion_readiness(
+    algorithm_id: str,
+    limit: int = Query(default=200, ge=1, le=500),
+    service: AlgorithmReviewService = Depends(get_algorithm_review_service),
+) -> AlgorithmPromotionReadinessResponse:
+    try:
+        return await service.evaluate_promotion_readiness(
+            algorithm_id=algorithm_id,
             limit=limit,
         )
     except AlgorithmReviewServiceError as error:
