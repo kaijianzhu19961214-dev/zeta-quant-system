@@ -640,6 +640,24 @@ quant_contracts MarketBarsResponse.meta
   返回 price_mode、batch_id、qfq_base_date 等复权元数据
 ```
 
+级联查询关系：
+
+```mermaid
+flowchart TD
+  raw["market_data_*_raw<br/>原始行情 / Raw Bars"] --> qfq_batch["qfq_batches<br/>前复权批次 / QFQ Batches"]
+  raw --> qfq_cache["market_data_*_qfq_cache<br/>前复权缓存 / QFQ Cache"]
+  qfq_batch --> qfq_cache
+  raw --> hfq_view["v_market_data_*_hfq<br/>后复权视图 / HFQ View"]
+
+  raw --> raw_query["price_mode=raw<br/>原始价格查询"]
+  qfq_cache --> qfq_query["price_mode=qfq<br/>前复权查询"]
+  hfq_view --> hfq_query["price_mode=hfq<br/>后复权查询"]
+
+  qfq_query --> response["MarketBarsResponse<br/>统一行情响应"]
+  raw_query --> response
+  hfq_query --> response
+```
+
 对因子服务暴露的 `MarketBar.adjustment_factor` 表示当前 `price_mode` 下生效的复权因子：raw 为源 `adj_factor`，qfq 为 `qfq_factor`，hfq 为 `hfq_factor`。因子计算只消费一种明确价格口径，不能在同一次计算中隐式混用 raw/qfq/hfq 三套价格。
 
 详细 DDL 参考：

@@ -73,6 +73,24 @@ batch_id
 hfq_price = raw_price * adjustment_factor
 ```
 
+级联查询关系：
+
+```mermaid
+flowchart TD
+  raw["market_data_*_raw<br/>原始行情 / Raw Bars"] --> qfq_batch["qfq_batches<br/>前复权批次 / QFQ Batches"]
+  raw --> qfq_cache["market_data_*_qfq_cache<br/>前复权缓存 / QFQ Cache"]
+  qfq_batch --> qfq_cache
+  raw --> hfq_view["v_market_data_*_hfq<br/>后复权视图 / HFQ View"]
+
+  raw --> raw_query["price_mode=raw<br/>原始价格查询"]
+  qfq_cache --> qfq_query["price_mode=qfq<br/>前复权查询"]
+  hfq_view --> hfq_query["price_mode=hfq<br/>后复权查询"]
+
+  qfq_query --> response["MarketBarsResponse<br/>统一行情响应"]
+  raw_query --> response
+  hfq_query --> response
+```
+
 ---
 
 ## 4. 行情查询协议映射
