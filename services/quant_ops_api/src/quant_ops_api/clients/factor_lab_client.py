@@ -1,7 +1,7 @@
 from typing import Any
 
 import httpx
-from quant_contracts import AlgorithmSpec
+from quant_contracts import AlgorithmReviewGateEvidenceListResponse, AlgorithmSpec
 
 
 class FactorLabClientError(Exception):
@@ -49,6 +49,45 @@ class FactorLabClient:
 
         return _parse_algorithm_specs(response=response)
 
+    async def list_algorithm_review_gate_evidence(
+        self,
+        *,
+        algorithm_id: str,
+        gate_id: str | None = None,
+        limit: int = 50,
+    ) -> AlgorithmReviewGateEvidenceListResponse:
+        params: dict[str, str | int] = {"limit": limit}
+        if gate_id is not None:
+            params["gate_id"] = gate_id
+
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds,
+                transport=self.transport,
+            ) as client:
+                response = await client.get(
+                    f"{self.base_url}/api/v1/algorithms/{algorithm_id}/review-gates/evidence",
+                    params=params,
+                )
+        except httpx.TimeoutException as error:
+            raise FactorLabClientError(
+                status_code=504,
+                message="factor lab review evidence request timed out",
+            ) from error
+        except httpx.HTTPError as error:
+            raise FactorLabClientError(
+                status_code=502,
+                message=f"factor lab review evidence request failed: {error}",
+            ) from error
+
+        if response.status_code < 200 or response.status_code >= 300:
+            raise FactorLabClientError(
+                status_code=502,
+                message=f"factor lab review evidence returned status {response.status_code}",
+            )
+
+        return _parse_algorithm_review_gate_evidence(response=response)
+
 
 def _parse_algorithm_specs(*, response: httpx.Response) -> list[AlgorithmSpec]:
     payload = _safe_json(response=response)
@@ -67,6 +106,26 @@ def _parse_algorithm_specs(*, response: httpx.Response) -> list[AlgorithmSpec]:
         ) from error
 
 
+def _parse_algorithm_review_gate_evidence(
+    *,
+    response: httpx.Response,
+) -> AlgorithmReviewGateEvidenceListResponse:
+    payload = _safe_dict_json(response=response)
+    if payload is None:
+        raise FactorLabClientError(
+            status_code=502,
+            message="factor lab review evidence response is not valid JSON",
+        )
+
+    try:
+        return AlgorithmReviewGateEvidenceListResponse.model_validate(payload)
+    except ValueError as error:
+        raise FactorLabClientError(
+            status_code=502,
+            message="factor lab review evidence response does not match the contract",
+        ) from error
+
+
 def _safe_json(*, response: httpx.Response) -> list[dict[str, Any]] | None:
     try:
         payload = response.json()
@@ -76,5 +135,16 @@ def _safe_json(*, response: httpx.Response) -> list[dict[str, Any]] | None:
     if not isinstance(payload, list):
         return None
     if all(isinstance(item, dict) for item in payload):
+        return payload
+    return None
+
+
+def _safe_dict_json(*, response: httpx.Response) -> dict[str, Any] | None:
+    try:
+        payload = response.json()
+    except ValueError:
+        return None
+
+    if isinstance(payload, dict):
         return payload
     return None

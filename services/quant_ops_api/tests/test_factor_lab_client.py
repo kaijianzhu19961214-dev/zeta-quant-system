@@ -63,6 +63,54 @@ class FactorLabClientTest(unittest.IsolatedAsyncioTestCase):
 
         self.assertEqual(context.exception.status_code, 502)
 
+    async def test_should_parse_algorithm_review_gate_evidence(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(
+                str(request.url),
+                "http://quant-factor-lab/api/v1/algorithms/technical.momentum/review-gates/evidence?limit=20&gate_id=validation_evidence",
+            )
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "algorithm_id": "technical.momentum",
+                    "gate_id": "validation_evidence",
+                    "records": [
+                        {
+                            "evidence_id": "algorithm_gate_evidence_abc123",
+                            "algorithm_id": "technical.momentum",
+                            "gate_id": "validation_evidence",
+                            "gate_category": "validation",
+                            "gate_title": "Validation evidence",
+                            "previous_gate_status": "satisfied",
+                            "submitted_by": "codex_smoke",
+                            "evidence_type": "validation_report",
+                            "evidence_source": "factor_validation/momentum_1d/comparison_report.json",
+                            "summary": "Momentum validation smoke evidence from 101 data.",
+                            "submitted_at": "2026-07-02T09:30:00+00:00",
+                        }
+                    ],
+                    "total_count": 1,
+                    "persistence_status": "persisted",
+                    "limitations": [],
+                },
+            )
+
+        client = FactorLabClient(
+            base_url="http://quant-factor-lab",
+            timeout_seconds=5,
+            transport=httpx.MockTransport(handler),
+        )
+
+        response = await client.list_algorithm_review_gate_evidence(
+            algorithm_id="technical.momentum",
+            gate_id="validation_evidence",
+            limit=20,
+        )
+
+        self.assertEqual(response.persistence_status, "persisted")
+        self.assertEqual(response.total_count, 1)
+        self.assertEqual(response.records[0].gate_id, "validation_evidence")
+
 
 if __name__ == "__main__":
     unittest.main()

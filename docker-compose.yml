@@ -93,10 +93,17 @@ services:
       QUANT_DATA_HUB_BASE_URL: ${QUANT_DATA_HUB_BASE_URL:-http://quant_data_hub:8000}
       QUANT_DATA_API_TOKEN: ${QUANT_DATA_API_TOKEN:-}
       QUANT_DATA_HUB_TIMEOUT_SECONDS: ${QUANT_DATA_HUB_TIMEOUT_SECONDS:-15}
+      ALGORITHM_REVIEW_PERSISTENCE_ENABLED: ${ALGORITHM_REVIEW_PERSISTENCE_ENABLED:-true}
+      ALGORITHM_REVIEW_DATABASE_URL: ${ALGORITHM_REVIEW_DATABASE_URL:-postgresql+asyncpg://quant_admin:quant_local_password@postgres:5432/quant_system}
+      ALGORITHM_REVIEW_DATABASE_ECHO: ${ALGORITHM_REVIEW_DATABASE_ECHO:-false}
+      ALGORITHM_REVIEW_DATABASE_SCHEMA: ${ALGORITHM_REVIEW_DATABASE_SCHEMA:-}
+      ALGORITHM_REVIEW_CREATE_SCHEMA: ${ALGORITHM_REVIEW_CREATE_SCHEMA:-true}
       TZ: ${TZ:-Asia/Shanghai}
     ports:
       - "${QUANT_FACTOR_LAB_PORT:-18010}:8000"
     depends_on:
+      postgres:
+        condition: service_healthy
       quant_data_hub:
         condition: service_healthy
     healthcheck:

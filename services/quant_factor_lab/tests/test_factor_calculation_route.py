@@ -1,10 +1,11 @@
 import unittest
 
 from fastapi.testclient import TestClient
-from quant_contracts import MarketBar, MarketBarsMeta, MarketBarsResponse
+from quant_contracts import AlgorithmReviewGateEvidenceRecord, MarketBar, MarketBarsMeta, MarketBarsResponse
 
-from quant_factor_lab.api.v1.dependencies import get_factor_calculation_service
+from quant_factor_lab.api.v1.dependencies import get_algorithm_review_service, get_factor_calculation_service
 from quant_factor_lab.main import create_app
+from quant_factor_lab.services.algorithm_review_service import AlgorithmReviewService
 from quant_factor_lab.services.factor_calculation_service import FactorCalculationService
 
 
@@ -26,11 +27,40 @@ class FakeMarketDataReader:
         )
 
 
+class FakeEvidenceRepository:
+    def __init__(self) -> None:
+        self.records: list[AlgorithmReviewGateEvidenceRecord] = []
+
+    async def record_evidence(
+        self,
+        *,
+        record: AlgorithmReviewGateEvidenceRecord,
+    ) -> AlgorithmReviewGateEvidenceRecord:
+        self.records.append(record)
+        return record
+
+    async def list_evidence(
+        self,
+        *,
+        algorithm_id: str,
+        gate_id: str | None = None,
+        limit: int = 50,
+    ) -> list[AlgorithmReviewGateEvidenceRecord]:
+        records = [record for record in self.records if record.algorithm_id == algorithm_id]
+        if gate_id is not None:
+            records = [record for record in records if record.gate_id == gate_id]
+        return records[:limit]
+
+
 class FactorCalculationRouteTest(unittest.TestCase):
     def setUp(self) -> None:
         self.app = create_app()
+        self.evidence_repository = FakeEvidenceRepository()
         self.app.dependency_overrides[get_factor_calculation_service] = lambda: FactorCalculationService(
             market_data_reader=FakeMarketDataReader()
+        )
+        self.app.dependency_overrides[get_algorithm_review_service] = lambda: AlgorithmReviewService(
+            evidence_repository=self.evidence_repository,
         )
         self.client = TestClient(self.app)
 
@@ -89,6 +119,50 @@ class FactorCalculationRouteTest(unittest.TestCase):
         self.assertEqual(payload["record"]["gate_id"], "validation_evidence")
         self.assertEqual(payload["record"]["previous_gate_status"], "missing")
         self.assertEqual(payload["record"]["evidence_status"], "submitted")
+
+    def test_should_submit_algorithm_review_gate_evidence_when_payload_is_valid(self) -> None:
+        response = self.client.post(
+            "/api/v1/algorithms/review-gates/evidence",
+            json={
+                "algorithm_id": "technical.momentum",
+                "gate_id": "validation_evidence",
+                "submitted_by": "codex_smoke",
+                "evidence_type": "validation_report",
+                "evidence_source": "factor_validation/momentum_1d/comparison_report.json",
+                "summary": "Momentum validation smoke evidence from 101 data.",
+                "artifact_id": "comparison_report_momentum_1d",
+            },
+        )
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["persistence_status"], "persisted")
+        self.assertEqual(payload["record"]["algorithm_id"], "technical.momentum")
+        self.assertEqual(payload["record"]["gate_id"], "validation_evidence")
+        self.assertEqual(len(self.evidence_repository.records), 1)
+
+    def test_should_list_algorithm_review_gate_evidence_when_records_exist(self) -> None:
+        self.client.post(
+            "/api/v1/algorithms/review-gates/evidence",
+            json={
+                "algorithm_id": "technical.momentum",
+                "gate_id": "validation_evidence",
+                "submitted_by": "codex_smoke",
+                "evidence_type": "validation_report",
+                "evidence_source": "factor_validation/momentum_1d/comparison_report.json",
+                "summary": "Momentum validation smoke evidence from 101 data.",
+            },
+        )
+
+        response = self.client.get(
+            "/api/v1/algorithms/technical.momentum/review-gates/evidence?gate_id=validation_evidence"
+        )
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["persistence_status"], "persisted")
+        self.assertEqual(payload["total_count"], 1)
+        self.assertEqual(payload["records"][0]["gate_id"], "validation_evidence")
 
     def test_should_return_not_found_when_review_gate_is_unknown(self) -> None:
         response = self.client.post(

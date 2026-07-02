@@ -1,5 +1,6 @@
-from fastapi import APIRouter, Depends, HTTPException, status
+from fastapi import APIRouter, Depends, HTTPException, Query, status
 from quant_contracts import (
+    AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceResponse,
     AlgorithmReviewGateEvidenceSubmission,
     AlgorithmSpec,
@@ -39,6 +40,44 @@ def post_algorithm_review_gate_evidence_preview(
 ) -> AlgorithmReviewGateEvidenceResponse:
     try:
         return service.preview_evidence_record(submission=request)
+    except AlgorithmReviewServiceError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.message) from error
+
+
+@router.post(
+    "/algorithms/review-gates/evidence",
+    response_model=AlgorithmReviewGateEvidenceResponse,
+    summary="提交算法审核门槛证据记录",
+    description="校验 algorithm_id 和 gate_id，将标准化 evidence record 写入审核证据库。",
+)
+async def post_algorithm_review_gate_evidence(
+    request: AlgorithmReviewGateEvidenceSubmission,
+    service: AlgorithmReviewService = Depends(get_algorithm_review_service),
+) -> AlgorithmReviewGateEvidenceResponse:
+    try:
+        return await service.submit_evidence_record(submission=request)
+    except AlgorithmReviewServiceError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.message) from error
+
+
+@router.get(
+    "/algorithms/{algorithm_id}/review-gates/evidence",
+    response_model=AlgorithmReviewGateEvidenceListResponse,
+    summary="读取算法审核门槛证据记录",
+    description="按 algorithm_id 和可选 gate_id 返回最近的审核证据记录。",
+)
+async def get_algorithm_review_gate_evidence(
+    algorithm_id: str,
+    gate_id: str | None = None,
+    limit: int = Query(default=50, ge=1, le=200),
+    service: AlgorithmReviewService = Depends(get_algorithm_review_service),
+) -> AlgorithmReviewGateEvidenceListResponse:
+    try:
+        return await service.list_evidence_records(
+            algorithm_id=algorithm_id,
+            gate_id=gate_id,
+            limit=limit,
+        )
     except AlgorithmReviewServiceError as error:
         raise HTTPException(status_code=error.status_code, detail=error.message) from error
 

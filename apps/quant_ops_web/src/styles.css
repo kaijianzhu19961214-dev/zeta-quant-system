@@ -720,6 +720,19 @@ h4 {
   line-height: 1.45;
 }
 
+.review-gate-evidence {
+  grid-column: 1 / -1;
+  padding-top: 8px;
+  border-top: 1px solid #d8ded4;
+}
+
+.review-gate-evidence strong {
+  color: #18231d;
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 12px;
+  font-weight: 700;
+}
+
 .review-gate-status {
   justify-self: end;
   color: #18231d;

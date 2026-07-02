@@ -14,6 +14,7 @@ DEFAULT_SYMBOLS = "000001.SZ,000651.SZ,000333.SZ,600000.SH,600519.SH"
 DEFAULT_RUN_ID = "real_flow_smoke_101"
 DEFAULT_EVIDENCE_GATE_ID = "validation_evidence"
 DEFAULT_EVIDENCE_SUBMITTED_BY = "codex_smoke"
+DEFAULT_EVIDENCE_PERSISTENCE_MODE = "submit"
 
 
 def request_json(
@@ -107,6 +108,10 @@ def build_evidence_payload(
     metrics = validation_response["metrics"]
     artifact = select_validation_evidence_artifact(manifest=validation_response.get("manifest", {}))
     evidence_source = artifact.get("object_key") or artifact.get("uri") or artifact["artifact_id"]
+    persistence_mode = os.environ.get(
+        "REAL_FACTOR_FLOW_EVIDENCE_PERSISTENCE_MODE",
+        DEFAULT_EVIDENCE_PERSISTENCE_MODE,
+    )
     return {
         "algorithm_id": factor_meta["algorithm_id"],
         "gate_id": os.environ.get("REAL_FACTOR_FLOW_EVIDENCE_GATE_ID", DEFAULT_EVIDENCE_GATE_ID),
@@ -118,7 +123,7 @@ def build_evidence_payload(
         "artifact_uri": artifact.get("uri"),
         "notes": [
             "source=smoke_real_factor_flow_101",
-            "persistence=not_persisted",
+            f"persistence_mode={persistence_mode}",
         ],
     }
 
@@ -186,9 +191,22 @@ def run_smoke_test(*, factor_lab_base_url: str, factor_validation_base_url: str)
     assert_condition(len(artifacts) >= 6, "validation manifest did not include all expected artifacts")
     results.append(f"validation manifest ok: artifacts={len(artifacts)}")
 
+    evidence_persistence_mode = os.environ.get(
+        "REAL_FACTOR_FLOW_EVIDENCE_PERSISTENCE_MODE",
+        DEFAULT_EVIDENCE_PERSISTENCE_MODE,
+    ).strip().lower()
+    if evidence_persistence_mode not in {"preview", "submit"}:
+        raise RuntimeError("REAL_FACTOR_FLOW_EVIDENCE_PERSISTENCE_MODE must be preview or submit")
+
+    evidence_path = "/api/v1/algorithms/review-gates/evidence"
+    expected_persistence_status = "persisted"
+    if evidence_persistence_mode == "preview":
+        evidence_path = "/api/v1/algorithms/review-gates/evidence/preview"
+        expected_persistence_status = "not_persisted"
+
     evidence_response = request_json(
         base_url=factor_lab_base_url,
-        path="/api/v1/algorithms/review-gates/evidence/preview",
+        path=evidence_path,
         method="POST",
         payload=build_evidence_payload(
             factor_response=factor_response,
@@ -198,17 +216,18 @@ def run_smoke_test(*, factor_lab_base_url: str, factor_validation_base_url: str)
     )
     evidence_record = evidence_response.get("record", {})
     assert_condition(
-        evidence_response.get("persistence_status") == "not_persisted",
-        "evidence preview should not persist records in smoke mode",
+        evidence_response.get("persistence_status") == expected_persistence_status,
+        f"evidence {evidence_persistence_mode} returned an unexpected persistence_status",
     )
     assert_condition(
         evidence_record.get("gate_id") == os.environ.get("REAL_FACTOR_FLOW_EVIDENCE_GATE_ID", DEFAULT_EVIDENCE_GATE_ID),
         "evidence preview returned an unexpected gate_id",
     )
     results.append(
-        "evidence preview ok: "
+        f"evidence {evidence_persistence_mode} ok: "
         f"algorithm_id={evidence_record.get('algorithm_id')}, "
         f"gate_id={evidence_record.get('gate_id')}, "
+        f"persistence_status={evidence_response.get('persistence_status')}, "
         f"status={evidence_record.get('evidence_status')}"
     )
     return results

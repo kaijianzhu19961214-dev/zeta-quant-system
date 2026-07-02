@@ -1723,7 +1723,7 @@ FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。`quant_factor_lab` 已提供 evidence preview 接口，用于校验研究员提交的 gate evidence 并返回标准 record，但当前不持久化、不修改 gate 状态。后续确认输入、参数、诊断指标、验证证据和 `arch` 依赖后再补具体执行层。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport` 和对应 artifact reference。当前已提供 101 ClickHouse 只读真实因子流转 smoke，并把 validation artifact 自动映射为 `technical.momentum / validation_evidence` gate evidence preview；Tushare SDK 本地真实小样本 smoke 入口也已预留。第三方库执行层尚未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。`quant_factor_lab` 已提供 evidence preview / submit / list 接口，用于校验研究员提交的 gate evidence，并可写入 PostgreSQL `algorithm_review_gate_evidence` 表；该证据记录不直接修改 gate 状态，gate 状态需要后续显式 review decision。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare / evidence list 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport`、artifact reference 和 algorithm review evidence 摘要。当前已提供 101 ClickHouse 只读真实因子流转 smoke，并把 validation artifact 自动映射为 `technical.momentum / validation_evidence` gate evidence submit；Tushare SDK 本地真实小样本 smoke 入口也已预留。第三方库执行层尚未作为运行依赖接入。
 
 ---
 
@@ -1742,7 +1742,7 @@ quant_contracts
     已定义 AssetClass / FactorMode / FactorFamily / EvaluationEngine
     已定义 AlgorithmSpec / AlgorithmCapability / AlgorithmParameterSpec
     已定义 AlgorithmReviewGate，用于 planned -> available 准入门槛
-    已定义 AlgorithmReviewGateEvidenceSubmission / Record / Response
+    已定义 AlgorithmReviewGateEvidenceSubmission / Record / Response / ListResponse
     已定义 ExternalFactorValidationSummary
     已定义 FactorEvaluationResult / FactorScoreCard / FactorComparisonReport
 
@@ -1753,8 +1753,10 @@ quant_factor_lab
     已登记 volatility.egarch / volatility.gjr_garch / volatility.aparch planned specs
     已为算法 registry 输出 hypothesis / data / construction / leakage / validation / operations review gates
     已提供 POST /api/v1/algorithms/review-gates/evidence/preview，校验 evidence 并返回 not_persisted record
+    已提供 POST /api/v1/algorithms/review-gates/evidence，持久化 algorithm review evidence
+    已提供 GET /api/v1/algorithms/{algorithm_id}/review-gates/evidence，读取 algorithm review evidence
     已通过 101 ClickHouse 真实日线小样本计算 momentum_1d
-    已将真实 flow validation artifact 映射为 technical.momentum / validation_evidence gate evidence preview
+    已将真实 flow validation artifact 映射为 technical.momentum / validation_evidence gate evidence submit
 
 quant_factor_validation
     已输出 internal validation 结果

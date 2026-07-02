@@ -43,6 +43,14 @@ export type AlgorithmReviewGateCategory =
   | "validation"
   | "operations";
 export type AlgorithmReviewGateStatus = "satisfied" | "missing" | "not_applicable";
+export type AlgorithmReviewEvidenceStatus = "submitted" | "accepted" | "rejected";
+export type AlgorithmReviewEvidenceType =
+  | "research_note"
+  | "notebook"
+  | "artifact"
+  | "validation_report"
+  | "external_link"
+  | "manual_note";
 
 export interface AlgorithmParameterSpec {
   name: string;
@@ -69,6 +77,38 @@ export interface AlgorithmReviewGate {
   status: AlgorithmReviewGateStatus;
   evidence: string | null;
   is_required: boolean;
+}
+
+export interface AlgorithmReviewGateEvidenceRecord {
+  evidence_id: string;
+  algorithm_id: string;
+  gate_id: string;
+  submitted_by: string;
+  evidence_type: AlgorithmReviewEvidenceType;
+  evidence_source: string;
+  summary: string;
+  artifact_id: string | null;
+  artifact_uri: string | null;
+  source_url: string | null;
+  notes: string[];
+  gate_category: AlgorithmReviewGateCategory;
+  gate_title: string;
+  previous_gate_status: AlgorithmReviewGateStatus;
+  evidence_status: AlgorithmReviewEvidenceStatus;
+  submitted_at: string;
+  reviewed_by: string | null;
+  reviewed_at: string | null;
+  review_comment: string | null;
+  is_required: boolean;
+}
+
+export interface AlgorithmReviewGateEvidenceListResponse {
+  algorithm_id: string;
+  gate_id: string | null;
+  records: AlgorithmReviewGateEvidenceRecord[];
+  total_count: number;
+  persistence_status: PersistenceStatus;
+  limitations: string[];
 }
 
 export interface AlgorithmSpec {

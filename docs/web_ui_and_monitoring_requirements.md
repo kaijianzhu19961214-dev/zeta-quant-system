@@ -199,3 +199,5 @@ quant_ops_api
 它们可以从第一版开始预留目录和约束，但不应阻塞核心数据、因子和验证闭环。
 
 当前 Artifacts 页通过 `/api/v1/artifacts/ledger` 获取账本。未配置账本数据库时，接口返回 `not_persisted` manifest preview，用来固定 task/artifact 展示协议；配置 `ARTIFACT_LEDGER_DATABASE_URL` 或 `VALIDATION_DATABASE_URL` 后，`quant_ops_api` 会只读查询 PostgreSQL `task_runs` / `task_artifacts`。复用 101 旧库时必须配置 `ARTIFACT_LEDGER_DATABASE_SCHEMA` 或 `VALIDATION_DATABASE_SCHEMA`，避免读取 public schema 下 UUID 版旧表。当前 manifest 已包含 `file_size_bytes`、`content_type` 和 `sha256`，页面应优先展示这些字段，帮助研究员确认产物完整性。Web UI 不应直接持有数据库写权限或 MinIO access key。
+
+Factor Lab 页面通过 `quant_ops_api` 读取 `quant_factor_lab` 的 algorithm review evidence list。页面只展示每个 review gate 的证据数量、最近 evidence source、提交人和提交时间；证据写入由 `quant_factor_lab` 的 `POST /api/v1/algorithms/review-gates/evidence` 完成，Web UI 不直接持有数据库写权限。gate 状态仍由后续显式 review decision 更新，不能因为存在 evidence record 自动升级为 satisfied。

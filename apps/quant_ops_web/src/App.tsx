@@ -1,6 +1,7 @@
 import { useCallback, useEffect, useMemo, useState } from "react";
 
 import {
+  fetchAlgorithmReviewGateEvidence,
   fetchArtifactLedger,
   fetchExternalPayloadComparisonPreview,
   fetchFactorLabAlgorithms,
@@ -9,6 +10,8 @@ import {
 } from "./api";
 import type {
   AlgorithmReviewGate,
+  AlgorithmReviewGateEvidenceListResponse,
+  AlgorithmReviewGateEvidenceRecord,
   AlgorithmSpec,
   ArtifactLedgerItem,
   ArtifactLedgerResponse,
@@ -130,6 +133,8 @@ export function App() {
   const [externalComparisonLoadState, setExternalComparisonLoadState] = useState<LoadState>("idle");
   const [externalComparisonErrorMessage, setExternalComparisonErrorMessage] = useState<string | null>(null);
   const [factorAlgorithms, setFactorAlgorithms] = useState<AlgorithmSpec[] | null>(null);
+  const [algorithmEvidenceById, setAlgorithmEvidenceById] =
+    useState<Record<string, AlgorithmReviewGateEvidenceListResponse>>({});
   const [factorAlgorithmLoadState, setFactorAlgorithmLoadState] = useState<LoadState>("idle");
   const [factorAlgorithmErrorMessage, setFactorAlgorithmErrorMessage] = useState<string | null>(null);
   const [artifactLedger, setArtifactLedger] = useState<ArtifactLedgerResponse | null>(null);
@@ -207,6 +212,19 @@ export function App() {
     try {
       const response = await fetchFactorLabAlgorithms();
       setFactorAlgorithms(response);
+      const evidenceResults = await Promise.allSettled(
+        response.map(async (algorithm) => {
+          const evidence = await fetchAlgorithmReviewGateEvidence(algorithm.algorithm_id);
+          return [algorithm.algorithm_id, evidence] as const;
+        }),
+      );
+      const nextEvidenceById: Record<string, AlgorithmReviewGateEvidenceListResponse> = {};
+      evidenceResults.forEach((result) => {
+        if (result.status !== "fulfilled") return;
+        const [algorithmId, evidence] = result.value;
+        nextEvidenceById[algorithmId] = evidence;
+      });
+      setAlgorithmEvidenceById(nextEvidenceById);
       setFactorAlgorithmLoadState("ready");
     } catch (error) {
       setFactorAlgorithmErrorMessage(
@@ -347,6 +365,7 @@ export function App() {
           <section className="validation-view">
             <FactorLabAlgorithmsPanel
               algorithms={factorAlgorithms}
+              evidenceByAlgorithmId={algorithmEvidenceById}
               errorMessage={factorAlgorithmErrorMessage}
               loadState={factorAlgorithmLoadState}
             />
@@ -444,10 +463,12 @@ function ServiceTable({ services }: { services: ServiceHealth[] }) {
 
 function FactorLabAlgorithmsPanel({
   algorithms,
+  evidenceByAlgorithmId,
   loadState,
   errorMessage,
 }: {
   algorithms: AlgorithmSpec[] | null;
+  evidenceByAlgorithmId: Record<string, AlgorithmReviewGateEvidenceListResponse>;
   loadState: LoadState;
   errorMessage: string | null;
 }) {
@@ -505,7 +526,11 @@ function FactorLabAlgorithmsPanel({
         </div>
         <div className="algorithm-grid">
           {algorithms.map((algorithm) => (
-            <AlgorithmCard algorithm={algorithm} key={algorithm.algorithm_id} />
+            <AlgorithmCard
+              algorithm={algorithm}
+              evidence={evidenceByAlgorithmId[algorithm.algorithm_id] ?? null}
+              key={algorithm.algorithm_id}
+            />
           ))}
         </div>
       </section>
@@ -513,7 +538,13 @@ function FactorLabAlgorithmsPanel({
   );
 }
 
-function AlgorithmCard({ algorithm }: { algorithm: AlgorithmSpec }) {
+function AlgorithmCard({
+  algorithm,
+  evidence,
+}: {
+  algorithm: AlgorithmSpec;
+  evidence: AlgorithmReviewGateEvidenceListResponse | null;
+}) {
   const parameters = algorithm.parameters.map((parameter) => (
     <span key={parameter.name}>
       {parameter.name}={formatAlgorithmParameterDefault(parameter.default_value)}
@@ -572,7 +603,7 @@ function AlgorithmCard({ algorithm }: { algorithm: AlgorithmSpec }) {
       ) : null}
 
       {algorithm.review_gates.length > 0 ? (
-        <AlgorithmReviewGateList gates={algorithm.review_gates} />
+        <AlgorithmReviewGateList gates={algorithm.review_gates} records={evidence?.records ?? []} />
       ) : null}
 
       {parameters.length > 0 ? <div className="tag-list">{parameters}</div> : null}
@@ -597,21 +628,44 @@ function AlgorithmCard({ algorithm }: { algorithm: AlgorithmSpec }) {
   );
 }
 
-function AlgorithmReviewGateList({ gates }: { gates: AlgorithmReviewGate[] }) {
+function AlgorithmReviewGateList({
+  gates,
+  records,
+}: {
+  gates: AlgorithmReviewGate[];
+  records: AlgorithmReviewGateEvidenceRecord[];
+}) {
   return (
     <div className="review-gate-list">
-      {gates.map((gate) => (
-        <div className={`review-gate ${resolveReviewGateClass(gate.status)}`} key={gate.gate_id}>
-          <div>
-            <strong>{resolveReviewGateTitle(gate)}</strong>
-            <span>{resolveReviewGateCategory(gate)}</span>
+      {gates.map((gate) => {
+        const gateRecords = records.filter((record) => record.gate_id === gate.gate_id);
+        const latestRecord = gateRecords[0] ?? null;
+        return (
+          <div className={`review-gate ${resolveReviewGateClass(gate.status)}`} key={gate.gate_id}>
+            <div>
+              <strong>{resolveReviewGateTitle(gate)}</strong>
+              <span>{resolveReviewGateCategory(gate)}</span>
+            </div>
+            <span className="review-gate-status">
+              {ALGORITHM_REVIEW_GATE_STATUS_LABELS[gate.status] ?? gate.status}
+            </span>
+            <p>{resolveReviewGateBody(gate)}</p>
+            {latestRecord !== null ? (
+              <div className="review-gate-evidence">
+                <span>
+                  {bilingualLabel("证据", "Evidence")} {gateRecords.length}
+                </span>
+                <strong>{latestRecord.evidence_source}</strong>
+                <span>
+                  {bilingualLabel("提交人", "Submitted by")} {latestRecord.submitted_by}
+                  {" · "}
+                  {formatDateTime(latestRecord.submitted_at)}
+                </span>
+              </div>
+            ) : null}
           </div>
-          <span className="review-gate-status">
-            {ALGORITHM_REVIEW_GATE_STATUS_LABELS[gate.status] ?? gate.status}
-          </span>
-          <p>{resolveReviewGateBody(gate)}</p>
-        </div>
-      ))}
+        );
+      })}
     </div>
   );
 }

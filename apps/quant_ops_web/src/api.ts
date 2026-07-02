@@ -1,4 +1,5 @@
 import type {
+  AlgorithmReviewGateEvidenceListResponse,
   AlgorithmSpec,
   ArtifactLedgerResponse,
   ExternalPayloadComparisonPreviewResponse,
@@ -64,6 +65,25 @@ export async function fetchFactorLabAlgorithms(): Promise<AlgorithmSpec[]> {
   }
 
   return (await response.json()) as AlgorithmSpec[];
+}
+
+export async function fetchAlgorithmReviewGateEvidence(
+  algorithmId: string,
+): Promise<AlgorithmReviewGateEvidenceListResponse> {
+  const response = await fetch(
+    `${API_BASE_PATH}/api/v1/factor-lab/algorithms/${encodeURIComponent(algorithmId)}/review-gates/evidence`,
+    {
+      headers: {
+        accept: "application/json",
+      },
+    },
+  );
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "algorithm review gate evidence request failed"));
+  }
+
+  return (await response.json()) as AlgorithmReviewGateEvidenceListResponse;
 }
 
 export async function fetchExternalPayloadComparisonPreview(): Promise<ExternalPayloadComparisonPreviewResponse> {

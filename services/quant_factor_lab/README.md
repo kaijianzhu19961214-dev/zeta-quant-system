@@ -77,6 +77,24 @@ curl -sS http://127.0.0.1:18010/api/v1/algorithms/review-gates/evidence/preview 
 ```
 
 ```bash
+curl -sS http://127.0.0.1:18010/api/v1/algorithms/review-gates/evidence \
+  -H 'content-type: application/json' \
+  -d '{
+    "algorithm_id": "technical.momentum",
+    "gate_id": "validation_evidence",
+    "submitted_by": "codex_smoke",
+    "evidence_type": "validation_report",
+    "evidence_source": "factor_validation/momentum_1d/comparison_report.json",
+    "summary": "Momentum validation smoke evidence from 101 data.",
+    "artifact_id": "comparison_report_momentum_1d"
+  }'
+```
+
+```bash
+curl -sS 'http://127.0.0.1:18010/api/v1/algorithms/technical.momentum/review-gates/evidence?gate_id=validation_evidence'
+```
+
+```bash
 curl -sS http://127.0.0.1:18010/api/v1/factors/calculate \
   -H 'content-type: application/json' \
   -d '{

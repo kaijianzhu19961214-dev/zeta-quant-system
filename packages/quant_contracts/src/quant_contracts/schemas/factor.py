@@ -195,6 +195,40 @@ class AlgorithmReviewGateEvidenceResponse(ContractModel):
         return [item.strip() for item in value if item.strip()]
 
 
+class AlgorithmReviewGateEvidenceListResponse(ContractModel):
+    algorithm_id: str = Field(min_length=1, max_length=128)
+    gate_id: str | None = Field(default=None, max_length=64)
+    records: list[AlgorithmReviewGateEvidenceRecord] = Field(default_factory=list)
+    total_count: int = Field(default=0, ge=0)
+    persistence_status: AlgorithmReviewEvidencePersistenceStatus = "not_persisted"
+    limitations: list[str] = Field(default_factory=list)
+
+    @field_validator("algorithm_id")
+    @classmethod
+    def validate_algorithm_id(cls, value: str) -> str:
+        normalized_value = value.strip().lower()
+        comparable_value = normalized_value.replace(".", "_").replace("-", "_")
+        if comparable_value.replace("_", "").isalnum() and comparable_value[0].isalpha():
+            return normalized_value
+        raise ValueError("algorithm_id must use lowercase letters, numbers, underscores, dashes, and dots")
+
+    @field_validator("gate_id")
+    @classmethod
+    def validate_gate_id(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.strip().lower()
+        if normalized_value.replace("_", "").isalnum() and normalized_value[0].isalpha():
+            return normalized_value
+        raise ValueError("gate_id must use lowercase letters, numbers, and underscores")
+
+    @field_validator("limitations")
+    @classmethod
+    def normalize_limitations(cls, value: list[str]) -> list[str]:
+        return [item.strip() for item in value if item.strip()]
+
+
 class AlgorithmSpec(ContractModel):
     algorithm_id: str = Field(min_length=1, max_length=128)
     display_name: str = Field(min_length=1, max_length=128)

@@ -5,6 +5,7 @@ from quant_contracts import (
     AlgorithmCapability,
     AlgorithmParameterSpec,
     AlgorithmReviewGate,
+    AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceRecord,
     AlgorithmReviewGateEvidenceResponse,
     AlgorithmReviewGateEvidenceSubmission,
@@ -140,6 +141,34 @@ class FactorSchemaTest(unittest.TestCase):
         self.assertEqual(response.record.evidence_status, "submitted")
         self.assertEqual(response.persistence_status, "not_persisted")
         self.assertEqual(response.limitations, ["not persisted yet"])
+
+    def test_should_accept_algorithm_review_gate_evidence_list_response_when_payload_is_valid(self) -> None:
+        record = AlgorithmReviewGateEvidenceRecord(
+            evidence_id="evidence_abc123",
+            algorithm_id="volatility.egarch",
+            gate_id="validation_evidence",
+            gate_category="validation",
+            gate_title="Validation evidence",
+            previous_gate_status="missing",
+            submitted_by="quant_researcher",
+            evidence_type="validation_report",
+            evidence_source="factor_validation/smoke_egarch/report.json",
+            summary="Validation report evidence for the EGARCH candidate.",
+            submitted_at="2026-07-01T10:00:00+08:00",
+        )
+        response = AlgorithmReviewGateEvidenceListResponse(
+            algorithm_id="Volatility.EGARCH",
+            gate_id="Validation_Evidence",
+            records=[record],
+            total_count=1,
+            persistence_status="persisted",
+            limitations=[" latest records only "],
+        )
+
+        self.assertEqual(response.algorithm_id, "volatility.egarch")
+        self.assertEqual(response.gate_id, "validation_evidence")
+        self.assertEqual(response.records[0].evidence_id, "evidence_abc123")
+        self.assertEqual(response.limitations, ["latest records only"])
 
     def test_should_normalize_factor_request_when_payload_is_valid(self) -> None:
         request = FactorCalculationRequest(
