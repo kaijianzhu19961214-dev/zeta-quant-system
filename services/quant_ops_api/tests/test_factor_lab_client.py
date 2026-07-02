@@ -1,7 +1,7 @@
 import unittest
 
 import httpx
-from quant_contracts import AlgorithmReviewGateEvidenceReviewRequest
+from quant_contracts import AlgorithmReviewGateEvidenceReviewRequest, FactorCalculationRequest
 
 from quant_ops_api.clients import FactorLabClient, FactorLabClientError
 
@@ -211,6 +211,71 @@ class FactorLabClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.decision, "promotable")
         self.assertTrue(response.can_promote)
         self.assertEqual(response.findings[0].decision, "met_by_registry")
+
+    async def test_should_parse_factor_calculation_response(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(str(request.url), "http://quant-factor-lab/api/v1/factors/calculate")
+            self.assertEqual(request.method, "POST")
+            self.assertIn('"factor_name":"momentum_1d"', request.read().decode())
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "meta": {
+                        "factor_name": "momentum_1d",
+                        "algorithm_id": "technical.momentum",
+                        "algorithm_version": "v1",
+                        "algorithm_source_library": None,
+                        "asset_class": "equity",
+                        "factor_mode": "cross_sectional",
+                        "factor_family": "price_volume",
+                        "timeframe": "1d",
+                        "price_mode": "raw",
+                        "row_count": 2,
+                        "lookback_window": 1,
+                        "universe_name": "default",
+                        "data_source": "quant_data_hub",
+                        "data_version": None,
+                        "factor_version": "v1",
+                        "run_id": "ops_real_sample_momentum_1d",
+                        "dataset_code": "a_share_1d",
+                        "batch_id": None,
+                    },
+                    "rows": [
+                        {
+                            "symbol": "000001.SZ",
+                            "trade_date": "2026-06-09",
+                            "factor_name": "momentum_1d",
+                            "factor_value": None,
+                        },
+                        {
+                            "symbol": "000001.SZ",
+                            "trade_date": "2026-06-10",
+                            "factor_name": "momentum_1d",
+                            "factor_value": "0.017070979335130278526504942",
+                        },
+                    ],
+                },
+            )
+
+        client = FactorLabClient(
+            base_url="http://quant-factor-lab",
+            timeout_seconds=5,
+            transport=httpx.MockTransport(handler),
+        )
+        request = FactorCalculationRequest(
+            factor_name="momentum_1d",
+            symbols=["000001.SZ"],
+            start="2026-06-09",
+            end="2026-06-10",
+            lookback_window=1,
+            limit=10,
+        )
+
+        response = await client.calculate_factor(request=request)
+
+        self.assertEqual(response.meta.algorithm_id, "technical.momentum")
+        self.assertEqual(response.meta.row_count, 2)
+        self.assertEqual(str(response.rows[1].factor_value), "0.017070979335130278526504942")
 
 
 if __name__ == "__main__":

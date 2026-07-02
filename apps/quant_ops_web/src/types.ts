@@ -97,6 +97,48 @@ export interface MarketDataBarsSampleResponse {
   limitations: string[];
 }
 
+export interface FactorCalculationMeta {
+  factor_name: string;
+  algorithm_id: string | null;
+  algorithm_version: string | null;
+  algorithm_source_library: string | null;
+  asset_class: string;
+  factor_mode: string;
+  factor_family: string;
+  timeframe: TimeframeName;
+  price_mode: PriceModeName;
+  row_count: number;
+  lookback_window: number;
+  universe_name: string;
+  data_source: string;
+  data_version: string | null;
+  factor_version: string;
+  run_id: string | null;
+  dataset_code: string | null;
+  batch_id: string | null;
+}
+
+export interface FactorDailyValue {
+  symbol: string;
+  trade_date: string;
+  factor_name: string;
+  factor_value: MarketDecimal;
+  asset_class: string;
+  factor_mode: string;
+  factor_family: string;
+  universe_name: string;
+  data_source: string;
+  data_version: string | null;
+  factor_version: string;
+  run_id: string | null;
+  created_at: string | null;
+}
+
+export interface FactorCalculationResponse {
+  meta: FactorCalculationMeta;
+  rows: FactorDailyValue[];
+}
+
 export type ValidationDecision =
   | "insufficient_data"
   | "review_required"

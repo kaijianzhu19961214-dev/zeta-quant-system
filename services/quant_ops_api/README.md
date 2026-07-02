@@ -21,6 +21,7 @@ GET /api/v1/overview
 GET /api/v1/market-data/price-modes
 POST /api/v1/market-data/bars/sample
 GET /api/v1/factor-lab/algorithms
+GET /api/v1/factor-lab/factors/samples/momentum-1d
 GET /api/v1/factor-validation/review
 GET /api/v1/factor-validation/external-payloads/preview
 POST /api/v1/factor-validation/external-payloads/compare
@@ -52,6 +53,8 @@ down_count
 `/api/v1/market-data/bars/sample` 是受控小样本预览接口：请求体采用 `MarketDataBarsSampleRequest`，由 `quant_ops_api` 转发到 `quant_data_hub /api/v1/market-bars/query`，响应返回 `MarketDataBarsSampleResponse`，其中 `meta` 和 `rows` 复用 `quant_contracts.MarketBarsResponse` 的标准结构。当前 Web UI 默认请求 `000001.SZ / 1d / raw / 2026-06-10`，接口限制 `limit <= 20`；当 `price_mode=qfq` 且未传 `batch_id` 时，BFF 会读取最新 qfq batch 后再查询。该接口只用于 UI smoke 和数据口径确认，不替代正式因子任务的数据读取接口。
 
 `/api/v1/factor-lab/algorithms` 是 Factor Lab 算法 registry 的只读 BFF 代理接口：由 `quant_ops_api` 转发读取 `quant_factor_lab /api/v1/algorithms`，响应复用 `quant_contracts.AlgorithmSpec[]`。该接口只展示 `available` / `planned` 算法能力、参数、来源库、状态和 `review_gates` 准入门槛，不直接安装第三方库，不执行候选算法，也不绕过 `quant_factor_lab` 的 adapter registry。
+
+`/api/v1/factor-lab/factors/samples/momentum-1d` 是受控真实因子样本接口：由 `quant_ops_api` 固定构造 `momentum_1d / technical.momentum / 000001.SZ / 2026-06-09~2026-06-10 / raw` 请求，并转发到 `quant_factor_lab /api/v1/factors/calculate`。响应复用 `quant_contracts.FactorCalculationResponse`。该接口只用于 Web UI smoke，证明 UI -> BFF -> `quant_factor_lab` -> `quant_data_hub` -> ClickHouse -> factor adapter 的真实链路，不提供任意研究参数，也不持久化结果。
 
 `/api/v1/factor-validation/review` 当前返回：
 

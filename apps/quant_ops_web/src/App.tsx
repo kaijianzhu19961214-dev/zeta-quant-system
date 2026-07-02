@@ -6,6 +6,7 @@ import {
   fetchArtifactLedger,
   fetchExternalPayloadComparisonPreview,
   fetchFactorLabAlgorithms,
+  fetchFactorLabMomentumSample,
   fetchFactorValidationReview,
   fetchMarketDataBarsSample,
   fetchMarketDataPriceModes,
@@ -20,6 +21,8 @@ import type {
   ArtifactLedgerItem,
   ArtifactLedgerResponse,
   ExternalPayloadComparisonPreviewResponse,
+  FactorCalculationResponse,
+  FactorDailyValue,
   FactorEvaluationResult,
   FactorValidationArtifactSummary,
   FactorValidationReviewResponse,
@@ -180,6 +183,9 @@ export function App() {
     useState<Record<string, AlgorithmPromotionReadinessResponse>>({});
   const [factorAlgorithmLoadState, setFactorAlgorithmLoadState] = useState<LoadState>("idle");
   const [factorAlgorithmErrorMessage, setFactorAlgorithmErrorMessage] = useState<string | null>(null);
+  const [factorLabSample, setFactorLabSample] = useState<FactorCalculationResponse | null>(null);
+  const [factorLabSampleLoadState, setFactorLabSampleLoadState] = useState<LoadState>("idle");
+  const [factorLabSampleErrorMessage, setFactorLabSampleErrorMessage] = useState<string | null>(null);
   const [artifactLedger, setArtifactLedger] = useState<ArtifactLedgerResponse | null>(null);
   const [artifactLoadState, setArtifactLoadState] = useState<LoadState>("idle");
   const [artifactErrorMessage, setArtifactErrorMessage] = useState<string | null>(null);
@@ -302,6 +308,26 @@ export function App() {
     void loadFactorAlgorithms();
   }, [activeView, factorAlgorithms, loadFactorAlgorithms]);
 
+  const loadFactorLabSample = useCallback(async () => {
+    setFactorLabSampleLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setFactorLabSampleErrorMessage(null);
+
+    try {
+      const response = await fetchFactorLabMomentumSample();
+      setFactorLabSample(response);
+      setFactorLabSampleLoadState("ready");
+    } catch (error) {
+      setFactorLabSampleErrorMessage(error instanceof Error ? error.message : "factor lab sample request failed");
+      setFactorLabSampleLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "factor-lab") return;
+    if (factorLabSample !== null) return;
+    void loadFactorLabSample();
+  }, [activeView, factorLabSample, loadFactorLabSample]);
+
   const loadArtifactLedger = useCallback(async () => {
     setArtifactLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
     setArtifactErrorMessage(null);
@@ -369,6 +395,7 @@ export function App() {
     activeView,
     loadArtifactLedger,
     loadFactorAlgorithms,
+    loadFactorLabSample,
     loadMarketDataOverview,
     loadMarketDataSample,
     loadExternalPayloadComparison,
@@ -482,6 +509,9 @@ export function App() {
               algorithms={factorAlgorithms}
               evidenceByAlgorithmId={algorithmEvidenceById}
               errorMessage={factorAlgorithmErrorMessage}
+              sample={factorLabSample}
+              sampleErrorMessage={factorLabSampleErrorMessage}
+              sampleLoadState={factorLabSampleLoadState}
               loadState={factorAlgorithmLoadState}
               promotionReadinessByAlgorithmId={algorithmPromotionReadinessById}
             />
@@ -804,12 +834,18 @@ function FactorLabAlgorithmsPanel({
   algorithms,
   evidenceByAlgorithmId,
   promotionReadinessByAlgorithmId,
+  sample,
+  sampleLoadState,
+  sampleErrorMessage,
   loadState,
   errorMessage,
 }: {
   algorithms: AlgorithmSpec[] | null;
   evidenceByAlgorithmId: Record<string, AlgorithmReviewGateEvidenceListResponse>;
   promotionReadinessByAlgorithmId: Record<string, AlgorithmPromotionReadinessResponse>;
+  sample: FactorCalculationResponse | null;
+  sampleLoadState: LoadState;
+  sampleErrorMessage: string | null;
   loadState: LoadState;
   errorMessage: string | null;
 }) {
@@ -857,6 +893,12 @@ function FactorLabAlgorithmsPanel({
         </div>
       </section>
 
+      <FactorLabSamplePanel
+        errorMessage={sampleErrorMessage}
+        loadState={sampleLoadState}
+        sample={sample}
+      />
+
       <section className="service-panel">
         <div className="section-heading">
           <div>
@@ -877,6 +919,97 @@ function FactorLabAlgorithmsPanel({
         </div>
       </section>
     </>
+  );
+}
+
+function FactorLabSamplePanel({
+  sample,
+  loadState,
+  errorMessage,
+}: {
+  sample: FactorCalculationResponse | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+}) {
+  if (loadState === "error") {
+    return (
+      <section className="notice error" role="alert">
+        <strong>{bilingualLabel("真实因子样本暂时不可用", "Real factor sample unavailable")}</strong>
+        <span>{errorMessage}</span>
+      </section>
+    );
+  }
+
+  if (sample === null) {
+    return (
+      <section className="notice">
+        <strong>{bilingualLabel("正在计算真实因子样本", "Calculating real factor sample")}</strong>
+        <span>{bilingualLabel("通过 quant_factor_lab 读取 quant_data_hub 小样本。", "Reading a small sample through quant_factor_lab.")}</span>
+      </section>
+    );
+  }
+
+  const latestValue = resolveLatestFactorValue(sample.rows);
+
+  return (
+    <section className="service-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">{bilingualLabel("真实因子样本", "Real Factor Sample")}</p>
+          <h3>{sample.meta.factor_name}</h3>
+        </div>
+        <span className="status-pill pill-ok">
+          {sample.meta.row_count} {bilingualLabel("行", "rows")}
+        </span>
+      </div>
+      <div className="metric-grid compact">
+        <MetricTile label={bilingualLabel("算法", "Algorithm")} value={sample.meta.algorithm_id ?? "--"} />
+        <MetricTile label={bilingualLabel("最新因子值", "Latest Value")} value={formatMarketDecimal(latestValue)} />
+        <MetricTile label={bilingualLabel("价格口径", "Price Mode")} value={sample.meta.price_mode} />
+        <MetricTile label={bilingualLabel("数据集", "Dataset")} value={sample.meta.dataset_code ?? "--"} />
+      </div>
+      <div className="source-strip">
+        <span>{sample.meta.data_source}</span>
+        <span>{sample.meta.run_id ?? "no_run_id"}</span>
+        <span>{sample.meta.timeframe}</span>
+        <span>{bilingualLabel("避免未来函数：仅引用前一交易日收盘价", "Leakage guard: uses prior close only")}</span>
+      </div>
+      <FactorValueTable rows={sample.rows} />
+    </section>
+  );
+}
+
+function FactorValueTable({ rows }: { rows: FactorDailyValue[] }) {
+  if (rows.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>{bilingualLabel("暂无因子值", "No Factor Values")}</strong>
+        <span>{bilingualLabel("当前真实样本没有返回因子行。", "No factor rows were returned.")}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="factor-sample-table">
+      <div className="factor-sample-row header">
+        <span>{bilingualLabel("日期", "Date")}</span>
+        <span>{bilingualLabel("标的", "Symbol")}</span>
+        <span>{bilingualLabel("因子", "Factor")}</span>
+        <span>{bilingualLabel("因子值", "Value")}</span>
+        <span>{bilingualLabel("模式", "Mode")}</span>
+        <span>{bilingualLabel("版本", "Version")}</span>
+      </div>
+      {rows.map((row) => (
+        <div className="factor-sample-row" key={`${row.symbol}-${row.trade_date}-${row.factor_name}`}>
+          <span>{row.trade_date}</span>
+          <strong>{row.symbol}</strong>
+          <span>{row.factor_name}</span>
+          <span>{formatMarketDecimal(row.factor_value)}</span>
+          <span>{row.factor_mode}</span>
+          <span>{row.factor_version}</span>
+        </div>
+      ))}
+    </div>
   );
 }
 
@@ -1485,6 +1618,7 @@ function resolveRefreshHandler({
   activeView,
   loadArtifactLedger,
   loadFactorAlgorithms,
+  loadFactorLabSample,
   loadMarketDataOverview,
   loadMarketDataSample,
   loadExternalPayloadComparison,
@@ -1494,6 +1628,7 @@ function resolveRefreshHandler({
   activeView: DashboardView;
   loadArtifactLedger: () => void;
   loadFactorAlgorithms: () => void;
+  loadFactorLabSample: () => void;
   loadMarketDataOverview: () => void;
   loadMarketDataSample: () => void;
   loadExternalPayloadComparison: () => void;
@@ -1507,7 +1642,12 @@ function resolveRefreshHandler({
       loadMarketDataSample();
     };
   }
-  if (activeView === "factor-lab") return loadFactorAlgorithms;
+  if (activeView === "factor-lab") {
+    return () => {
+      loadFactorAlgorithms();
+      loadFactorLabSample();
+    };
+  }
   if (activeView === "factor-validation") {
     return () => {
       loadFactorValidationReview();
@@ -1579,6 +1719,11 @@ function formatMarketDecimal(value: string | number | null | undefined): string 
 function resolveMarketBarDate(row: MarketBar): string {
   if (row.trade_time) return formatDateTime(row.trade_time);
   return row.trade_date ?? "--";
+}
+
+function resolveLatestFactorValue(rows: FactorDailyValue[]): string | number | null {
+  const latestRow = [...rows].reverse().find((row) => row.factor_value !== null);
+  return latestRow?.factor_value ?? null;
 }
 
 function formatShortList(values: string[]): string {

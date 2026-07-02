@@ -5,6 +5,7 @@ import type {
   ArtifactLedgerResponse,
   ExternalPayloadComparisonPreviewResponse,
   ExternalPayloadComparisonRequest,
+  FactorCalculationResponse,
   FactorComparisonReport,
   FactorValidationReviewResponse,
   MarketDataBarsSampleRequest,
@@ -102,6 +103,20 @@ export async function fetchFactorLabAlgorithms(): Promise<AlgorithmSpec[]> {
   }
 
   return (await response.json()) as AlgorithmSpec[];
+}
+
+export async function fetchFactorLabMomentumSample(): Promise<FactorCalculationResponse> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/factor-lab/factors/samples/momentum-1d`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "factor lab momentum sample request failed"));
+  }
+
+  return (await response.json()) as FactorCalculationResponse;
 }
 
 export async function fetchAlgorithmReviewGateEvidence(

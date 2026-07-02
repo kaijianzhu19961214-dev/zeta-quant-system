@@ -38,6 +38,7 @@ System
 - 通过 `quant_ops_api /api/v1/market-data/price-modes` 展示 Market Data 页面，包括 raw / qfq / hfq 价格口径、ClickHouse 存储对象、最新 qfq batch、`qfq_base_date` 和查询边界。
 - 通过 `quant_ops_api /api/v1/market-data/bars/sample` 展示受控行情小样本，当前默认窗口为 `000001.SZ / 1d / raw / 2026-06-10`，用于验证 UI -> BFF -> `quant_data_hub` -> ClickHouse 链路。
 - 通过 `quant_ops_api /api/v1/factor-lab/algorithms` 展示 Factor Lab 算法 registry，包括 `available` / `planned` `AlgorithmSpec` 和 `review_gates` 准入门槛。
+- 通过 `quant_ops_api /api/v1/factor-lab/factors/samples/momentum-1d` 展示真实因子小样本，当前固定计算 `momentum_1d / technical.momentum / 000001.SZ / 2026-06-09~2026-06-10 / raw`。
 - 通过 `quant_ops_api /api/v1/factor-validation/review` 展示因子验证审核摘要。
 - 展示 `decision`、IC / Rank IC、分组收益差、findings、recommended actions 和 manifest artifact preview。
 - 通过 `quant_ops_api /api/v1/factor-validation/external-payloads/preview` 展示 Alphalens / Qlib / vectorbt payload 的统一 `FactorComparisonReport` 预览，并展示对应 `factor_comparison_report.v1` 产物引用。
@@ -51,6 +52,8 @@ System
 当前 Artifacts 页同样是 `not_persisted` 预览：它展示的是由因子验证 manifest 映射出的 task/artifact ledger 形态，用于提前固定 Web UI 和 API 协议。后续接入 101 节点 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后，才能作为正式产物账本使用。
 
 当前 Market Data 样本预览只用于链路 smoke，不作为研究查询终端；BFF 会把返回行数限制在小范围内，正式因子任务仍应通过 `quant_data_hub` / SDK 的受控服务接口读取数据。
+
+当前 Factor Lab 真实因子样本同样只用于链路 smoke，不作为研究查询终端；正式研究任务仍应调用 `quant_factor_lab /api/v1/factors/calculate` 并记录 run_id、数据版本、价格口径和后续验证产物。
 
 本地验证 101 只读 artifact 展示时，使用仓库根目录命令：
 

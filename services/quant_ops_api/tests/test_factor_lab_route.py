@@ -11,6 +11,10 @@ from quant_contracts import (
     AlgorithmReviewGateEvidenceResponse,
     AlgorithmSpec,
     AssetClass,
+    FactorCalculationMeta,
+    FactorCalculationRequest,
+    FactorCalculationResponse,
+    FactorDailyValue,
     FactorFamily,
     FactorMode,
     Timeframe,
@@ -129,6 +133,42 @@ class FakeFactorLabClient:
             ],
         )
 
+    async def calculate_factor(self, *, request: FactorCalculationRequest) -> FactorCalculationResponse:
+        self.last_calculation_request = request
+        return FactorCalculationResponse(
+            meta=FactorCalculationMeta(
+                factor_name=request.factor_name,
+                algorithm_id=request.algorithm_id,
+                algorithm_version="v1",
+                timeframe=request.timeframe,
+                price_mode=request.price_mode,
+                row_count=2,
+                lookback_window=request.lookback_window,
+                universe_name=request.universe_name,
+                data_source=request.data_source,
+                factor_version=request.factor_version,
+                run_id=request.run_id,
+                dataset_code="a_share_1d",
+                batch_id=request.batch_id,
+            ),
+            rows=[
+                FactorDailyValue(
+                    symbol="000001.SZ",
+                    trade_date="2026-06-09",
+                    factor_name=request.factor_name,
+                    factor_value=None,
+                    run_id=request.run_id,
+                ),
+                FactorDailyValue(
+                    symbol="000001.SZ",
+                    trade_date="2026-06-10",
+                    factor_name=request.factor_name,
+                    factor_value="0.017070979335130278526504942",
+                    run_id=request.run_id,
+                ),
+            ],
+        )
+
 
 class FactorLabRouteTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -186,6 +226,16 @@ class FactorLabRouteTest(unittest.TestCase):
         self.assertTrue(payload["can_promote"])
         self.assertEqual(payload["required_gate_count"], 6)
         self.assertEqual(payload["findings"][0]["decision"], "met_by_registry")
+
+    def test_should_return_momentum_1d_sample_when_called(self) -> None:
+        response = self.client.get("/api/v1/factor-lab/factors/samples/momentum-1d")
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["meta"]["factor_name"], "momentum_1d")
+        self.assertEqual(payload["meta"]["algorithm_id"], "technical.momentum")
+        self.assertEqual(payload["meta"]["row_count"], 2)
+        self.assertEqual(payload["rows"][1]["factor_value"], "0.017070979335130278526504942")
 
 
 if __name__ == "__main__":

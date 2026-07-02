@@ -642,6 +642,46 @@ h4 {
   color: #627068;
 }
 
+.factor-sample-table {
+  display: grid;
+  overflow-x: auto;
+  border-top: 1px solid #d8ded4;
+}
+
+.factor-sample-row {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, 0.8fr)
+    minmax(110px, 0.8fr)
+    minmax(140px, 1fr)
+    minmax(180px, 1.2fr)
+    minmax(140px, 0.9fr)
+    minmax(90px, 0.6fr);
+  align-items: center;
+  min-width: 820px;
+  min-height: 52px;
+  gap: 12px;
+  border-bottom: 1px solid #d8ded4;
+  font-size: 13px;
+}
+
+.factor-sample-row.header {
+  min-height: 42px;
+  color: #627068;
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 12px;
+}
+
+.factor-sample-row span,
+.factor-sample-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.factor-sample-row span {
+  color: #627068;
+}
+
 .engine-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));

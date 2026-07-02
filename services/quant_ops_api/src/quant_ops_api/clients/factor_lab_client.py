@@ -7,6 +7,8 @@ from quant_contracts import (
     AlgorithmReviewGateEvidenceReviewRequest,
     AlgorithmReviewGateEvidenceResponse,
     AlgorithmSpec,
+    FactorCalculationRequest,
+    FactorCalculationResponse,
 )
 
 
@@ -162,6 +164,35 @@ class FactorLabClient:
 
         return _parse_algorithm_promotion_readiness(response=response)
 
+    async def calculate_factor(self, *, request: FactorCalculationRequest) -> FactorCalculationResponse:
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds,
+                transport=self.transport,
+            ) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/v1/factors/calculate",
+                    json=request.model_dump(mode="json"),
+                )
+        except httpx.TimeoutException as error:
+            raise FactorLabClientError(
+                status_code=504,
+                message="factor lab calculation request timed out",
+            ) from error
+        except httpx.HTTPError as error:
+            raise FactorLabClientError(
+                status_code=502,
+                message=f"factor lab calculation request failed: {error}",
+            ) from error
+
+        if response.status_code < 200 or response.status_code >= 300:
+            raise FactorLabClientError(
+                status_code=502,
+                message=f"factor lab calculation returned status {response.status_code}",
+            )
+
+        return _parse_factor_calculation_response(response=response)
+
 
 def _parse_algorithm_specs(*, response: httpx.Response) -> list[AlgorithmSpec]:
     payload = _safe_json(response=response)
@@ -237,6 +268,23 @@ def _parse_algorithm_promotion_readiness(
         raise FactorLabClientError(
             status_code=502,
             message="factor lab promotion readiness response does not match the contract",
+        ) from error
+
+
+def _parse_factor_calculation_response(*, response: httpx.Response) -> FactorCalculationResponse:
+    payload = _safe_dict_json(response=response)
+    if payload is None:
+        raise FactorLabClientError(
+            status_code=502,
+            message="factor lab calculation response is not valid JSON",
+        )
+
+    try:
+        return FactorCalculationResponse.model_validate(payload)
+    except ValueError as error:
+        raise FactorLabClientError(
+            status_code=502,
+            message="factor lab calculation response does not match the contract",
         ) from error
 
 
