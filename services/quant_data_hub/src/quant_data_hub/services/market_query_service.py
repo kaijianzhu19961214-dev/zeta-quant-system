@@ -12,6 +12,10 @@ from quant_contracts import (
 )
 from quant_data_hub.integrations.clickhouse import ClickHouseReader
 from quant_data_hub.schemas.adjustment import QfqBatchListResponse
+from quant_data_hub.schemas.source_coverage import (
+    MarketDataSourceCoverageItem,
+    MarketDataSourceCoverageResponse,
+)
 
 safe_value_pattern = re.compile(r"^[A-Za-z0-9_.:-]+$")
 identifier_pattern = re.compile(r"^[A-Za-z_][A-Za-z0-9_]*$")
@@ -317,6 +321,66 @@ LIMIT {limit}
             row_count=len(rows),
             batches=[QfqBatch.model_validate(row) for row in rows],
         )
+
+    async def list_source_coverage(self, *, limit: int = 100) -> MarketDataSourceCoverageResponse:
+        query = self.build_source_coverage_query(limit=limit)
+        payload = await self.reader.query_json(query, timeout_seconds=120)
+        rows = payload.get("data", [])
+        coverage = [MarketDataSourceCoverageItem.model_validate(row) for row in rows]
+        return MarketDataSourceCoverageResponse(row_count=len(coverage), coverage=coverage)
+
+    def build_source_coverage_query(self, *, limit: int = 100) -> str:
+        normalized_limit = max(1, min(limit, 1000))
+        union_queries = [
+            self.build_source_coverage_select(
+                timeframe=Timeframe.DAY_1,
+                table_name=timeframe_config[Timeframe.DAY_1]["raw_table"],
+                duplicate_key_column="date",
+            ),
+            self.build_source_coverage_select(
+                timeframe=Timeframe.MINUTE_1,
+                table_name=timeframe_config[Timeframe.MINUTE_1]["raw_table"],
+                duplicate_key_column="trade_time",
+            ),
+            self.build_source_coverage_select(
+                timeframe=Timeframe.MINUTE_5,
+                table_name=timeframe_config[Timeframe.MINUTE_5]["raw_table"],
+                duplicate_key_column="trade_time",
+            ),
+        ]
+        union_sql = "\nUNION ALL\n".join(union_queries)
+        return f"""
+SELECT *
+FROM (
+{union_sql}
+)
+ORDER BY row_count DESC, timeframe, dataset_code, source_name
+LIMIT {normalized_limit}
+"""
+
+    def build_source_coverage_select(
+        self,
+        *,
+        timeframe: Timeframe,
+        table_name: str,
+        duplicate_key_column: str,
+    ) -> str:
+        formatted_table_name = format_table_name(database=self.database, table_name=table_name)
+        return f"""
+SELECT
+    {quote_sql_string(timeframe.value)} AS timeframe,
+    {quote_sql_string(table_name)} AS storage_object,
+    dataset_code,
+    source_name,
+    count() AS row_count,
+    uniqExact(code) AS symbol_count,
+    uniqExact(date) AS trading_day_count,
+    min(date) AS min_date,
+    max(date) AS max_date,
+    count() - uniqExact(tuple(dataset_code, code, {duplicate_key_column})) AS duplicate_key_rows
+FROM {formatted_table_name}
+GROUP BY dataset_code, source_name
+"""
 
     def build_bars_query(self, request: MarketBarsQuery) -> str:
         dataset_code = get_dataset_code(request)

@@ -604,6 +604,69 @@ h4 {
   overflow-wrap: anywhere;
 }
 
+.coverage-table {
+  display: grid;
+  overflow-x: auto;
+  border-top: 1px solid #d8ded4;
+}
+
+.coverage-row {
+  display: grid;
+  grid-template-columns:
+    minmax(64px, 0.45fr)
+    minmax(120px, 0.9fr)
+    minmax(150px, 1fr)
+    minmax(100px, 0.7fr)
+    minmax(92px, 0.65fr)
+    minmax(88px, 0.6fr)
+    minmax(190px, 1.2fr)
+    minmax(76px, 0.5fr);
+  align-items: center;
+  min-width: 980px;
+  min-height: 50px;
+  gap: 12px;
+  border-bottom: 1px solid #d8ded4;
+  font-size: 13px;
+}
+
+.coverage-row.header {
+  min-height: 42px;
+  color: #627068;
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 12px;
+}
+
+.coverage-row span,
+.coverage-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.coverage-row span {
+  color: #627068;
+}
+
+.storage-role-grid {
+  display: grid;
+  grid-template-columns: repeat(4, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.storage-role-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-left: 4px solid #2f5fa7;
+  background: #f7f9fc;
+}
+
+.storage-role-card p {
+  margin-bottom: 0;
+  line-height: 1.45;
+}
+
 .market-sample-table {
   display: grid;
   overflow-x: auto;
@@ -1046,6 +1109,10 @@ h4 {
     grid-template-columns: 1fr;
   }
 
+  .storage-role-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .algorithm-meta-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1117,6 +1184,10 @@ h4 {
   }
 
   .price-mode-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .storage-role-grid {
     grid-template-columns: 1fr;
   }
 

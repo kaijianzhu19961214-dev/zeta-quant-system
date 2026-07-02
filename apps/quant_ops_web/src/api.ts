@@ -11,6 +11,7 @@ import type {
   MarketDataBarsSampleRequest,
   MarketDataBarsSampleResponse,
   MarketDataPriceModeOverview,
+  MarketDataSourceCoverageResponse,
   OpsOverviewResponse,
 } from "./types";
 
@@ -70,6 +71,20 @@ export async function fetchMarketDataPriceModes(): Promise<MarketDataPriceModeOv
   }
 
   return (await response.json()) as MarketDataPriceModeOverview;
+}
+
+export async function fetchMarketDataSourceCoverage(): Promise<MarketDataSourceCoverageResponse> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/market-data/source-coverage`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "market data source coverage request failed"));
+  }
+
+  return (await response.json()) as MarketDataSourceCoverageResponse;
 }
 
 export async function fetchMarketDataBarsSample(

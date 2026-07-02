@@ -55,6 +55,38 @@ export interface MarketDataPriceModeOverview {
   limitations: string[];
 }
 
+export type StorageRoleName = "postgresql" | "clickhouse" | "minio" | "redis";
+
+export interface MarketDataSourceCoverageItem {
+  timeframe: TimeframeName;
+  storage_object: string;
+  dataset_code: string;
+  source_name: string;
+  row_count: number;
+  symbol_count: number;
+  trading_day_count: number;
+  min_date: string | null;
+  max_date: string | null;
+  duplicate_key_rows: number;
+}
+
+export interface MarketDataStorageRole {
+  storage_name: StorageRoleName;
+  display_name: string;
+  responsibility: string;
+  current_usage: string;
+  stores_market_bars: boolean;
+}
+
+export interface MarketDataSourceCoverageResponse {
+  status: MarketDataServiceStatus;
+  generated_at: string;
+  row_count: number;
+  coverage: MarketDataSourceCoverageItem[];
+  storage_roles: MarketDataStorageRole[];
+  limitations: string[];
+}
+
 export interface MarketDataBarsSampleRequest {
   symbol: string;
   timeframe: TimeframeName;

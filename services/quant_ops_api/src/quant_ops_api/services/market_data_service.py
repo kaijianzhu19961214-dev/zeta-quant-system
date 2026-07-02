@@ -8,6 +8,9 @@ from quant_ops_api.schemas import (
     MarketDataBarsSampleResponse,
     MarketDataPriceModeOverview,
     MarketPriceModeStatus,
+    MarketDataSourceCoverageItem,
+    MarketDataSourceCoverageResponse,
+    MarketDataStorageRole,
     QfqBatchSummary,
 )
 
@@ -20,6 +23,22 @@ class MarketDataService:
     async def get_price_mode_overview(self) -> MarketDataPriceModeOverview:
         qfq_batches = await self.quant_data_hub_client.list_qfq_batches(limit=self.qfq_batch_limit)
         return build_price_mode_overview(qfq_batches=qfq_batches)
+
+    async def get_source_coverage(self, *, limit: int = 100) -> MarketDataSourceCoverageResponse:
+        coverage: list[MarketDataSourceCoverageItem] = await self.quant_data_hub_client.get_source_coverage(limit=limit)
+        duplicate_rows = sum(item.duplicate_key_rows for item in coverage)
+        return MarketDataSourceCoverageResponse(
+            status="ok" if coverage and duplicate_rows == 0 else "degraded",
+            generated_at=datetime.now(timezone.utc),
+            row_count=len(coverage),
+            coverage=coverage,
+            storage_roles=build_market_data_storage_roles(),
+            limitations=[
+                "ClickHouse is the source of truth for full market bar detail queries.",
+                "PostgreSQL records ingestion/export tasks, metadata, lineage, and quality checks.",
+                "MinIO stores raw responses, Parquet snapshots, and artifacts when archival is enabled.",
+            ],
+        )
 
     async def query_sample_bars(self, *, request: MarketDataBarsSampleRequest) -> MarketDataBarsSampleResponse:
         qfq_batch = await self.find_sample_qfq_batch(request=request)
@@ -115,3 +134,36 @@ def build_price_mode_overview(*, qfq_batches: list[QfqBatchSummary]) -> MarketDa
             "MarketBar.adjustment_factor is the effective factor for the selected price_mode.",
         ],
     )
+
+
+def build_market_data_storage_roles() -> list[MarketDataStorageRole]:
+    return [
+        MarketDataStorageRole(
+            storage_name="postgresql",
+            display_name="PostgreSQL",
+            responsibility="控制面：导入导出任务、批次、元数据、血缘、质量检查和审核记录。",
+            current_usage="当前不保存全量行情明细；下一步补导入批次和质量检查账本。",
+            stores_market_bars=False,
+        ),
+        MarketDataStorageRole(
+            storage_name="clickhouse",
+            display_name="ClickHouse",
+            responsibility="行情与因子分析主库：raw/qfq/hfq 明细查询、因子明细和聚合分析。",
+            current_usage="当前 Tushare A 股日线明细已写入 quant_market.market_data_1d_raw。",
+            stores_market_bars=True,
+        ),
+        MarketDataStorageRole(
+            storage_name="minio",
+            display_name="MinIO",
+            responsibility="对象归档：原始响应、CSV/Parquet 快照、导入中间产物、报告和模型产物。",
+            current_usage="当前本轮 Tushare 日线导入未写归档；后续按批次开启归档。",
+            stores_market_bars=False,
+        ),
+        MarketDataStorageRole(
+            storage_name="redis",
+            display_name="Redis",
+            responsibility="缓存与短期状态：交易日历、证券主数据、查询短缓存和任务锁。",
+            current_usage="只保存短期状态，不保存永久业务真相。",
+            stores_market_bars=False,
+        ),
+    ]

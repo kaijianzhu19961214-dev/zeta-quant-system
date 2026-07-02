@@ -10,6 +10,7 @@ import {
   fetchFactorValidationReview,
   fetchMarketDataBarsSample,
   fetchMarketDataPriceModes,
+  fetchMarketDataSourceCoverage,
   fetchOverview,
 } from "./api";
 import type {
@@ -30,6 +31,9 @@ import type {
   MarketDataBarsSampleRequest,
   MarketDataBarsSampleResponse,
   MarketDataPriceModeOverview,
+  MarketDataSourceCoverageItem,
+  MarketDataSourceCoverageResponse,
+  MarketDataStorageRole,
   MarketPriceModeStatus,
   OpsOverviewResponse,
   ServiceHealth,
@@ -192,6 +196,9 @@ export function App() {
   const [marketDataOverview, setMarketDataOverview] = useState<MarketDataPriceModeOverview | null>(null);
   const [marketDataLoadState, setMarketDataLoadState] = useState<LoadState>("idle");
   const [marketDataErrorMessage, setMarketDataErrorMessage] = useState<string | null>(null);
+  const [marketDataCoverage, setMarketDataCoverage] = useState<MarketDataSourceCoverageResponse | null>(null);
+  const [marketDataCoverageLoadState, setMarketDataCoverageLoadState] = useState<LoadState>("idle");
+  const [marketDataCoverageErrorMessage, setMarketDataCoverageErrorMessage] = useState<string | null>(null);
   const [marketDataSample, setMarketDataSample] = useState<MarketDataBarsSampleResponse | null>(null);
   const [marketDataSampleLoadState, setMarketDataSampleLoadState] = useState<LoadState>("idle");
   const [marketDataSampleErrorMessage, setMarketDataSampleErrorMessage] = useState<string | null>(null);
@@ -368,6 +375,28 @@ export function App() {
     void loadMarketDataOverview();
   }, [activeView, loadMarketDataOverview, marketDataOverview]);
 
+  const loadMarketDataCoverage = useCallback(async () => {
+    setMarketDataCoverageLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setMarketDataCoverageErrorMessage(null);
+
+    try {
+      const response = await fetchMarketDataSourceCoverage();
+      setMarketDataCoverage(response);
+      setMarketDataCoverageLoadState("ready");
+    } catch (error) {
+      setMarketDataCoverageErrorMessage(
+        error instanceof Error ? error.message : "market data coverage request failed",
+      );
+      setMarketDataCoverageLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "market-data") return;
+    if (marketDataCoverage !== null) return;
+    void loadMarketDataCoverage();
+  }, [activeView, loadMarketDataCoverage, marketDataCoverage]);
+
   const loadMarketDataSample = useCallback(async () => {
     setMarketDataSampleLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
     setMarketDataSampleErrorMessage(null);
@@ -396,6 +425,7 @@ export function App() {
     loadArtifactLedger,
     loadFactorAlgorithms,
     loadFactorLabSample,
+    loadMarketDataCoverage,
     loadMarketDataOverview,
     loadMarketDataSample,
     loadExternalPayloadComparison,
@@ -483,6 +513,9 @@ export function App() {
         ) : activeView === "market-data" ? (
           <section className="validation-view">
             <MarketDataPanel
+              coverage={marketDataCoverage}
+              coverageErrorMessage={marketDataCoverageErrorMessage}
+              coverageLoadState={marketDataCoverageLoadState}
               errorMessage={marketDataErrorMessage}
               loadState={marketDataLoadState}
               overview={marketDataOverview}
@@ -555,6 +588,9 @@ function MetricsStrip({ overview }: { overview: OpsOverviewResponse | null }) {
 
 function MarketDataPanel({
   overview,
+  coverage,
+  coverageLoadState,
+  coverageErrorMessage,
   loadState,
   errorMessage,
   sample,
@@ -562,6 +598,9 @@ function MarketDataPanel({
   sampleErrorMessage,
 }: {
   overview: MarketDataPriceModeOverview | null;
+  coverage: MarketDataSourceCoverageResponse | null;
+  coverageLoadState: LoadState;
+  coverageErrorMessage: string | null;
   loadState: LoadState;
   errorMessage: string | null;
   sample: MarketDataBarsSampleResponse | null;
@@ -611,6 +650,12 @@ function MarketDataPanel({
           <MetricTile label={bilingualLabel("价格口径", "Price Modes")} value={String(overview.price_modes.length)} />
         </div>
       </section>
+
+      <MarketDataCoveragePanel
+        coverage={coverage}
+        errorMessage={coverageErrorMessage}
+        loadState={coverageLoadState}
+      />
 
       <section className="service-panel">
         <div className="section-heading">
@@ -704,6 +749,132 @@ function MarketDataSamplePanel({
         ))}
       </div>
     </section>
+  );
+}
+
+function MarketDataCoveragePanel({
+  coverage,
+  loadState,
+  errorMessage,
+}: {
+  coverage: MarketDataSourceCoverageResponse | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+}) {
+  if (loadState === "error") {
+    return (
+      <section className="notice error" role="alert">
+        <strong>{bilingualLabel("数据覆盖率暂时不可用", "Source coverage unavailable")}</strong>
+        <span>{errorMessage}</span>
+      </section>
+    );
+  }
+
+  if (coverage === null) {
+    return (
+      <section className="notice">
+        <strong>{bilingualLabel("正在读取数据覆盖率", "Loading source coverage")}</strong>
+        <span>{bilingualLabel("聚合 ClickHouse raw 行情表。", "Aggregating ClickHouse raw market tables.")}</span>
+      </section>
+    );
+  }
+
+  const totalRows = coverage.coverage.reduce((sum, item) => sum + item.row_count, 0);
+  const totalSymbols = Math.max(0, ...coverage.coverage.map((item) => item.symbol_count));
+  const duplicateRows = coverage.coverage.reduce((sum, item) => sum + item.duplicate_key_rows, 0);
+  const dateRange = resolveCoverageDateRange(coverage.coverage);
+
+  return (
+    <section className="service-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">{bilingualLabel("数据覆盖率", "Source Coverage")}</p>
+          <h3>{bilingualLabel("真实行情落库状态", "Real Market Data Inventory")}</h3>
+        </div>
+        <span className={`status-pill ${coverage.status === "ok" ? "pill-ok" : "pill-degraded"}`}>
+          {coverage.status}
+        </span>
+      </div>
+      <div className="metric-grid compact">
+        <MetricTile label={bilingualLabel("总行数", "Rows")} value={formatCount(totalRows)} />
+        <MetricTile label={bilingualLabel("最大标的数", "Max Symbols")} value={formatCount(totalSymbols)} />
+        <MetricTile label={bilingualLabel("日期范围", "Date Range")} value={dateRange} />
+        <MetricTile label={bilingualLabel("重复键行", "Duplicate Rows")} value={formatCount(duplicateRows)} />
+      </div>
+      <MarketDataCoverageTable coverage={coverage.coverage} />
+      <MarketDataStorageRoleGrid roles={coverage.storage_roles} />
+      <div className="action-list">
+        {coverage.limitations.map((limitation) => (
+          <span key={limitation}>{limitation}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MarketDataCoverageTable({ coverage }: { coverage: MarketDataSourceCoverageItem[] }) {
+  if (coverage.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>{bilingualLabel("暂无覆盖率记录", "No Coverage Rows")}</strong>
+        <span>{bilingualLabel("ClickHouse 当前没有返回行情覆盖率。", "No ClickHouse source coverage was returned.")}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="coverage-table">
+      <div className="coverage-row header">
+        <span>{bilingualLabel("频率", "Frame")}</span>
+        <span>{bilingualLabel("数据集", "Dataset")}</span>
+        <span>{bilingualLabel("来源", "Source")}</span>
+        <span>{bilingualLabel("行数", "Rows")}</span>
+        <span>{bilingualLabel("标的", "Symbols")}</span>
+        <span>{bilingualLabel("交易日", "Days")}</span>
+        <span>{bilingualLabel("范围", "Range")}</span>
+        <span>{bilingualLabel("重复", "Dup")}</span>
+      </div>
+      {coverage.map((item) => (
+        <div className="coverage-row" key={`${item.timeframe}-${item.dataset_code}-${item.source_name}`}>
+          <strong>{item.timeframe}</strong>
+          <span>{item.dataset_code}</span>
+          <span>{item.source_name}</span>
+          <span>{formatCount(item.row_count)}</span>
+          <span>{formatCount(item.symbol_count)}</span>
+          <span>{formatCount(item.trading_day_count)}</span>
+          <span>{formatDateRange(item.min_date, item.max_date)}</span>
+          <span>{formatCount(item.duplicate_key_rows)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MarketDataStorageRoleGrid({ roles }: { roles: MarketDataStorageRole[] }) {
+  if (roles.length === 0) return null;
+
+  return (
+    <div className="storage-role-grid">
+      {roles.map((role) => (
+        <article className="storage-role-card" key={role.storage_name}>
+          <div className="price-mode-heading">
+            <div>
+              <p className="eyebrow">{role.storage_name}</p>
+              <h4>{role.display_name}</h4>
+            </div>
+            <span className={`status-pill ${role.stores_market_bars ? "pill-ok" : "pill-degraded"}`}>
+              {role.stores_market_bars
+                ? bilingualLabel("行情明细", "Bars")
+                : bilingualLabel("控制/归档", "Ledger")}
+            </span>
+          </div>
+          <p className="muted">{role.responsibility}</p>
+          <div className="source-strip">
+            <span>{role.current_usage}</span>
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -1619,6 +1790,7 @@ function resolveRefreshHandler({
   loadArtifactLedger,
   loadFactorAlgorithms,
   loadFactorLabSample,
+  loadMarketDataCoverage,
   loadMarketDataOverview,
   loadMarketDataSample,
   loadExternalPayloadComparison,
@@ -1629,6 +1801,7 @@ function resolveRefreshHandler({
   loadArtifactLedger: () => void;
   loadFactorAlgorithms: () => void;
   loadFactorLabSample: () => void;
+  loadMarketDataCoverage: () => void;
   loadMarketDataOverview: () => void;
   loadMarketDataSample: () => void;
   loadExternalPayloadComparison: () => void;
@@ -1638,6 +1811,7 @@ function resolveRefreshHandler({
   if (activeView === "overview") return loadOverview;
   if (activeView === "market-data") {
     return () => {
+      loadMarketDataCoverage();
       loadMarketDataOverview();
       loadMarketDataSample();
     };
@@ -1710,10 +1884,27 @@ function formatNumber(value: number | null | undefined): string {
   return value.toFixed(3);
 }
 
+function formatCount(value: number | null | undefined): string {
+  if (value === null || value === undefined) return "--";
+  return value.toLocaleString("zh-CN");
+}
+
 function formatMarketDecimal(value: string | number | null | undefined): string {
   if (value === null || value === undefined) return "--";
   if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(4);
   return value;
+}
+
+function formatDateRange(start: string | null, end: string | null): string {
+  if (!start && !end) return "--";
+  return `${start ?? "--"} - ${end ?? "--"}`;
+}
+
+function resolveCoverageDateRange(coverage: MarketDataSourceCoverageItem[]): string {
+  const starts = coverage.map((item) => item.min_date).filter((value): value is string => value !== null);
+  const ends = coverage.map((item) => item.max_date).filter((value): value is string => value !== null);
+  if (starts.length === 0 || ends.length === 0) return "--";
+  return formatDateRange(starts.sort()[0], ends.sort()[ends.length - 1]);
 }
 
 function resolveMarketBarDate(row: MarketBar): string {

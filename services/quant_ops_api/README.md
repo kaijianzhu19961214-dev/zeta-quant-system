@@ -19,6 +19,7 @@
 GET /health
 GET /api/v1/overview
 GET /api/v1/market-data/price-modes
+GET /api/v1/market-data/source-coverage
 POST /api/v1/market-data/bars/sample
 GET /api/v1/factor-lab/algorithms
 GET /api/v1/factor-lab/factors/samples/momentum-1d
@@ -49,6 +50,8 @@ down_count
 ```
 
 `/api/v1/market-data/price-modes` 当前只读聚合 `quant_data_hub /api/v1/adjustments/qfq-batches`，输出 raw / qfq / hfq 三种价格口径、ClickHouse 存储对象、是否需要 `batch_id`、最新 qfq batch 和 `qfq_base_date`。该接口用于 Web UI 监控因子计算前的数据口径，不直接查询大规模行情明细。
+
+`/api/v1/market-data/source-coverage` 当前只读聚合 `quant_data_hub /api/v1/market-data/source-coverage`，输出 ClickHouse raw 行情表按 `timeframe / dataset_code / source_name` 的行数、标的数、交易日数、日期范围和重复键行数。同时返回 PostgreSQL / ClickHouse / MinIO / Redis 的存储职责说明：ClickHouse 是行情明细主查询库，PostgreSQL 只保存任务、批次、血缘和质量检查，MinIO 保存原始响应、Parquet 快照和产物归档，Redis 只做缓存和短期状态。
 
 `/api/v1/market-data/bars/sample` 是受控小样本预览接口：请求体采用 `MarketDataBarsSampleRequest`，由 `quant_ops_api` 转发到 `quant_data_hub /api/v1/market-bars/query`，响应返回 `MarketDataBarsSampleResponse`，其中 `meta` 和 `rows` 复用 `quant_contracts.MarketBarsResponse` 的标准结构。当前 Web UI 默认请求 `000001.SZ / 1d / raw / 2026-06-10`，接口限制 `limit <= 20`；当 `price_mode=qfq` 且未传 `batch_id` 时，BFF 会读取最新 qfq batch 后再查询。该接口只用于 UI smoke 和数据口径确认，不替代正式因子任务的数据读取接口。
 

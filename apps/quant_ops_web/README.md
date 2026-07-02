@@ -36,6 +36,7 @@ System
 - 展示整体状态、最后刷新时间、健康服务数量、异常服务数量。
 - 展示 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation` 的状态表。
 - 通过 `quant_ops_api /api/v1/market-data/price-modes` 展示 Market Data 页面，包括 raw / qfq / hfq 价格口径、ClickHouse 存储对象、最新 qfq batch、`qfq_base_date` 和查询边界。
+- 通过 `quant_ops_api /api/v1/market-data/source-coverage` 展示 ClickHouse 行情覆盖率，包括 source_name、dataset_code、行数、标的数、日期范围、重复键行数，以及 PostgreSQL / ClickHouse / MinIO / Redis 的存储分工。
 - 通过 `quant_ops_api /api/v1/market-data/bars/sample` 展示受控行情小样本，当前默认窗口为 `000001.SZ / 1d / raw / 2026-06-10`，用于验证 UI -> BFF -> `quant_data_hub` -> ClickHouse 链路。
 - 通过 `quant_ops_api /api/v1/factor-lab/algorithms` 展示 Factor Lab 算法 registry，包括 `available` / `planned` `AlgorithmSpec` 和 `review_gates` 准入门槛。
 - 通过 `quant_ops_api /api/v1/factor-lab/factors/samples/momentum-1d` 展示真实因子小样本，当前固定计算 `momentum_1d / technical.momentum / 000001.SZ / 2026-06-09~2026-06-10 / raw`。

@@ -623,6 +623,36 @@ v_market_data_5m_hfq
 
 101 PostgreSQL 中的 `market_data_1d`、`market_data_1m`、`market_data_5m` 是采集期宽表：同一张表同时保存 raw 价格、`qfq_*` 前复权价格、`hfq_*` 后复权价格、`adj_factor`、`qfq_factor`、`hfq_factor` 和 `qfq_base_date`。该结构可以作为历史兼容、迁移校验和小规模回放参考，但不建议照搬为生产分析主表。
 
+当前真实 Tushare 日线导入口径：
+
+```text
+导入范围: 2024-01-02 ~ 2026-06-30
+交易日数: 601
+证券数: 5,620
+行情行数: 3,244,082
+数据源: source_name=tushare_proxy
+数据集: dataset_code=a_share_1d
+落点: 101 ClickHouse / quant_market.market_data_1d_raw
+重复校验: code + date 无重复
+```
+
+该批行情明细只写入 101 ClickHouse。101 PostgreSQL 不保存同一份全量行情明细，只用于导入批次、任务、血缘、质量检查和小规模校验表；101 MinIO 当前也不保存这批日线明细归档，后续可按批次保存原始响应、Parquet 快照或因子验证产物。
+
+当前已新增只读数据覆盖率监控链路：
+
+```text
+quant_data_hub
+  GET /api/v1/market-data/source-coverage
+  聚合 ClickHouse raw 行情表覆盖率
+
+quant_ops_api
+  GET /api/v1/market-data/source-coverage
+  转发覆盖率并补充 PostgreSQL / ClickHouse / MinIO / Redis 存储分工
+
+quant_ops_web
+  Market Data 页面展示 source coverage、重复键检查和存储职责
+```
+
 生产查询层采用以下口径：
 
 ```text

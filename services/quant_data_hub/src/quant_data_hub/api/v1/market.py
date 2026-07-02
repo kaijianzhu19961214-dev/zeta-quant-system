@@ -5,6 +5,7 @@ from quant_contracts import MarketBarsQuery, MarketBarsResponse, PriceMode, Time
 from quant_data_hub.api.v1.dependencies import get_market_query_service
 from quant_data_hub.schemas.adjustment import QfqBatchListResponse
 from quant_data_hub.schemas.legacy_market import LegacyMarketBarsQueryRequest
+from quant_data_hub.schemas.source_coverage import MarketDataSourceCoverageResponse
 from quant_data_hub.services.market_query_service import MarketQueryService
 
 router = APIRouter(prefix="/api/v1", tags=["market-query"])
@@ -88,6 +89,22 @@ async def list_qfq_batches(
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
 
 
+@router.get(
+    "/market-data/source-coverage",
+    response_model=MarketDataSourceCoverageResponse,
+    summary="查询行情数据源覆盖率",
+    description="按 timeframe / dataset_code / source_name 聚合 ClickHouse raw 行情表覆盖范围。",
+)
+async def list_market_data_source_coverage(
+    limit: int = Query(default=100, ge=1, le=1000, description="最大返回覆盖率行数"),
+    service: MarketQueryService = Depends(get_market_query_service),
+) -> MarketDataSourceCoverageResponse:
+    try:
+        return await service.list_source_coverage(limit=limit)
+    except RuntimeError as error:
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
+
+
 async def query_market_bars(
     *,
     request: MarketBarsQuery,
@@ -99,4 +116,3 @@ async def query_market_bars(
         raise HTTPException(status_code=status.HTTP_422_UNPROCESSABLE_ENTITY, detail=str(error)) from error
     except RuntimeError as error:
         raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=str(error)) from error
-

@@ -1,6 +1,6 @@
 from typing import Annotated
 
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, Query
 
 from quant_ops_api.api.v1.dependencies import get_market_data_service
 from quant_ops_api.clients import QuantDataHubClientError
@@ -8,6 +8,7 @@ from quant_ops_api.schemas import (
     MarketDataBarsSampleRequest,
     MarketDataBarsSampleResponse,
     MarketDataPriceModeOverview,
+    MarketDataSourceCoverageResponse,
 )
 from quant_ops_api.services import MarketDataService
 
@@ -33,5 +34,16 @@ async def read_market_data_bars_sample(
         return await market_data_service.query_sample_bars(request=request)
     except ValueError as error:
         raise HTTPException(status_code=422, detail=str(error)) from error
+    except QuantDataHubClientError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.message) from error
+
+
+@router.get("/source-coverage", response_model=MarketDataSourceCoverageResponse)
+async def read_market_data_source_coverage(
+    market_data_service: Annotated[MarketDataService, Depends(get_market_data_service)],
+    limit: int = Query(default=100, ge=1, le=1000),
+) -> MarketDataSourceCoverageResponse:
+    try:
+        return await market_data_service.get_source_coverage(limit=limit)
     except QuantDataHubClientError as error:
         raise HTTPException(status_code=error.status_code, detail=error.message) from error

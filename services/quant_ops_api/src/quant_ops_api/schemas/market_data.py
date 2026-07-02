@@ -8,6 +8,7 @@ from quant_contracts import MarketBar, MarketBarsMeta
 PriceModeName = Literal["raw", "qfq", "hfq"]
 MarketDataServiceStatus = Literal["ok", "degraded"]
 TimeframeName = Literal["1m", "5m", "1d"]
+StorageRoleName = Literal["postgresql", "clickhouse", "minio", "redis"]
 
 
 class QfqBatchSummary(BaseModel):
@@ -36,6 +37,36 @@ class MarketDataPriceModeOverview(BaseModel):
     qfq_batch_count: int = Field(ge=0)
     latest_qfq_batch: QfqBatchSummary | None = None
     price_modes: list[MarketPriceModeStatus] = Field(default_factory=list)
+    limitations: list[str] = Field(default_factory=list)
+
+
+class MarketDataSourceCoverageItem(BaseModel):
+    timeframe: TimeframeName
+    storage_object: str = Field(min_length=1, max_length=128)
+    dataset_code: str = Field(min_length=1, max_length=128)
+    source_name: str = Field(min_length=1, max_length=128)
+    row_count: int = Field(ge=0)
+    symbol_count: int = Field(ge=0)
+    trading_day_count: int = Field(ge=0)
+    min_date: date | None = None
+    max_date: date | None = None
+    duplicate_key_rows: int = Field(ge=0)
+
+
+class MarketDataStorageRole(BaseModel):
+    storage_name: StorageRoleName
+    display_name: str = Field(min_length=1, max_length=64)
+    responsibility: str = Field(min_length=1, max_length=256)
+    current_usage: str = Field(min_length=1, max_length=256)
+    stores_market_bars: bool
+
+
+class MarketDataSourceCoverageResponse(BaseModel):
+    status: MarketDataServiceStatus
+    generated_at: datetime
+    row_count: int = Field(ge=0)
+    coverage: list[MarketDataSourceCoverageItem] = Field(default_factory=list)
+    storage_roles: list[MarketDataStorageRole] = Field(default_factory=list)
     limitations: list[str] = Field(default_factory=list)
 
 

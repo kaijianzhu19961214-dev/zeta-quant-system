@@ -152,6 +152,37 @@ class MarketQueryServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(len(reader.queries), 2)
         self.assertIn("FROM quant_market.qfq_batches", reader.queries[1])
 
+    async def test_should_return_source_coverage_when_reader_returns_aggregates(self) -> None:
+        reader = FakeClickHouseReader(
+            {
+                "data": [
+                    {
+                        "timeframe": "1d",
+                        "storage_object": "market_data_1d_raw",
+                        "dataset_code": "a_share_1d",
+                        "source_name": "tushare_proxy",
+                        "row_count": "3244082",
+                        "symbol_count": "5620",
+                        "trading_day_count": "601",
+                        "min_date": "2024-01-02",
+                        "max_date": "2026-06-30",
+                        "duplicate_key_rows": "0",
+                    }
+                ]
+            }
+        )
+        service = MarketQueryService(reader=reader, database="quant_market")
+
+        response = await service.list_source_coverage(limit=10)
+
+        self.assertEqual(response.row_count, 1)
+        self.assertEqual(response.coverage[0].timeframe, Timeframe.DAY_1)
+        self.assertEqual(response.coverage[0].row_count, 3244082)
+        self.assertEqual(response.coverage[0].source_name, "tushare_proxy")
+        self.assertEqual(response.coverage[0].min_date.isoformat(), "2024-01-02")
+        self.assertIn("market_data_1d_raw", reader.queries[0])
+        self.assertIn("duplicate_key_rows", reader.queries[0])
+
 
 if __name__ == "__main__":
     unittest.main()
