@@ -259,16 +259,44 @@ class MarketQueryService:
         payload = await self.reader.query_json(query, timeout_seconds=120)
         rows = payload.get("data", [])
         dataset_code = get_dataset_code(request)
+        qfq_base_date = await self.get_qfq_base_date(request=request)
         return MarketBarsResponse(
             meta=MarketBarsMeta(
                 timeframe=request.timeframe,
                 price_mode=request.price_mode,
                 dataset_code=dataset_code,
                 batch_id=request.batch_id,
+                qfq_base_date=qfq_base_date,
                 row_count=len(rows),
             ),
             rows=[MarketBar.model_validate(row) for row in rows],
         )
+
+    async def get_qfq_base_date(self, *, request: MarketBarsQuery) -> date | None:
+        if request.price_mode != PriceMode.QFQ:
+            return None
+        if not request.batch_id:
+            return None
+
+        query = f"""
+SELECT
+    qfq_base_date
+FROM {format_table_name(database=self.database, table_name="qfq_batches")}
+WHERE batch_id = {quote_sql_string(request.batch_id)}
+ORDER BY created_at DESC
+LIMIT 1
+"""
+        payload = await self.reader.query_json(query, timeout_seconds=60)
+        rows = payload.get("data", [])
+        if not rows:
+            return None
+
+        qfq_base_date = rows[0].get("qfq_base_date")
+        if isinstance(qfq_base_date, date):
+            return qfq_base_date
+        if isinstance(qfq_base_date, str):
+            return date.fromisoformat(qfq_base_date[:10])
+        return None
 
     async def list_qfq_batches(self, *, limit: int = 100) -> QfqBatchListResponse:
         query = f"""

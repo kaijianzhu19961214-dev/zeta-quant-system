@@ -621,6 +621,27 @@ v_market_data_1m_hfq
 v_market_data_5m_hfq
 ```
 
+101 PostgreSQL 中的 `market_data_1d`、`market_data_1m`、`market_data_5m` 是采集期宽表：同一张表同时保存 raw 价格、`qfq_*` 前复权价格、`hfq_*` 后复权价格、`adj_factor`、`qfq_factor`、`hfq_factor` 和 `qfq_base_date`。该结构可以作为历史兼容、迁移校验和小规模回放参考，但不建议照搬为生产分析主表。
+
+生产查询层采用以下口径：
+
+```text
+ClickHouse raw table
+  保存原始价格、成交量、成交额、源 adj_factor / hfq_factor
+
+ClickHouse qfq cache table
+  按 batch_id + qfq_base_date 生成前复权价格
+  raw 表不被覆盖
+
+ClickHouse hfq view
+  基于 raw price * hfq_factor 动态提供后复权价格
+
+quant_contracts MarketBarsResponse.meta
+  返回 price_mode、batch_id、qfq_base_date 等复权元数据
+```
+
+对因子服务暴露的 `MarketBar.adjustment_factor` 表示当前 `price_mode` 下生效的复权因子：raw 为源 `adj_factor`，qfq 为 `qfq_factor`，hfq 为 `hfq_factor`。因子计算只消费一种明确价格口径，不能在同一次计算中隐式混用 raw/qfq/hfq 三套价格。
+
 详细 DDL 参考：
 
 ```text

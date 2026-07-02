@@ -31,7 +31,7 @@
 | `volume` | `vol` | 成交量 |
 | `turnover` | `amount` | 成交额 |
 | `vwap` | `vwap` | 日线成交均价，分钟线可为空 |
-| `adjustment_factor` | `adj_factor` | 原始复权因子 |
+| `adjustment_factor` | `adj_factor` / `qfq_factor` / `hfq_factor` | 当前 `price_mode` 下生效的复权因子 |
 | `source_name` | `source_name` | 数据来源 |
 | `created_at` | `created_at` | 入库或生成时间 |
 
@@ -63,8 +63,9 @@ class PriceMode(StrEnum):
 
 ```text
 batch_id
-qfq_base_date
 ```
+
+`qfq_base_date` 由 `quant_data_hub` 根据 `batch_id` 从 `qfq_batches` 解析，并返回到 `MarketBarsResponse.meta.qfq_base_date`，供因子计算、验证和审计记录使用。
 
 后复权查询不需要基准日：
 
@@ -247,4 +248,3 @@ POST /api/v1/market/bars/query
 ```text
 POST /api/v1/market-bars/query
 ```
-

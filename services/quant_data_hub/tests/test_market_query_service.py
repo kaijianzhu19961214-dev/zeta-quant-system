@@ -6,12 +6,19 @@ from quant_data_hub.services.market_query_service import MarketQueryService
 
 
 class FakeClickHouseReader:
-    def __init__(self, payload: dict[str, Any] | None = None) -> None:
+    def __init__(
+        self,
+        payload: dict[str, Any] | None = None,
+        payloads: list[dict[str, Any]] | None = None,
+    ) -> None:
         self.payload = payload or {"data": []}
+        self.payloads = list(payloads or [])
         self.queries: list[str] = []
 
     async def query_json(self, query: str, *, timeout_seconds: int = 120) -> dict[str, Any]:
         self.queries.append(query)
+        if self.payloads:
+            return self.payloads.pop(0)
         return self.payload
 
 
@@ -110,7 +117,41 @@ class MarketQueryServiceTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.rows[0].symbol, "000001.SZ")
         self.assertEqual(str(response.rows[0].close_price), "10.20")
 
+    async def test_should_return_qfq_base_date_in_meta_when_querying_qfq_bars(self) -> None:
+        reader = FakeClickHouseReader(
+            payloads=[
+                {
+                    "data": [
+                        {
+                            "symbol": "000001.SZ",
+                            "trade_date": "2026-03-13",
+                            "close_price": "10.20",
+                            "volume": "1000",
+                            "turnover": "10200",
+                        }
+                    ]
+                },
+                {"data": [{"qfq_base_date": "2026-03-13"}]},
+            ]
+        )
+        service = MarketQueryService(reader=reader, database="quant_market")
+        request = MarketBarsQuery(
+            timeframe=Timeframe.DAY_1,
+            symbols=["000001.SZ"],
+            start="2026-03-13",
+            end="2026-03-13",
+            price_mode=PriceMode.QFQ,
+            batch_id="qfq_20260313",
+            fields=["symbol", "trade_date", "close_price", "volume", "turnover"],
+        )
+
+        response = await service.query_bars(request)
+
+        self.assertEqual(response.meta.batch_id, "qfq_20260313")
+        self.assertEqual(response.meta.qfq_base_date.isoformat(), "2026-03-13")
+        self.assertEqual(len(reader.queries), 2)
+        self.assertIn("FROM quant_market.qfq_batches", reader.queries[1])
+
 
 if __name__ == "__main__":
     unittest.main()
-

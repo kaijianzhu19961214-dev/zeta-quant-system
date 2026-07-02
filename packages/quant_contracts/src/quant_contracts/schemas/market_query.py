@@ -55,9 +55,9 @@ class MarketBarsMeta(ContractModel):
     row_count: int = Field(default=0, ge=0)
     dataset_code: str | None = None
     batch_id: str | None = None
+    qfq_base_date: date | None = None
 
 
 class MarketBarsResponse(ContractModel):
     meta: MarketBarsMeta
     rows: list[MarketBar] = Field(default_factory=list)
-

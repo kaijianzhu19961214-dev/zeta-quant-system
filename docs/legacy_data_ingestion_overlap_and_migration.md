@@ -101,6 +101,25 @@ task_artifacts: 1
 - `datasets`、`securities`、`trading_calendar` 当前行数为 0，说明主数据链路还需要补齐。
 - PostgreSQL 不应作为分钟线长期分析主存储。
 
+复权字段核对：
+
+```text
+market_data_1d / market_data_1m / market_data_5m:
+  raw 价格: open / high / low / close / pre_close / change
+  qfq 价格: qfq_open / qfq_high / qfq_low / qfq_close / qfq_pre_close / qfq_change
+  hfq 价格: hfq_open / hfq_high / hfq_low / hfq_close / hfq_pre_close / hfq_change
+  复权因子: adj_factor / qfq_factor / hfq_factor / qfq_base_date
+```
+
+2026-07-02 已通过 101 PostgreSQL 字段级巡检确认：三张行情表中的 `adj_factor`、`qfq_factor`、`hfq_factor`、`qfq_base_date`、`qfq_close`、`hfq_close` 均与各表行数一致，当前样本不存在复权字段空洞。
+
+迁移判断：
+
+- PostgreSQL 宽表适合作为采集兼容、小样本回放和迁移校验依据。
+- 当前项目不应把 PostgreSQL 宽表照搬为生产查询主模型。
+- 生产查询继续使用 ClickHouse `raw` 表、`qfq_cache` 批次表和 `hfq` view。
+- `quant_contracts` 对外只暴露一种明确 `price_mode` 下的价格，并在响应 `meta` 中返回 `batch_id` / `qfq_base_date` 等复权元数据。
+
 ### 3.2 ClickHouse
 
 定位：行情分析主存储与高速查询层。
@@ -325,4 +344,3 @@ docs/references/legacy_data_ingestion/docs/task_model.md
 docs/references/legacy_data_ingestion/deploy/clickhouse/initdb/001_market_data.sql
 docs/references/legacy_data_ingestion/alembic/versions/
 ```
-
