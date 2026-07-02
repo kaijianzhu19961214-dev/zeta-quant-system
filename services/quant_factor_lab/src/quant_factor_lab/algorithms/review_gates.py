@@ -36,6 +36,14 @@ def build_momentum_review_gates() -> list[AlgorithmReviewGate]:
             evidence="Each factor value only references earlier close prices inside the lookback window.",
         ),
         AlgorithmReviewGate(
+            gate_id="validation_evidence",
+            category="validation",
+            title="Validation evidence",
+            description="IC, Rank IC, grouping behavior, and artifact manifest evidence are available.",
+            status="satisfied",
+            evidence="Baseline momentum can be verified through quant_factor_validation smoke and manifest artifacts.",
+        ),
+        AlgorithmReviewGate(
             gate_id="adapter_tests",
             category="operations",
             title="Adapter tests",

@@ -100,6 +100,7 @@ make smoke-real-factor-flow-101
 3. 计算 technical.momentum / momentum_1d
 4. 调用 quant_factor_validation /api/v1/factors/validate
 5. 输出 IC / Rank IC / ICIR 和 manifest artifact 数量
+6. 将 validation artifact 作为 `technical.momentum / validation_evidence` gate evidence 调用 preview
 ```
 
 默认样本：
@@ -109,6 +110,7 @@ symbols: 000001.SZ,000651.SZ,000333.SZ,600000.SH,600519.SH
 price_mode: qfq
 batch_id: qfq_20260610
 run_id: real_flow_smoke_101
+evidence_gate_id: validation_evidence
 ```
 
 约束：
@@ -116,7 +118,8 @@ run_id: real_flow_smoke_101
 - 只读查询 101 ClickHouse。
 - 不写 PostgreSQL、ClickHouse 或 MinIO。
 - 不打印明细行情、密码、token、access key。
-- 输出只包含行数、有效样本数和验证指标摘要。
+- evidence preview 只返回 `not_persisted` record，不修改 gate 状态。
+- 输出只包含行数、有效样本数、验证指标摘要和 evidence preview 摘要。
 
 ---
 

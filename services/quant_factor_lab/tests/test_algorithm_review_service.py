@@ -31,6 +31,26 @@ class AlgorithmReviewServiceTest(unittest.TestCase):
         self.assertEqual(response.record.submitted_at, submitted_at)
         self.assertIn("does not persist", response.limitations[0])
 
+    def test_should_preview_momentum_validation_evidence_when_gate_exists(self) -> None:
+        service = AlgorithmReviewService()
+        submission = AlgorithmReviewGateEvidenceSubmission(
+            algorithm_id="technical.momentum",
+            gate_id="validation_evidence",
+            submitted_by="codex_smoke",
+            evidence_type="validation_report",
+            evidence_source="factor_validation/momentum_1d/real_flow_smoke_101/comparison_report.json",
+            summary="Momentum validation smoke evidence from 101 data.",
+            artifact_id="comparison_report_momentum_1d",
+        )
+
+        response = service.preview_evidence_record(submission=submission)
+
+        self.assertEqual(response.persistence_status, "not_persisted")
+        self.assertEqual(response.record.algorithm_id, "technical.momentum")
+        self.assertEqual(response.record.gate_id, "validation_evidence")
+        self.assertEqual(response.record.gate_category, "validation")
+        self.assertEqual(response.record.previous_gate_status, "satisfied")
+
     def test_should_raise_not_found_when_algorithm_does_not_exist(self) -> None:
         service = AlgorithmReviewService()
         submission = AlgorithmReviewGateEvidenceSubmission(

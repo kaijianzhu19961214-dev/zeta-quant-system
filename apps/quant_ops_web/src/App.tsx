@@ -63,6 +63,51 @@ const ALGORITHM_REVIEW_GATE_STATUS_LABELS: Record<string, string> = {
   not_applicable: bilingualLabel("不适用", "N/A"),
 };
 
+const ALGORITHM_REVIEW_GATE_TITLE_LABELS: Record<string, string> = {
+  hypothesis_documented: bilingualLabel("假设已记录", "Hypothesis Documented"),
+  data_policy_fixed: bilingualLabel("数据口径已固定", "Data Policy Fixed"),
+  construction_policy_fixed: bilingualLabel("构造规则已固定", "Construction Policy Fixed"),
+  leakage_audit: bilingualLabel("未来函数审计", "Leakage Audit"),
+  validation_evidence: bilingualLabel("验证证据", "Validation Evidence"),
+  adapter_tests: bilingualLabel("适配器测试", "Adapter Tests"),
+};
+
+const ALGORITHM_REVIEW_GATE_CATEGORY_LABELS: Record<string, string> = {
+  hypothesis: bilingualLabel("假设", "Hypothesis"),
+  data: bilingualLabel("数据", "Data"),
+  construction: bilingualLabel("构造", "Construction"),
+  leakage: bilingualLabel("未来函数", "Leakage"),
+  validation: bilingualLabel("验证", "Validation"),
+  operations: bilingualLabel("运维", "Operations"),
+};
+
+const ALGORITHM_REVIEW_GATE_BODY_LABELS: Record<string, string> = {
+  hypothesis_documented: bilingualLabel(
+    "需要明确经济含义、目标周期、适用资产与因子模式。",
+    "Economic intuition, target horizon, asset class, and factor mode must be documented.",
+  ),
+  data_policy_fixed: bilingualLabel(
+    "需要固定输入字段、复权口径、最小历史窗口和缺失值处理规则。",
+    "Input fields, adjustment mode, minimum history, and missing-data policy must be fixed.",
+  ),
+  construction_policy_fixed: bilingualLabel(
+    "需要固定窗口长度、重算节奏、输出字段和 factor_value 映射规则。",
+    "Window length, refit cadence, output fields, and factor_value mapping must be fixed.",
+  ),
+  leakage_audit: bilingualLabel(
+    "需要审查同日可交易性、拟合窗口对齐和合约展期等未来函数风险。",
+    "Same-day tradability, fit-window alignment, and roll leakage must be reviewed.",
+  ),
+  validation_evidence: bilingualLabel(
+    "需要记录 IC、Rank IC、衰减、分组表现、换手和成本敏感性证据。",
+    "IC, Rank IC, decay, grouping behavior, turnover, and cost sensitivity must be recorded.",
+  ),
+  adapter_tests: bilingualLabel(
+    "需要通过单元测试、样本数据测试和产物输出检查后才能升级。",
+    "Unit tests, sample-data tests, and artifact output checks must pass before promotion.",
+  ),
+};
+
 const NAV_ITEMS: NavItem[] = [
   { id: "overview", label: bilingualLabel("总览", "Overview"), is_enabled: true },
   { id: "data-hub", label: bilingualLabel("数据中心", "Data Hub"), is_enabled: false },
@@ -558,13 +603,13 @@ function AlgorithmReviewGateList({ gates }: { gates: AlgorithmReviewGate[] }) {
       {gates.map((gate) => (
         <div className={`review-gate ${resolveReviewGateClass(gate.status)}`} key={gate.gate_id}>
           <div>
-            <strong>{gate.title}</strong>
-            <span>{gate.category}</span>
+            <strong>{resolveReviewGateTitle(gate)}</strong>
+            <span>{resolveReviewGateCategory(gate)}</span>
           </div>
           <span className="review-gate-status">
             {ALGORITHM_REVIEW_GATE_STATUS_LABELS[gate.status] ?? gate.status}
           </span>
-          <p>{gate.evidence ?? gate.description}</p>
+          <p>{resolveReviewGateBody(gate)}</p>
         </div>
       ))}
     </div>
@@ -1144,6 +1189,18 @@ function resolveReviewGateClass(status: string): string {
   if (status === "satisfied") return "review-gate-ok";
   if (status === "missing") return "review-gate-warning";
   return "review-gate-muted";
+}
+
+function resolveReviewGateTitle(gate: AlgorithmReviewGate): string {
+  return ALGORITHM_REVIEW_GATE_TITLE_LABELS[gate.gate_id] ?? gate.title;
+}
+
+function resolveReviewGateCategory(gate: AlgorithmReviewGate): string {
+  return ALGORITHM_REVIEW_GATE_CATEGORY_LABELS[gate.category] ?? gate.category;
+}
+
+function resolveReviewGateBody(gate: AlgorithmReviewGate): string {
+  return ALGORITHM_REVIEW_GATE_BODY_LABELS[gate.gate_id] ?? gate.evidence ?? gate.description;
 }
 
 function bilingualLabel(chineseText: string, englishText: string): string {

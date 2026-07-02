@@ -35,6 +35,18 @@ class AlgorithmRegistryTest(unittest.TestCase):
             ]
             self.assertEqual(missing_required_gates, [])
 
+    def test_should_expose_validation_evidence_gate_for_momentum(self) -> None:
+        registry = create_default_algorithm_registry()
+
+        momentum_spec = next(
+            spec
+            for spec in registry.list_specs(include_planned=True)
+            if spec.algorithm_id == "technical.momentum"
+        )
+        gate_ids = [gate.gate_id for gate in momentum_spec.review_gates]
+
+        self.assertIn("validation_evidence", gate_ids)
+
     def test_should_expose_missing_review_gates_for_planned_garch_algorithms(self) -> None:
         registry = create_default_algorithm_registry()
 

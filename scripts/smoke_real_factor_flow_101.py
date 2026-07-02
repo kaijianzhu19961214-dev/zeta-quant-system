@@ -12,6 +12,8 @@ DEFAULT_FACTOR_LAB_BASE_URL = "http://127.0.0.1:18010"
 DEFAULT_FACTOR_VALIDATION_BASE_URL = "http://127.0.0.1:18020"
 DEFAULT_SYMBOLS = "000001.SZ,000651.SZ,000333.SZ,600000.SH,600519.SH"
 DEFAULT_RUN_ID = "real_flow_smoke_101"
+DEFAULT_EVIDENCE_GATE_ID = "validation_evidence"
+DEFAULT_EVIDENCE_SUBMITTED_BY = "codex_smoke"
 
 
 def request_json(
@@ -96,6 +98,56 @@ def build_validation_payload(*, factor_response: dict[str, Any]) -> dict[str, An
     }
 
 
+def build_evidence_payload(
+    *,
+    factor_response: dict[str, Any],
+    validation_response: dict[str, Any],
+) -> dict[str, Any]:
+    factor_meta = factor_response["meta"]
+    metrics = validation_response["metrics"]
+    artifact = select_validation_evidence_artifact(manifest=validation_response.get("manifest", {}))
+    evidence_source = artifact.get("object_key") or artifact.get("uri") or artifact["artifact_id"]
+    return {
+        "algorithm_id": factor_meta["algorithm_id"],
+        "gate_id": os.environ.get("REAL_FACTOR_FLOW_EVIDENCE_GATE_ID", DEFAULT_EVIDENCE_GATE_ID),
+        "submitted_by": os.environ.get("REAL_FACTOR_FLOW_EVIDENCE_SUBMITTED_BY", DEFAULT_EVIDENCE_SUBMITTED_BY),
+        "evidence_type": "validation_report",
+        "evidence_source": evidence_source,
+        "summary": build_evidence_summary(metrics=metrics),
+        "artifact_id": artifact.get("artifact_id"),
+        "artifact_uri": artifact.get("uri"),
+        "notes": [
+            "source=smoke_real_factor_flow_101",
+            "persistence=not_persisted",
+        ],
+    }
+
+
+def select_validation_evidence_artifact(*, manifest: dict[str, Any]) -> dict[str, Any]:
+    artifacts = manifest.get("artifacts", [])
+    if not artifacts:
+        raise RuntimeError("validation manifest did not include evidence artifacts")
+
+    preferred_suffixes = ("comparison_report.json", "validation_report.json", "score_card.json")
+    for suffix in preferred_suffixes:
+        for artifact in artifacts:
+            object_key = artifact.get("object_key") or ""
+            if object_key.endswith(suffix):
+                return artifact
+
+    return artifacts[0]
+
+
+def build_evidence_summary(*, metrics: dict[str, Any]) -> str:
+    return (
+        f"{metrics['factor_name']} validation smoke on 101 data: "
+        f"effective_sample_count={metrics.get('effective_sample_count')}, "
+        f"rank_ic_mean={metrics.get('rank_ic_mean')}, "
+        f"ic_ir={metrics.get('ic_ir')}, "
+        f"group_return_spread_mean={metrics.get('group_return_spread_mean')}."
+    )
+
+
 def run_smoke_test(*, factor_lab_base_url: str, factor_validation_base_url: str) -> list[str]:
     results: list[str] = []
     symbols = parse_symbols(os.environ.get("REAL_FACTOR_FLOW_SYMBOLS", DEFAULT_SYMBOLS))
@@ -133,6 +185,32 @@ def run_smoke_test(*, factor_lab_base_url: str, factor_validation_base_url: str)
     artifacts = validation_response.get("manifest", {}).get("artifacts", [])
     assert_condition(len(artifacts) >= 6, "validation manifest did not include all expected artifacts")
     results.append(f"validation manifest ok: artifacts={len(artifacts)}")
+
+    evidence_response = request_json(
+        base_url=factor_lab_base_url,
+        path="/api/v1/algorithms/review-gates/evidence/preview",
+        method="POST",
+        payload=build_evidence_payload(
+            factor_response=factor_response,
+            validation_response=validation_response,
+        ),
+        timeout_seconds=30,
+    )
+    evidence_record = evidence_response.get("record", {})
+    assert_condition(
+        evidence_response.get("persistence_status") == "not_persisted",
+        "evidence preview should not persist records in smoke mode",
+    )
+    assert_condition(
+        evidence_record.get("gate_id") == os.environ.get("REAL_FACTOR_FLOW_EVIDENCE_GATE_ID", DEFAULT_EVIDENCE_GATE_ID),
+        "evidence preview returned an unexpected gate_id",
+    )
+    results.append(
+        "evidence preview ok: "
+        f"algorithm_id={evidence_record.get('algorithm_id')}, "
+        f"gate_id={evidence_record.get('gate_id')}, "
+        f"status={evidence_record.get('evidence_status')}"
+    )
     return results
 
 
