@@ -7,6 +7,9 @@ import type {
   ExternalPayloadComparisonRequest,
   FactorComparisonReport,
   FactorValidationReviewResponse,
+  MarketDataBarsSampleRequest,
+  MarketDataBarsSampleResponse,
+  MarketDataPriceModeOverview,
   OpsOverviewResponse,
 } from "./types";
 
@@ -52,6 +55,39 @@ export async function fetchArtifactLedger(): Promise<ArtifactLedgerResponse> {
   }
 
   return (await response.json()) as ArtifactLedgerResponse;
+}
+
+export async function fetchMarketDataPriceModes(): Promise<MarketDataPriceModeOverview> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/market-data/price-modes`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "market data price mode request failed"));
+  }
+
+  return (await response.json()) as MarketDataPriceModeOverview;
+}
+
+export async function fetchMarketDataBarsSample(
+  request: MarketDataBarsSampleRequest,
+): Promise<MarketDataBarsSampleResponse> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/market-data/bars/sample`, {
+    method: "POST",
+    headers: {
+      accept: "application/json",
+      "content-type": "application/json",
+    },
+    body: JSON.stringify(request),
+  });
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "market data sample request failed"));
+  }
+
+  return (await response.json()) as MarketDataBarsSampleResponse;
 }
 
 export async function fetchFactorLabAlgorithms(): Promise<AlgorithmSpec[]> {

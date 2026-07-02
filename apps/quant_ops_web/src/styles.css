@@ -567,6 +567,81 @@ h4 {
   overflow-wrap: anywhere;
 }
 
+.price-mode-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.price-mode-card {
+  display: grid;
+  align-content: start;
+  gap: 14px;
+  min-width: 0;
+  padding: 16px;
+  border-left: 4px solid #2f7d55;
+  background: #f7fbf8;
+}
+
+.price-mode-heading {
+  display: flex;
+  align-items: flex-start;
+  justify-content: space-between;
+  gap: 12px;
+}
+
+.price-mode-heading > div {
+  min-width: 0;
+}
+
+.price-mode-heading h4 {
+  overflow-wrap: anywhere;
+}
+
+.price-mode-card .metric strong {
+  font-size: 15px;
+  line-height: 1.25;
+  overflow-wrap: anywhere;
+}
+
+.market-sample-table {
+  display: grid;
+  overflow-x: auto;
+  border-top: 1px solid #d8ded4;
+}
+
+.market-sample-row {
+  display: grid;
+  grid-template-columns:
+    minmax(120px, 0.9fr)
+    minmax(110px, 0.8fr)
+    repeat(5, minmax(88px, 0.7fr))
+    minmax(120px, 0.8fr);
+  align-items: center;
+  min-width: 920px;
+  min-height: 52px;
+  gap: 12px;
+  border-bottom: 1px solid #d8ded4;
+  font-size: 13px;
+}
+
+.market-sample-row.header {
+  min-height: 42px;
+  color: #627068;
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 12px;
+}
+
+.market-sample-row span,
+.market-sample-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.market-sample-row span {
+  color: #627068;
+}
+
 .engine-metrics {
   display: grid;
   grid-template-columns: repeat(2, minmax(0, 1fr));
@@ -999,6 +1074,10 @@ h4 {
 
   .artifact-table {
     overflow-x: auto;
+  }
+
+  .price-mode-grid {
+    grid-template-columns: 1fr;
   }
 
   .algorithm-readiness {

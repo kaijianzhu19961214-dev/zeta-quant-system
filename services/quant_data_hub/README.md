@@ -87,6 +87,122 @@ make smoke-quant-data-hub-101
 - Mac 已打开 `127.0.0.1:18123 -> 101:18123` SSH tunnel。
 - `quant_data_hub` 容器已重启并读取本地 `.env`。
 
+## 行情查询 API 示例 / Market Query Examples
+
+标准接口：
+
+```text
+POST /api/v1/market-bars/query
+```
+
+raw 原始价格：
+
+```json
+{
+  "timeframe": "1d",
+  "symbols": ["000001.SZ"],
+  "start": "2026-03-13",
+  "end": "2026-03-13",
+  "price_mode": "raw",
+  "fields": ["symbol", "trade_date", "close_price", "volume", "adjustment_factor"]
+}
+```
+
+响应关键字段：
+
+```json
+{
+  "meta": {
+    "timeframe": "1d",
+    "price_mode": "raw",
+    "dataset_code": "a_share_1d",
+    "batch_id": null,
+    "qfq_base_date": null
+  },
+  "rows": [
+    {
+      "symbol": "000001.SZ",
+      "trade_date": "2026-03-13",
+      "close_price": "10.20",
+      "volume": "1000",
+      "adjustment_factor": "1.0000000000"
+    }
+  ]
+}
+```
+
+qfq 前复权价格：
+
+```json
+{
+  "timeframe": "1d",
+  "symbols": ["000001.SZ"],
+  "start": "2026-03-13",
+  "end": "2026-03-13",
+  "price_mode": "qfq",
+  "batch_id": "qfq_20260313",
+  "fields": ["symbol", "trade_date", "close_price", "volume", "adjustment_factor"]
+}
+```
+
+响应关键字段：
+
+```json
+{
+  "meta": {
+    "price_mode": "qfq",
+    "batch_id": "qfq_20260313",
+    "qfq_base_date": "2026-03-13"
+  },
+  "rows": [
+    {
+      "close_price": "10.20",
+      "volume": "1000",
+      "adjustment_factor": "1.0000000000"
+    }
+  ]
+}
+```
+
+hfq 后复权价格：
+
+```json
+{
+  "timeframe": "1d",
+  "symbols": ["000001.SZ"],
+  "start": "2026-03-13",
+  "end": "2026-03-13",
+  "price_mode": "hfq",
+  "fields": ["symbol", "trade_date", "close_price", "volume", "adjustment_factor"]
+}
+```
+
+响应关键字段：
+
+```json
+{
+  "meta": {
+    "price_mode": "hfq",
+    "batch_id": null,
+    "qfq_base_date": null
+  },
+  "rows": [
+    {
+      "close_price": "10.20",
+      "volume": "1000",
+      "adjustment_factor": "1.0000000000"
+    }
+  ]
+}
+```
+
+约束：
+
+- `price_mode=qfq` 必须提供 `batch_id`。
+- `qfq_base_date` 由服务根据 `batch_id` 从 `qfq_batches` 解析并返回。
+- `adjustment_factor` 表示当前 `price_mode` 下生效的复权因子。
+- 同一次因子计算只能使用一种明确价格口径。
+
 Tushare 真实小样本 smoke test：
 
 ```bash

@@ -21,6 +21,82 @@ export interface OpsOverviewResponse {
   down_count: number;
 }
 
+export type MarketDataServiceStatus = "ok" | "degraded";
+export type PriceModeName = "raw" | "qfq" | "hfq";
+export type TimeframeName = "1m" | "5m" | "1d";
+export type MarketDecimal = string | number | null;
+
+export interface QfqBatchSummary {
+  batch_id: string;
+  qfq_base_date: string;
+  status: string;
+  description: string | null;
+  created_at: string | null;
+  finished_at: string | null;
+}
+
+export interface MarketPriceModeStatus {
+  price_mode: PriceModeName;
+  display_name: string;
+  storage_object: string;
+  source_relation: string;
+  requires_batch_id: boolean;
+  available: boolean;
+  latest_batch_id: string | null;
+  latest_qfq_base_date: string | null;
+}
+
+export interface MarketDataPriceModeOverview {
+  status: MarketDataServiceStatus;
+  generated_at: string;
+  qfq_batch_count: number;
+  latest_qfq_batch: QfqBatchSummary | null;
+  price_modes: MarketPriceModeStatus[];
+  limitations: string[];
+}
+
+export interface MarketDataBarsSampleRequest {
+  symbol: string;
+  timeframe: TimeframeName;
+  start: string;
+  end: string;
+  price_mode: PriceModeName;
+  batch_id?: string | null;
+  fields?: string[] | null;
+  limit: number;
+}
+
+export interface MarketBarsMeta {
+  timeframe: TimeframeName;
+  price_mode: PriceModeName;
+  row_count: number;
+  dataset_code: string | null;
+  batch_id: string | null;
+  qfq_base_date: string | null;
+}
+
+export interface MarketBar {
+  symbol: string;
+  trade_date: string | null;
+  trade_time: string | null;
+  open_price: MarketDecimal;
+  high_price: MarketDecimal;
+  low_price: MarketDecimal;
+  close_price: MarketDecimal;
+  volume: MarketDecimal;
+  turnover: MarketDecimal;
+  vwap: MarketDecimal;
+  adjustment_factor: MarketDecimal;
+}
+
+export interface MarketDataBarsSampleResponse {
+  generated_at: string;
+  request: MarketDataBarsSampleRequest;
+  meta: MarketBarsMeta;
+  rows: MarketBar[];
+  limitations: string[];
+}
+
 export type ValidationDecision =
   | "insufficient_data"
   | "review_required"

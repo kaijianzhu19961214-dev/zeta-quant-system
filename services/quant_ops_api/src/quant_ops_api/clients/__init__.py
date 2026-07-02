@@ -3,6 +3,7 @@ from quant_ops_api.clients.factor_validation_client import (
     FactorValidationClient,
     FactorValidationClientError,
 )
+from quant_ops_api.clients.quant_data_hub_client import QuantDataHubClient, QuantDataHubClientError
 from quant_ops_api.clients.service_health_client import ServiceHealthClient
 
 __all__ = [
@@ -10,5 +11,7 @@ __all__ = [
     "FactorLabClientError",
     "FactorValidationClient",
     "FactorValidationClientError",
+    "QuantDataHubClient",
+    "QuantDataHubClientError",
     "ServiceHealthClient",
 ]

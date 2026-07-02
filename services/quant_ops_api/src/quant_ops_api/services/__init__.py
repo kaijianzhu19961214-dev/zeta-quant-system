@@ -14,6 +14,10 @@ _EXPORTS = {
         "quant_ops_api.services.factor_comparison_artifact_service",
         "FactorComparisonArtifactService",
     ),
+    "MarketDataService": (
+        "quant_ops_api.services.market_data_service",
+        "MarketDataService",
+    ),
     "OverviewService": (
         "quant_ops_api.services.overview_service",
         "OverviewService",

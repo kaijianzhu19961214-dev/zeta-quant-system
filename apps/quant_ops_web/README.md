@@ -21,7 +21,7 @@
 
 ```text
 Overview
-Data Hub
+Market Data
 Factor Lab
 Factor Validation
 Artifacts
@@ -35,6 +35,8 @@ System
 - 通过 Vite 代理 `/ops-api` 读取 `quant_ops_api /api/v1/overview`。
 - 展示整体状态、最后刷新时间、健康服务数量、异常服务数量。
 - 展示 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation` 的状态表。
+- 通过 `quant_ops_api /api/v1/market-data/price-modes` 展示 Market Data 页面，包括 raw / qfq / hfq 价格口径、ClickHouse 存储对象、最新 qfq batch、`qfq_base_date` 和查询边界。
+- 通过 `quant_ops_api /api/v1/market-data/bars/sample` 展示受控行情小样本，当前默认窗口为 `000001.SZ / 1d / raw / 2026-06-10`，用于验证 UI -> BFF -> `quant_data_hub` -> ClickHouse 链路。
 - 通过 `quant_ops_api /api/v1/factor-lab/algorithms` 展示 Factor Lab 算法 registry，包括 `available` / `planned` `AlgorithmSpec` 和 `review_gates` 准入门槛。
 - 通过 `quant_ops_api /api/v1/factor-validation/review` 展示因子验证审核摘要。
 - 展示 `decision`、IC / Rank IC、分组收益差、findings、recommended actions 和 manifest artifact preview。
@@ -47,6 +49,8 @@ System
 当前外部引擎对比区优先展示 `artifact_reference` 指向的标准 `comparison_report.json`；当对象存储未配置、读取失败或 payload 校验失败时，回退读取 BFF 提供的 MVP 预览结果，用于验证 UI -> BFF -> `quant_factor_validation` 链路。页面会展示 `artifact_read_status` 和 `artifact_read_reason`，用于区分 `artifact_loaded` 与 `preview_fallback`。后续接入真实研究任务后，应继续通过只读 object-store adapter 读取标准 artifact 或研究员提交的已审核 payload。
 
 当前 Artifacts 页同样是 `not_persisted` 预览：它展示的是由因子验证 manifest 映射出的 task/artifact ledger 形态，用于提前固定 Web UI 和 API 协议。后续接入 101 节点 PostgreSQL `task_runs` / `task_artifacts` 或 MinIO `latest.json` 后，才能作为正式产物账本使用。
+
+当前 Market Data 样本预览只用于链路 smoke，不作为研究查询终端；BFF 会把返回行数限制在小范围内，正式因子任务仍应通过 `quant_data_hub` / SDK 的受控服务接口读取数据。
 
 本地验证 101 只读 artifact 展示时，使用仓库根目录命令：
 

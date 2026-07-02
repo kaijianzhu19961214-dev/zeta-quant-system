@@ -7,6 +7,8 @@ import {
   fetchExternalPayloadComparisonPreview,
   fetchFactorLabAlgorithms,
   fetchFactorValidationReview,
+  fetchMarketDataBarsSample,
+  fetchMarketDataPriceModes,
   fetchOverview,
 } from "./api";
 import type {
@@ -21,6 +23,11 @@ import type {
   FactorEvaluationResult,
   FactorValidationArtifactSummary,
   FactorValidationReviewResponse,
+  MarketBar,
+  MarketDataBarsSampleRequest,
+  MarketDataBarsSampleResponse,
+  MarketDataPriceModeOverview,
+  MarketPriceModeStatus,
   OpsOverviewResponse,
   ServiceHealth,
   ServiceStatus,
@@ -28,10 +35,10 @@ import type {
 } from "./types";
 
 type LoadState = "idle" | "loading" | "ready" | "error";
-type DashboardView = "overview" | "factor-lab" | "factor-validation" | "artifacts";
+type DashboardView = "overview" | "market-data" | "factor-lab" | "factor-validation" | "artifacts";
 
 interface NavItem {
-  id: DashboardView | "data-hub" | "factor-lab";
+  id: DashboardView;
   label: string;
   is_enabled: boolean;
 }
@@ -126,11 +133,32 @@ const ALGORITHM_REVIEW_GATE_BODY_LABELS: Record<string, string> = {
 
 const NAV_ITEMS: NavItem[] = [
   { id: "overview", label: bilingualLabel("总览", "Overview"), is_enabled: true },
-  { id: "data-hub", label: bilingualLabel("数据中心", "Data Hub"), is_enabled: false },
+  { id: "market-data", label: bilingualLabel("行情数据", "Market Data"), is_enabled: true },
   { id: "factor-lab", label: bilingualLabel("因子实验室", "Factor Lab"), is_enabled: true },
   { id: "factor-validation", label: bilingualLabel("因子验证", "Validation"), is_enabled: true },
   { id: "artifacts", label: bilingualLabel("产物账本", "Artifacts"), is_enabled: true },
 ];
+
+const DEFAULT_MARKET_DATA_SAMPLE_REQUEST: MarketDataBarsSampleRequest = {
+  symbol: "000001.SZ",
+  timeframe: "1d",
+  start: "2026-06-10",
+  end: "2026-06-10",
+  price_mode: "raw",
+  batch_id: null,
+  fields: [
+    "symbol",
+    "trade_date",
+    "open_price",
+    "high_price",
+    "low_price",
+    "close_price",
+    "volume",
+    "turnover",
+    "adjustment_factor",
+  ],
+  limit: 5,
+};
 
 export function App() {
   const [activeView, setActiveView] = useState<DashboardView>("overview");
@@ -155,6 +183,12 @@ export function App() {
   const [artifactLedger, setArtifactLedger] = useState<ArtifactLedgerResponse | null>(null);
   const [artifactLoadState, setArtifactLoadState] = useState<LoadState>("idle");
   const [artifactErrorMessage, setArtifactErrorMessage] = useState<string | null>(null);
+  const [marketDataOverview, setMarketDataOverview] = useState<MarketDataPriceModeOverview | null>(null);
+  const [marketDataLoadState, setMarketDataLoadState] = useState<LoadState>("idle");
+  const [marketDataErrorMessage, setMarketDataErrorMessage] = useState<string | null>(null);
+  const [marketDataSample, setMarketDataSample] = useState<MarketDataBarsSampleResponse | null>(null);
+  const [marketDataSampleLoadState, setMarketDataSampleLoadState] = useState<LoadState>("idle");
+  const [marketDataSampleErrorMessage, setMarketDataSampleErrorMessage] = useState<string | null>(null);
 
   const loadOverview = useCallback(async () => {
     setLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
@@ -288,6 +322,46 @@ export function App() {
     void loadArtifactLedger();
   }, [activeView, artifactLedger, loadArtifactLedger]);
 
+  const loadMarketDataOverview = useCallback(async () => {
+    setMarketDataLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setMarketDataErrorMessage(null);
+
+    try {
+      const response = await fetchMarketDataPriceModes();
+      setMarketDataOverview(response);
+      setMarketDataLoadState("ready");
+    } catch (error) {
+      setMarketDataErrorMessage(error instanceof Error ? error.message : "market data overview request failed");
+      setMarketDataLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "market-data") return;
+    if (marketDataOverview !== null) return;
+    void loadMarketDataOverview();
+  }, [activeView, loadMarketDataOverview, marketDataOverview]);
+
+  const loadMarketDataSample = useCallback(async () => {
+    setMarketDataSampleLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setMarketDataSampleErrorMessage(null);
+
+    try {
+      const response = await fetchMarketDataBarsSample(DEFAULT_MARKET_DATA_SAMPLE_REQUEST);
+      setMarketDataSample(response);
+      setMarketDataSampleLoadState("ready");
+    } catch (error) {
+      setMarketDataSampleErrorMessage(error instanceof Error ? error.message : "market data sample request failed");
+      setMarketDataSampleLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "market-data") return;
+    if (marketDataSample !== null) return;
+    void loadMarketDataSample();
+  }, [activeView, loadMarketDataSample, marketDataSample]);
+
   const primaryStatus = overview?.status ?? "down";
   const generatedAt = overview ? formatDateTime(overview.generated_at) : bilingualLabel("等待数据", "Waiting");
   const updatedAt = lastLoadedAt ? formatTime(lastLoadedAt.toISOString()) : bilingualLabel("未刷新", "Not refreshed");
@@ -295,6 +369,8 @@ export function App() {
     activeView,
     loadArtifactLedger,
     loadFactorAlgorithms,
+    loadMarketDataOverview,
+    loadMarketDataSample,
     loadExternalPayloadComparison,
     loadFactorValidationReview,
     loadOverview,
@@ -320,7 +396,7 @@ export function App() {
               type="button"
               onClick={() => {
                 if (!item.is_enabled) return;
-                setActiveView(item.id as DashboardView);
+                setActiveView(item.id);
               }}
             >
               {item.label}
@@ -377,6 +453,17 @@ export function App() {
               <ServiceTable services={overview?.services ?? []} />
             </section>
           </>
+        ) : activeView === "market-data" ? (
+          <section className="validation-view">
+            <MarketDataPanel
+              errorMessage={marketDataErrorMessage}
+              loadState={marketDataLoadState}
+              overview={marketDataOverview}
+              sample={marketDataSample}
+              sampleErrorMessage={marketDataSampleErrorMessage}
+              sampleLoadState={marketDataSampleLoadState}
+            />
+          </section>
         ) : activeView === "factor-validation" ? (
           <section className="validation-view">
             <FactorValidationReviewPanel
@@ -433,6 +520,229 @@ function MetricsStrip({ overview }: { overview: OpsOverviewResponse | null }) {
         </div>
       ))}
     </div>
+  );
+}
+
+function MarketDataPanel({
+  overview,
+  loadState,
+  errorMessage,
+  sample,
+  sampleLoadState,
+  sampleErrorMessage,
+}: {
+  overview: MarketDataPriceModeOverview | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+  sample: MarketDataBarsSampleResponse | null;
+  sampleLoadState: LoadState;
+  sampleErrorMessage: string | null;
+}) {
+  if (loadState === "error") {
+    return (
+      <section className="notice error" role="alert">
+        <strong>{bilingualLabel("行情数据视图暂时不可用", "Market data view unavailable")}</strong>
+        <span>{errorMessage}</span>
+      </section>
+    );
+  }
+
+  if (overview === null) {
+    return (
+      <section className="notice">
+        <strong>{bilingualLabel("正在读取行情数据口径", "Loading market data modes")}</strong>
+        <span>{bilingualLabel("连接 quant_ops_api", "Connecting to quant_ops_api")}</span>
+      </section>
+    );
+  }
+
+  return (
+    <>
+      <section className="validation-hero">
+        <div>
+          <p className="eyebrow">{bilingualLabel("行情数据", "Market Data")}</p>
+          <h3>{bilingualLabel("价格口径状态", "Price Mode Status")}</h3>
+          <span className="muted">{formatDateTime(overview.generated_at)}</span>
+        </div>
+        <div className="decision-block">
+          <span>{bilingualLabel("数据状态", "Data Status")}</span>
+          <strong>{overview.status}</strong>
+        </div>
+        <div className="metric-grid compact">
+          <MetricTile label={bilingualLabel("前复权批次", "QFQ Batches")} value={String(overview.qfq_batch_count)} />
+          <MetricTile
+            label={bilingualLabel("最新批次", "Latest Batch")}
+            value={overview.latest_qfq_batch?.batch_id ?? "--"}
+          />
+          <MetricTile
+            label={bilingualLabel("基准日", "Base Date")}
+            value={overview.latest_qfq_batch?.qfq_base_date ?? "--"}
+          />
+          <MetricTile label={bilingualLabel("价格口径", "Price Modes")} value={String(overview.price_modes.length)} />
+        </div>
+      </section>
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">{bilingualLabel("行情链路", "Market Lineage")}</p>
+            <h3>{bilingualLabel("raw / qfq / hfq 级联", "raw / qfq / hfq Cascade")}</h3>
+          </div>
+          <span className={`status-pill ${overview.status === "ok" ? "pill-ok" : "pill-degraded"}`}>
+            {overview.status}
+          </span>
+        </div>
+        <div className="price-mode-grid">
+          {overview.price_modes.map((priceMode) => (
+            <PriceModeCard key={priceMode.price_mode} priceMode={priceMode} />
+          ))}
+        </div>
+      </section>
+
+      <MarketDataSamplePanel
+        errorMessage={sampleErrorMessage}
+        loadState={sampleLoadState}
+        sample={sample}
+      />
+
+      <section className="service-panel">
+        <div className="section-heading">
+          <div>
+            <p className="eyebrow">{bilingualLabel("口径约束", "Mode Constraints")}</p>
+            <h3>{bilingualLabel("查询边界", "Query Boundaries")}</h3>
+          </div>
+        </div>
+        <div className="action-list">
+          {overview.limitations.map((limitation) => (
+            <span key={limitation}>{limitation}</span>
+          ))}
+        </div>
+      </section>
+    </>
+  );
+}
+
+function MarketDataSamplePanel({
+  sample,
+  loadState,
+  errorMessage,
+}: {
+  sample: MarketDataBarsSampleResponse | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+}) {
+  if (loadState === "error") {
+    return (
+      <section className="notice error" role="alert">
+        <strong>{bilingualLabel("行情样本暂时不可用", "Market sample unavailable")}</strong>
+        <span>{errorMessage}</span>
+      </section>
+    );
+  }
+
+  if (sample === null) {
+    return (
+      <section className="notice">
+        <strong>{bilingualLabel("正在读取行情样本", "Loading market sample")}</strong>
+        <span>{bilingualLabel("只读取小样本，不拉取大规模行情明细。", "Reading a small preview only.")}</span>
+      </section>
+    );
+  }
+
+  return (
+    <section className="service-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">{bilingualLabel("真实样本", "Real Sample")}</p>
+          <h3>{bilingualLabel("行情小样本预览", "Market Bars Preview")}</h3>
+        </div>
+        <span className="status-pill pill-ok">
+          {sample.meta.row_count} {bilingualLabel("行", "rows")}
+        </span>
+      </div>
+      <div className="source-strip">
+        <span>{sample.request.symbol}</span>
+        <span>{sample.request.timeframe}</span>
+        <span>{sample.request.start} - {sample.request.end}</span>
+        <span>{sample.request.price_mode}</span>
+        <span>{sample.request.batch_id ?? bilingualLabel("无批次", "no batch")}</span>
+      </div>
+      <MarketDataSampleTable rows={sample.rows} />
+      <div className="action-list">
+        {sample.limitations.map((limitation) => (
+          <span key={limitation}>{limitation}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MarketDataSampleTable({ rows }: { rows: MarketBar[] }) {
+  if (rows.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>{bilingualLabel("暂无样本行", "No Sample Rows")}</strong>
+        <span>{bilingualLabel("当前查询窗口没有返回行情。", "No market bars were returned for this window.")}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="market-sample-table">
+      <div className="market-sample-row header">
+        <span>{bilingualLabel("日期", "Date")}</span>
+        <span>{bilingualLabel("标的", "Symbol")}</span>
+        <span>{bilingualLabel("开盘", "Open")}</span>
+        <span>{bilingualLabel("最高", "High")}</span>
+        <span>{bilingualLabel("最低", "Low")}</span>
+        <span>{bilingualLabel("收盘", "Close")}</span>
+        <span>{bilingualLabel("成交量", "Volume")}</span>
+        <span>{bilingualLabel("复权因子", "Adj Factor")}</span>
+      </div>
+      {rows.map((row, index) => (
+        <div className="market-sample-row" key={`${row.symbol}-${row.trade_time ?? row.trade_date ?? index}`}>
+          <span>{resolveMarketBarDate(row)}</span>
+          <strong>{row.symbol}</strong>
+          <span>{formatMarketDecimal(row.open_price)}</span>
+          <span>{formatMarketDecimal(row.high_price)}</span>
+          <span>{formatMarketDecimal(row.low_price)}</span>
+          <span>{formatMarketDecimal(row.close_price)}</span>
+          <span>{formatMarketDecimal(row.volume)}</span>
+          <span>{formatMarketDecimal(row.adjustment_factor)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function PriceModeCard({ priceMode }: { priceMode: MarketPriceModeStatus }) {
+  return (
+    <article className="price-mode-card">
+      <div className="price-mode-heading">
+        <div>
+          <p className="eyebrow">{priceMode.price_mode}</p>
+          <h4>{priceMode.display_name}</h4>
+        </div>
+        <span className={`status-pill ${priceMode.available ? "pill-ok" : "pill-degraded"}`}>
+          {priceMode.available ? bilingualLabel("可用", "Available") : bilingualLabel("需批次", "Needs Batch")}
+        </span>
+      </div>
+      <div className="metric-grid compact">
+        <MetricTile label={bilingualLabel("存储对象", "Storage")} value={priceMode.storage_object} />
+        <MetricTile
+          label={bilingualLabel("批次要求", "Batch Required")}
+          value={priceMode.requires_batch_id ? "yes" : "no"}
+        />
+        <MetricTile label={bilingualLabel("最新批次", "Latest Batch")} value={priceMode.latest_batch_id ?? "--"} />
+        <MetricTile
+          label={bilingualLabel("基准日", "Base Date")}
+          value={priceMode.latest_qfq_base_date ?? "--"}
+        />
+      </div>
+      <div className="source-strip">
+        <span>{priceMode.source_relation}</span>
+      </div>
+    </article>
   );
 }
 
@@ -1175,6 +1485,8 @@ function resolveRefreshHandler({
   activeView,
   loadArtifactLedger,
   loadFactorAlgorithms,
+  loadMarketDataOverview,
+  loadMarketDataSample,
   loadExternalPayloadComparison,
   loadFactorValidationReview,
   loadOverview,
@@ -1182,11 +1494,19 @@ function resolveRefreshHandler({
   activeView: DashboardView;
   loadArtifactLedger: () => void;
   loadFactorAlgorithms: () => void;
+  loadMarketDataOverview: () => void;
+  loadMarketDataSample: () => void;
   loadExternalPayloadComparison: () => void;
   loadFactorValidationReview: () => void;
   loadOverview: () => void;
 }) {
   if (activeView === "overview") return loadOverview;
+  if (activeView === "market-data") {
+    return () => {
+      loadMarketDataOverview();
+      loadMarketDataSample();
+    };
+  }
   if (activeView === "factor-lab") return loadFactorAlgorithms;
   if (activeView === "factor-validation") {
     return () => {
@@ -1199,6 +1519,7 @@ function resolveRefreshHandler({
 
 function resolvePageTitle(activeView: DashboardView): string {
   if (activeView === "overview") return bilingualLabel("核心量化服务状态", "Core Quant Service Status");
+  if (activeView === "market-data") return bilingualLabel("行情数据口径", "Market Data Modes");
   if (activeView === "factor-lab") return bilingualLabel("因子算法适配清单", "Factor Algorithm Adapters");
   if (activeView === "factor-validation") return bilingualLabel("因子验证审核视图", "Factor Validation Review");
   return bilingualLabel("任务与产物账本", "Task and Artifact Ledger");
@@ -1247,6 +1568,17 @@ function formatRatio(value: number | null): string {
 function formatNumber(value: number | null | undefined): string {
   if (value === null || value === undefined) return "--";
   return value.toFixed(3);
+}
+
+function formatMarketDecimal(value: string | number | null | undefined): string {
+  if (value === null || value === undefined) return "--";
+  if (typeof value === "number") return Number.isInteger(value) ? String(value) : value.toFixed(4);
+  return value;
+}
+
+function resolveMarketBarDate(row: MarketBar): string {
+  if (row.trade_time) return formatDateTime(row.trade_time);
+  return row.trade_date ?? "--";
 }
 
 function formatShortList(values: string[]): string {

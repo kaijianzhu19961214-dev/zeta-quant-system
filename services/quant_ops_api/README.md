@@ -18,6 +18,8 @@
 ```text
 GET /health
 GET /api/v1/overview
+GET /api/v1/market-data/price-modes
+POST /api/v1/market-data/bars/sample
 GET /api/v1/factor-lab/algorithms
 GET /api/v1/factor-validation/review
 GET /api/v1/factor-validation/external-payloads/preview
@@ -44,6 +46,10 @@ healthy_count
 degraded_count
 down_count
 ```
+
+`/api/v1/market-data/price-modes` 当前只读聚合 `quant_data_hub /api/v1/adjustments/qfq-batches`，输出 raw / qfq / hfq 三种价格口径、ClickHouse 存储对象、是否需要 `batch_id`、最新 qfq batch 和 `qfq_base_date`。该接口用于 Web UI 监控因子计算前的数据口径，不直接查询大规模行情明细。
+
+`/api/v1/market-data/bars/sample` 是受控小样本预览接口：请求体采用 `MarketDataBarsSampleRequest`，由 `quant_ops_api` 转发到 `quant_data_hub /api/v1/market-bars/query`，响应返回 `MarketDataBarsSampleResponse`，其中 `meta` 和 `rows` 复用 `quant_contracts.MarketBarsResponse` 的标准结构。当前 Web UI 默认请求 `000001.SZ / 1d / raw / 2026-06-10`，接口限制 `limit <= 20`；当 `price_mode=qfq` 且未传 `batch_id` 时，BFF 会读取最新 qfq batch 后再查询。该接口只用于 UI smoke 和数据口径确认，不替代正式因子任务的数据读取接口。
 
 `/api/v1/factor-lab/algorithms` 是 Factor Lab 算法 registry 的只读 BFF 代理接口：由 `quant_ops_api` 转发读取 `quant_factor_lab /api/v1/algorithms`，响应复用 `quant_contracts.AlgorithmSpec[]`。该接口只展示 `available` / `planned` 算法能力、参数、来源库、状态和 `review_gates` 准入门槛，不直接安装第三方库，不执行候选算法，也不绕过 `quant_factor_lab` 的 adapter registry。
 

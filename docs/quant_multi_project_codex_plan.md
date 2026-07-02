@@ -676,6 +676,46 @@ POST /api/v1/market/bars/query
 GET  /api/v1/adjustments/qfq-batches
 ```
 
+标准行情查询示例：
+
+```json
+{
+  "timeframe": "1d",
+  "symbols": ["000001.SZ"],
+  "start": "2026-03-13",
+  "end": "2026-03-13",
+  "price_mode": "raw",
+  "fields": ["symbol", "trade_date", "close_price", "volume", "adjustment_factor"]
+}
+```
+
+前复权查询必须带 `batch_id`：
+
+```json
+{
+  "timeframe": "1d",
+  "symbols": ["000001.SZ"],
+  "start": "2026-03-13",
+  "end": "2026-03-13",
+  "price_mode": "qfq",
+  "batch_id": "qfq_20260313",
+  "fields": ["symbol", "trade_date", "close_price", "volume", "adjustment_factor"]
+}
+```
+
+后复权查询不需要 `batch_id`：
+
+```json
+{
+  "timeframe": "1d",
+  "symbols": ["000001.SZ"],
+  "start": "2026-03-13",
+  "end": "2026-03-13",
+  "price_mode": "hfq",
+  "fields": ["symbol", "trade_date", "close_price", "volume", "adjustment_factor"]
+}
+```
+
 ### 6.5 生产数据约束
 
 - `quant_data_hub` 是第三方原始行情数据进入主链路的唯一入口。
@@ -1763,7 +1803,7 @@ FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。`quant_factor_lab` 已提供 evidence preview / submit / list / review 接口，用于校验研究员提交的 gate evidence，并可写入 PostgreSQL `algorithm_review_gate_evidence` 表；review decision 只把证据标记为 `accepted` 或 `rejected`，不直接修改 gate 状态。当前已新增只读 promotion readiness 规则：registry 中已 `satisfied` 的 required gate 直接视为满足，缺失 gate 只有存在 `accepted` evidence 才可视为补齐，最新证据为 `rejected` 且没有 accepted evidence 时保持阻塞；该评估只输出 `promotable` / `blocked`，不会自动修改 `AlgorithmSpec.status`。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare / evidence list / evidence review / promotion readiness 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport`、artifact reference、algorithm review evidence 和 promotion readiness 摘要。当前已提供 101 ClickHouse 只读真实因子流转 smoke，并把 validation artifact 自动映射为 `technical.momentum / validation_evidence` gate evidence submit；Tushare SDK 本地真实小样本 smoke 入口也已预留。第三方库执行层尚未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。`quant_factor_lab` 已提供 evidence preview / submit / list / review 接口，用于校验研究员提交的 gate evidence，并可写入 PostgreSQL `algorithm_review_gate_evidence` 表；review decision 只把证据标记为 `accepted` 或 `rejected`，不直接修改 gate 状态。当前已新增只读 promotion readiness 规则：registry 中已 `satisfied` 的 required gate 直接视为满足，缺失 gate 只有存在 `accepted` evidence 才可视为补齐，最新证据为 `rejected` 且没有 accepted evidence 时保持阻塞；该评估只输出 `promotable` / `blocked`，不会自动修改 `AlgorithmSpec.status`。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare / evidence list / evidence review / promotion readiness 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport`、artifact reference、algorithm review evidence 和 promotion readiness 摘要。Market Data 页面已接入 raw / qfq / hfq 价格口径状态和受控行情小样本预览，用于验证 UI -> BFF -> `quant_data_hub` -> ClickHouse 的真实数据读取链路。当前已提供 101 ClickHouse 只读真实因子流转 smoke，并把 validation artifact 自动映射为 `technical.momentum / validation_evidence` gate evidence submit；Tushare SDK 本地真实小样本 smoke 入口也已预留。第三方库执行层尚未作为运行依赖接入。
 
 ---
 
@@ -1817,6 +1857,9 @@ quant_factor_validation
     101 节点 PostgreSQL schema + MinIO persisted smoke 已通过
 
 quant_ops_api / quant_ops_web
+    quant_ops_api 已提供 GET /api/v1/market-data/price-modes 只读价格口径状态
+    quant_ops_api 已提供 POST /api/v1/market-data/bars/sample 受控小样本预览
+    quant_ops_web 已展示 raw / qfq / hfq 价格口径和 000001.SZ 日线真实样本
     quant_ops_api 已提供 GET /api/v1/factor-lab/algorithms 只读代理
     quant_ops_web 已启用 Factor Lab 页面展示 available / planned AlgorithmSpec registry 和 review gates
     quant_ops_api 已提供 GET /api/v1/factor-lab/algorithms/{algorithm_id}/promotion/readiness 只读代理

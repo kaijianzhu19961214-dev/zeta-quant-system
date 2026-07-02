@@ -148,6 +148,36 @@ turnover <-> amount
 volume <-> vol
 ```
 
+标准接口示例：
+
+```json
+{
+  "timeframe": "1d",
+  "symbols": ["000001.SZ"],
+  "start": "2026-03-13",
+  "end": "2026-03-13",
+  "price_mode": "qfq",
+  "batch_id": "qfq_20260313",
+  "fields": ["symbol", "trade_date", "close_price", "volume", "adjustment_factor"]
+}
+```
+
+旧接口兼容 payload：
+
+```json
+{
+  "timeframe": "1d",
+  "codes": ["000001.SZ"],
+  "start": "2026-03-13",
+  "end": "2026-03-13",
+  "price_mode": "qfq",
+  "batch_id": "qfq_20260313",
+  "fields": ["code", "date", "close", "vol", "adj_factor"]
+}
+```
+
+返回仍统一为 `MarketBarsResponse`，即对外使用 `symbol`、`trade_date`、`close_price`、`volume`、`adjustment_factor` 等标准字段。
+
 ---
 
 ## 5. qfq batch 协议映射

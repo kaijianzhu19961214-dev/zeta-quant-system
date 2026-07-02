@@ -8,6 +8,7 @@ from quant_ops_api.api.v1.dependencies import dispose_validation_ledger_engine
 from quant_ops_api.api.v1.factor_lab import router as factor_lab_router
 from quant_ops_api.api.v1.factor_validation import router as factor_validation_router
 from quant_ops_api.api.v1.health import router as health_router
+from quant_ops_api.api.v1.market_data import router as market_data_router
 from quant_ops_api.api.v1.overview import router as overview_router
 from quant_ops_api.core.config import get_settings
 
@@ -25,6 +26,7 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
     app.include_router(health_router)
     app.include_router(overview_router)
+    app.include_router(market_data_router)
     app.include_router(factor_lab_router)
     app.include_router(factor_validation_router)
     app.include_router(artifacts_router)

@@ -26,6 +26,8 @@ quant_ops_api = 只读优先的运营聚合 API / BFF
 
 ```text
 GET /api/v1/overview
+GET /api/v1/market-data/price-modes
+POST /api/v1/market-data/bars/sample
 GET /api/v1/factor-validation/review
 GET /api/v1/factor-validation/external-payloads/preview
 POST /api/v1/factor-validation/external-payloads/compare
@@ -33,7 +35,7 @@ GET /api/v1/artifacts/ledger
 GET /api/v1/factor-lab/algorithms/{algorithm_id}/promotion/readiness
 ```
 
-`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、Factor Lab algorithm registry、review gates、algorithm promotion readiness、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview、Alphalens / Qlib / vectorbt payload 对比结果、`factor_comparison_report.v1` 产物引用或对象内容读取结果、artifact 读取状态，以及任务/产物账本预览。当前主要页面文案采用“中文 / English”并存显示，便于研究员、工程和运维协作。
+`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、Market Data raw / qfq / hfq 价格口径状态、最新 qfq batch、受控行情小样本、Factor Lab algorithm registry、review gates、algorithm promotion readiness、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview、Alphalens / Qlib / vectorbt payload 对比结果、`factor_comparison_report.v1` 产物引用或对象内容读取结果、artifact 读取状态，以及任务/产物账本预览。当前主要页面文案采用“中文 / English”并存显示，便于研究员、工程和运维协作。
 
 ---
 
@@ -111,8 +113,8 @@ factor-metrics/*/metrics.json
 Overview
   服务健康、最近运行、关键告警
 
-Data Hub
-  ClickHouse 连接、行情数据区间、qfq 批次、最近 smoke test
+Market Data
+  raw / qfq / hfq 价格口径、ClickHouse 存储对象、qfq 批次、qfq_base_date、受控小样本预览、查询边界
 
 Factor Lab
   因子计算 run_id、factor_name、样本区间、行数、状态
@@ -148,7 +150,7 @@ MVP 推荐方案 B：
 
 ```text
 apps/quant_ops_web      # 前端 UI
-services/quant_ops_api  # 只读聚合 API，当前已落地 overview、factor-validation review、external payload preview/compare 和 artifact ledger
+services/quant_ops_api  # 只读聚合 API，当前已落地 overview、market-data price modes/sample、factor-validation review、external payload preview/compare 和 artifact ledger
 ```
 
 短期本地开发优先让 `quant_ops_web` 调用 `quant_ops_api`，只有调试单服务时才直接调用业务服务只读接口。
@@ -190,7 +192,7 @@ quant_factor_validation
 quant_ops_web
   ↓
 quant_ops_api
-  ├── 读取 quant_data_hub 状态
+  ├── 读取 quant_data_hub 状态、qfq_batches、价格口径和受控小样本
   ├── 读取 quant_factor_lab 状态
   ├── 读取 quant_factor_validation 报告
   ├── 代理 quant_factor_validation 外部 payload 对比
@@ -202,3 +204,5 @@ quant_ops_api
 当前 Artifacts 页通过 `/api/v1/artifacts/ledger` 获取账本。未配置账本数据库时，接口返回 `not_persisted` manifest preview，用来固定 task/artifact 展示协议；配置 `ARTIFACT_LEDGER_DATABASE_URL` 或 `VALIDATION_DATABASE_URL` 后，`quant_ops_api` 会只读查询 PostgreSQL `task_runs` / `task_artifacts`。复用 101 旧库时必须配置 `ARTIFACT_LEDGER_DATABASE_SCHEMA` 或 `VALIDATION_DATABASE_SCHEMA`，避免读取 public schema 下 UUID 版旧表。当前 manifest 已包含 `file_size_bytes`、`content_type` 和 `sha256`，页面应优先展示这些字段，帮助研究员确认产物完整性。Web UI 不应直接持有数据库写权限或 MinIO access key。
 
 Factor Lab 页面通过 `quant_ops_api` 读取 `quant_factor_lab` 的 algorithm review evidence list 和 promotion readiness。页面只展示每个 review gate 的证据数量、最近 evidence source、提交人、提交时间、evidence_status、审核人信息，以及算法当前是否可晋级、required gate 完成数和阻塞摘要；证据写入由 `quant_factor_lab` 的 `POST /api/v1/algorithms/review-gates/evidence` 完成，review decision 由 `POST /api/v1/algorithms/review-gates/evidence/{evidence_id}/review` 完成。Web UI 当前不直接持有数据库写权限，也不提供审批按钮。gate 状态不能因为存在 accepted evidence record 自动升级为 satisfied；promotion readiness 只读合并 registry gate 状态和 accepted / rejected evidence，最终升级仍必须走显式审核流程。
+
+Market Data 页面通过 `quant_ops_api` 的 `GET /api/v1/market-data/price-modes` 读取 `quant_data_hub` 的 `GET /api/v1/adjustments/qfq-batches`，并把 raw、qfq、hfq 三种价格口径映射为只读监控卡片。页面展示最新 `batch_id`、`qfq_base_date`、ClickHouse 存储对象和是否需要 batch_id。该页面还通过 `POST /api/v1/market-data/bars/sample` 读取受控小样本，当前默认展示 `000001.SZ / 1d / raw / 2026-06-10` 的少量行情，用于验证 UI -> BFF -> `quant_data_hub` -> ClickHouse 链路。样本接口限制 `limit <= 20`，不替代正式因子任务的数据读取接口，也不展示大规模 K 线数据。

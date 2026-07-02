@@ -2,7 +2,7 @@ from functools import lru_cache
 
 from sqlalchemy.ext.asyncio import AsyncEngine
 
-from quant_ops_api.clients import FactorLabClient, FactorValidationClient, ServiceHealthClient
+from quant_ops_api.clients import FactorLabClient, FactorValidationClient, QuantDataHubClient, ServiceHealthClient
 from quant_ops_api.core.config import get_settings
 from quant_ops_api.integrations import MinioArtifactObjectReader, create_minio_client
 from quant_ops_api.repositories import SqlAlchemyValidationLedgerReader, create_validation_ledger_reader_engine
@@ -10,6 +10,7 @@ from quant_ops_api.services import (
     ArtifactLedgerService,
     FactorComparisonArtifactService,
     FactorValidationReviewService,
+    MarketDataService,
     OverviewService,
 )
 
@@ -30,6 +31,19 @@ def get_overview_service() -> OverviewService:
 
 def get_factor_validation_review_service() -> FactorValidationReviewService:
     return FactorValidationReviewService()
+
+
+@lru_cache
+def get_quant_data_hub_client() -> QuantDataHubClient:
+    settings = get_settings()
+    return QuantDataHubClient(
+        base_url=settings.quant_data_hub_base_url,
+        timeout_seconds=settings.service_health_timeout_seconds,
+    )
+
+
+def get_market_data_service() -> MarketDataService:
+    return MarketDataService(quant_data_hub_client=get_quant_data_hub_client())
 
 
 @lru_cache
@@ -114,6 +128,7 @@ def get_factor_comparison_artifact_service() -> FactorComparisonArtifactService:
 def reset_dependencies() -> None:
     get_settings.cache_clear()
     get_service_health_client.cache_clear()
+    get_quant_data_hub_client.cache_clear()
     get_factor_lab_client.cache_clear()
     get_factor_validation_client.cache_clear()
     get_validation_ledger_engine.cache_clear()
