@@ -1,6 +1,7 @@
 from fastapi import APIRouter, Depends, HTTPException, Query, status
 from quant_contracts import (
     AlgorithmReviewGateEvidenceListResponse,
+    AlgorithmReviewGateEvidenceReviewRequest,
     AlgorithmReviewGateEvidenceResponse,
     AlgorithmReviewGateEvidenceSubmission,
     AlgorithmSpec,
@@ -56,6 +57,23 @@ async def post_algorithm_review_gate_evidence(
 ) -> AlgorithmReviewGateEvidenceResponse:
     try:
         return await service.submit_evidence_record(submission=request)
+    except AlgorithmReviewServiceError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.message) from error
+
+
+@router.post(
+    "/algorithms/review-gates/evidence/{evidence_id}/review",
+    response_model=AlgorithmReviewGateEvidenceResponse,
+    summary="审核算法审核门槛证据记录",
+    description="将已提交的 evidence record 标记为 accepted 或 rejected，并记录审核人和审核意见。",
+)
+async def post_algorithm_review_gate_evidence_review(
+    evidence_id: str,
+    request: AlgorithmReviewGateEvidenceReviewRequest,
+    service: AlgorithmReviewService = Depends(get_algorithm_review_service),
+) -> AlgorithmReviewGateEvidenceResponse:
+    try:
+        return await service.review_evidence_record(evidence_id=evidence_id, request=request)
     except AlgorithmReviewServiceError as error:
         raise HTTPException(status_code=error.status_code, detail=error.message) from error
 

@@ -1,7 +1,12 @@
 from typing import Any
 
 import httpx
-from quant_contracts import AlgorithmReviewGateEvidenceListResponse, AlgorithmSpec
+from quant_contracts import (
+    AlgorithmReviewGateEvidenceListResponse,
+    AlgorithmReviewGateEvidenceReviewRequest,
+    AlgorithmReviewGateEvidenceResponse,
+    AlgorithmSpec,
+)
 
 
 class FactorLabClientError(Exception):
@@ -88,6 +93,40 @@ class FactorLabClient:
 
         return _parse_algorithm_review_gate_evidence(response=response)
 
+    async def review_algorithm_review_gate_evidence(
+        self,
+        *,
+        evidence_id: str,
+        request: AlgorithmReviewGateEvidenceReviewRequest,
+    ) -> AlgorithmReviewGateEvidenceResponse:
+        try:
+            async with httpx.AsyncClient(
+                timeout=self.timeout_seconds,
+                transport=self.transport,
+            ) as client:
+                response = await client.post(
+                    f"{self.base_url}/api/v1/algorithms/review-gates/evidence/{evidence_id}/review",
+                    json=request.model_dump(mode="json"),
+                )
+        except httpx.TimeoutException as error:
+            raise FactorLabClientError(
+                status_code=504,
+                message="factor lab review decision request timed out",
+            ) from error
+        except httpx.HTTPError as error:
+            raise FactorLabClientError(
+                status_code=502,
+                message=f"factor lab review decision request failed: {error}",
+            ) from error
+
+        if response.status_code < 200 or response.status_code >= 300:
+            raise FactorLabClientError(
+                status_code=502,
+                message=f"factor lab review decision returned status {response.status_code}",
+            )
+
+        return _parse_algorithm_review_gate_evidence_response(response=response)
+
 
 def _parse_algorithm_specs(*, response: httpx.Response) -> list[AlgorithmSpec]:
     payload = _safe_json(response=response)
@@ -123,6 +162,26 @@ def _parse_algorithm_review_gate_evidence(
         raise FactorLabClientError(
             status_code=502,
             message="factor lab review evidence response does not match the contract",
+        ) from error
+
+
+def _parse_algorithm_review_gate_evidence_response(
+    *,
+    response: httpx.Response,
+) -> AlgorithmReviewGateEvidenceResponse:
+    payload = _safe_dict_json(response=response)
+    if payload is None:
+        raise FactorLabClientError(
+            status_code=502,
+            message="factor lab review decision response is not valid JSON",
+        )
+
+    try:
+        return AlgorithmReviewGateEvidenceResponse.model_validate(payload)
+    except ValueError as error:
+        raise FactorLabClientError(
+            status_code=502,
+            message="factor lab review decision response does not match the contract",
         ) from error
 
 

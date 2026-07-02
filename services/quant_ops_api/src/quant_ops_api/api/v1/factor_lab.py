@@ -1,7 +1,12 @@
 from typing import Annotated
 
 from fastapi import APIRouter, Depends, HTTPException, Query, status
-from quant_contracts import AlgorithmReviewGateEvidenceListResponse, AlgorithmSpec
+from quant_contracts import (
+    AlgorithmReviewGateEvidenceListResponse,
+    AlgorithmReviewGateEvidenceReviewRequest,
+    AlgorithmReviewGateEvidenceResponse,
+    AlgorithmSpec,
+)
 
 from quant_ops_api.api.v1.dependencies import get_factor_lab_client
 from quant_ops_api.clients import FactorLabClient, FactorLabClientError
@@ -36,6 +41,26 @@ async def read_factor_lab_algorithm_review_gate_evidence(
             algorithm_id=algorithm_id,
             gate_id=gate_id,
             limit=limit,
+        )
+    except FactorLabClientError as error:
+        if error.status_code == status.HTTP_504_GATEWAY_TIMEOUT:
+            raise HTTPException(status_code=error.status_code, detail=error.message) from error
+        raise HTTPException(status_code=status.HTTP_502_BAD_GATEWAY, detail=error.message) from error
+
+
+@router.post(
+    "/algorithms/review-gates/evidence/{evidence_id}/review",
+    response_model=AlgorithmReviewGateEvidenceResponse,
+)
+async def review_factor_lab_algorithm_review_gate_evidence(
+    evidence_id: str,
+    request: AlgorithmReviewGateEvidenceReviewRequest,
+    factor_lab_client: Annotated[FactorLabClient, Depends(get_factor_lab_client)],
+) -> AlgorithmReviewGateEvidenceResponse:
+    try:
+        return await factor_lab_client.review_algorithm_review_gate_evidence(
+            evidence_id=evidence_id,
+            request=request,
         )
     except FactorLabClientError as error:
         if error.status_code == status.HTTP_504_GATEWAY_TIMEOUT:

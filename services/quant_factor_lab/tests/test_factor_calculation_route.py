@@ -1,3 +1,4 @@
+from datetime import datetime
 import unittest
 
 from fastapi.testclient import TestClient
@@ -50,6 +51,32 @@ class FakeEvidenceRepository:
         if gate_id is not None:
             records = [record for record in records if record.gate_id == gate_id]
         return records[:limit]
+
+    async def review_evidence(
+        self,
+        *,
+        evidence_id: str,
+        evidence_status: str,
+        reviewed_by: str,
+        reviewed_at: datetime,
+        review_comment: str | None = None,
+    ) -> AlgorithmReviewGateEvidenceRecord:
+        for index, record in enumerate(self.records):
+            if record.evidence_id != evidence_id:
+                continue
+
+            updated_record = record.model_copy(
+                update={
+                    "evidence_status": evidence_status,
+                    "reviewed_by": reviewed_by,
+                    "reviewed_at": reviewed_at,
+                    "review_comment": review_comment,
+                }
+            )
+            self.records[index] = updated_record
+            return updated_record
+
+        raise RuntimeError("not found")
 
 
 class FactorCalculationRouteTest(unittest.TestCase):
@@ -163,6 +190,35 @@ class FactorCalculationRouteTest(unittest.TestCase):
         self.assertEqual(payload["persistence_status"], "persisted")
         self.assertEqual(payload["total_count"], 1)
         self.assertEqual(payload["records"][0]["gate_id"], "validation_evidence")
+
+    def test_should_review_algorithm_review_gate_evidence_when_payload_is_valid(self) -> None:
+        submitted_response = self.client.post(
+            "/api/v1/algorithms/review-gates/evidence",
+            json={
+                "algorithm_id": "technical.momentum",
+                "gate_id": "validation_evidence",
+                "submitted_by": "codex_smoke",
+                "evidence_type": "validation_report",
+                "evidence_source": "factor_validation/momentum_1d/comparison_report.json",
+                "summary": "Momentum validation smoke evidence from 101 data.",
+            },
+        )
+        evidence_id = submitted_response.json()["record"]["evidence_id"]
+
+        response = self.client.post(
+            f"/api/v1/algorithms/review-gates/evidence/{evidence_id}/review",
+            json={
+                "reviewed_by": "researcher_lead",
+                "evidence_status": "accepted",
+                "review_comment": "Evidence accepted.",
+            },
+        )
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["persistence_status"], "persisted")
+        self.assertEqual(payload["record"]["evidence_status"], "accepted")
+        self.assertEqual(payload["record"]["reviewed_by"], "researcher_lead")
 
     def test_should_return_not_found_when_review_gate_is_unknown(self) -> None:
         response = self.client.post(

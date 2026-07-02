@@ -5,6 +5,8 @@ from quant_contracts import (
     AlgorithmCapability,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceRecord,
+    AlgorithmReviewGateEvidenceReviewRequest,
+    AlgorithmReviewGateEvidenceResponse,
     AlgorithmSpec,
     AssetClass,
     FactorFamily,
@@ -64,6 +66,33 @@ class FakeFactorLabClient:
             persistence_status="persisted",
         )
 
+    async def review_algorithm_review_gate_evidence(
+        self,
+        *,
+        evidence_id: str,
+        request: AlgorithmReviewGateEvidenceReviewRequest,
+    ) -> AlgorithmReviewGateEvidenceResponse:
+        return AlgorithmReviewGateEvidenceResponse(
+            record=AlgorithmReviewGateEvidenceRecord(
+                evidence_id=evidence_id,
+                algorithm_id="technical.momentum",
+                gate_id="validation_evidence",
+                gate_category="validation",
+                gate_title="Validation evidence",
+                previous_gate_status="satisfied",
+                submitted_by="codex_smoke",
+                evidence_type="validation_report",
+                evidence_source="factor_validation/momentum_1d/comparison_report.json",
+                summary="Momentum validation smoke evidence from 101 data.",
+                submitted_at="2026-07-02T09:30:00+00:00",
+                evidence_status=request.evidence_status,
+                reviewed_by=request.reviewed_by,
+                reviewed_at="2026-07-02T10:30:00+00:00",
+                review_comment=request.review_comment,
+            ),
+            persistence_status="persisted",
+        )
+
 
 class FactorLabRouteTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -94,6 +123,22 @@ class FactorLabRouteTest(unittest.TestCase):
         self.assertEqual(payload["gate_id"], "validation_evidence")
         self.assertEqual(payload["persistence_status"], "persisted")
         self.assertEqual(payload["records"][0]["evidence_id"], "algorithm_gate_evidence_abc123")
+
+    def test_should_review_algorithm_review_gate_evidence_when_called(self) -> None:
+        response = self.client.post(
+            "/api/v1/factor-lab/algorithms/review-gates/evidence/algorithm_gate_evidence_abc123/review",
+            json={
+                "reviewed_by": "researcher_lead",
+                "evidence_status": "accepted",
+                "review_comment": "Evidence accepted.",
+            },
+        )
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["persistence_status"], "persisted")
+        self.assertEqual(payload["record"]["evidence_status"], "accepted")
+        self.assertEqual(payload["record"]["reviewed_by"], "researcher_lead")
 
 
 if __name__ == "__main__":

@@ -48,6 +48,7 @@ AlgorithmReviewEvidenceType = Literal[
     "manual_note",
 ]
 AlgorithmReviewEvidenceStatus = Literal["submitted", "accepted", "rejected"]
+AlgorithmReviewEvidenceDecision = Literal["accepted", "rejected"]
 AlgorithmReviewEvidencePersistenceStatus = Literal["not_persisted", "persisted"]
 
 
@@ -149,6 +150,23 @@ class AlgorithmReviewGateEvidenceSubmission(ContractModel):
     @classmethod
     def normalize_submission_notes(cls, value: list[str]) -> list[str]:
         return [item.strip() for item in value if item.strip()]
+
+
+class AlgorithmReviewGateEvidenceReviewRequest(ContractModel):
+    reviewed_by: str = Field(min_length=1, max_length=128)
+    evidence_status: AlgorithmReviewEvidenceDecision
+    review_comment: str | None = Field(default=None, max_length=512)
+
+    @field_validator("reviewed_by", "review_comment")
+    @classmethod
+    def normalize_review_text(cls, value: str | None) -> str | None:
+        if value is None:
+            return value
+
+        normalized_value = value.strip()
+        if normalized_value:
+            return normalized_value
+        raise ValueError("value must not be blank")
 
 
 class AlgorithmReviewGateEvidenceRecord(AlgorithmReviewGateEvidenceSubmission):

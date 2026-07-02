@@ -7,6 +7,7 @@ from quant_contracts import (
     AlgorithmReviewGate,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceRecord,
+    AlgorithmReviewGateEvidenceReviewRequest,
     AlgorithmReviewGateEvidenceResponse,
     AlgorithmReviewGateEvidenceSubmission,
     AlgorithmSpec,
@@ -169,6 +170,24 @@ class FactorSchemaTest(unittest.TestCase):
         self.assertEqual(response.gate_id, "validation_evidence")
         self.assertEqual(response.records[0].evidence_id, "evidence_abc123")
         self.assertEqual(response.limitations, ["latest records only"])
+
+    def test_should_accept_algorithm_review_gate_evidence_review_request_when_payload_is_valid(self) -> None:
+        request = AlgorithmReviewGateEvidenceReviewRequest(
+            reviewed_by=" researcher_lead ",
+            evidence_status="accepted",
+            review_comment=" Validation evidence accepted. ",
+        )
+
+        self.assertEqual(request.reviewed_by, "researcher_lead")
+        self.assertEqual(request.evidence_status, "accepted")
+        self.assertEqual(request.review_comment, "Validation evidence accepted.")
+
+    def test_should_reject_submitted_as_algorithm_review_gate_evidence_decision(self) -> None:
+        with self.assertRaises(ValidationError):
+            AlgorithmReviewGateEvidenceReviewRequest(
+                reviewed_by="researcher_lead",
+                evidence_status="submitted",
+            )
 
     def test_should_normalize_factor_request_when_payload_is_valid(self) -> None:
         request = FactorCalculationRequest(

@@ -6,6 +6,7 @@ from sqlalchemy.dialects import postgresql
 
 from quant_factor_lab.repositories.algorithm_review_evidence import (
     SqlAlchemyAlgorithmReviewEvidenceRepository,
+    _build_evidence_review_statement,
     _build_evidence_select_statement,
     _build_evidence_values,
     normalize_database_schema_name,
@@ -86,6 +87,22 @@ class AlgorithmReviewEvidenceRepositoryTest(unittest.IsolatedAsyncioTestCase):
         self.assertIn("algorithm_review_gate_evidence.algorithm_id", sql)
         self.assertIn("algorithm_review_gate_evidence.gate_id", sql)
         self.assertIn("ORDER BY algorithm_review_gate_evidence.submitted_at DESC", sql)
+
+    def test_should_build_evidence_review_statement(self) -> None:
+        statement = _build_evidence_review_statement(
+            evidence_id="algorithm_gate_evidence_abc123",
+            evidence_status="accepted",
+            reviewed_by="researcher_lead",
+            reviewed_at=datetime(2026, 7, 2, 10, 30, tzinfo=UTC),
+            review_comment="Evidence accepted.",
+        )
+
+        sql = _compile_statement(statement=statement)
+
+        self.assertIn("UPDATE algorithm_review_gate_evidence", sql)
+        self.assertIn("evidence_status", sql)
+        self.assertIn("reviewed_by", sql)
+        self.assertIn("RETURNING", sql)
 
     def test_should_normalize_database_schema_name(self) -> None:
         self.assertEqual(

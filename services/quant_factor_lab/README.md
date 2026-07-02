@@ -50,7 +50,7 @@ FactorAlgorithmRegistry
 
 每个算法会携带 `review_gates`，用于展示从 `planned` 升级到 `available` 前需要满足的门槛。`available` 算法不能存在 required 且 `missing` 的 gate；`planned` 算法只进入清单和研究审核，不会被执行。后续确认输入、参数、诊断指标、验证证据和 `arch` 依赖后，再补具体 adapter。
 
-`POST /api/v1/algorithms/review-gates/evidence/preview` 用于校验研究员提交的 gate evidence，并返回标准 `AlgorithmReviewGateEvidenceRecord`。当前 MVP 只做校验和预览，`persistence_status=not_persisted`，不会修改 gate 状态，也不会写 PostgreSQL / MinIO。
+`POST /api/v1/algorithms/review-gates/evidence/preview` 用于校验研究员提交的 gate evidence，并返回标准 `AlgorithmReviewGateEvidenceRecord`；该接口不持久化。`POST /api/v1/algorithms/review-gates/evidence` 会写入 PostgreSQL `algorithm_review_gate_evidence` 表。`POST /api/v1/algorithms/review-gates/evidence/{evidence_id}/review` 用于将证据显式标记为 `accepted` 或 `rejected`，但不会自动修改 gate 状态。
 
 示例：
 
@@ -92,6 +92,16 @@ curl -sS http://127.0.0.1:18010/api/v1/algorithms/review-gates/evidence \
 
 ```bash
 curl -sS 'http://127.0.0.1:18010/api/v1/algorithms/technical.momentum/review-gates/evidence?gate_id=validation_evidence'
+```
+
+```bash
+curl -sS http://127.0.0.1:18010/api/v1/algorithms/review-gates/evidence/algorithm_gate_evidence_abc123/review \
+  -H 'content-type: application/json' \
+  -d '{
+    "reviewed_by": "researcher_lead",
+    "evidence_status": "accepted",
+    "review_comment": "Validation evidence accepted for smoke verification."
+  }'
 ```
 
 ```bash

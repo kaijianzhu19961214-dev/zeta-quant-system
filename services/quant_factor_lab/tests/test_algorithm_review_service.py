@@ -1,7 +1,11 @@
 import unittest
 from datetime import UTC, datetime
 
-from quant_contracts import AlgorithmReviewGateEvidenceRecord, AlgorithmReviewGateEvidenceSubmission
+from quant_contracts import (
+    AlgorithmReviewGateEvidenceRecord,
+    AlgorithmReviewGateEvidenceReviewRequest,
+    AlgorithmReviewGateEvidenceSubmission,
+)
 
 from quant_factor_lab.services.algorithm_review_service import AlgorithmReviewService, AlgorithmReviewServiceError
 
@@ -110,6 +114,32 @@ class FakeEvidenceRepository:
             records = [record for record in records if record.gate_id == gate_id]
         return records[:limit]
 
+    async def review_evidence(
+        self,
+        *,
+        evidence_id: str,
+        evidence_status: str,
+        reviewed_by: str,
+        reviewed_at: datetime,
+        review_comment: str | None = None,
+    ) -> AlgorithmReviewGateEvidenceRecord:
+        for index, record in enumerate(self.records):
+            if record.evidence_id != evidence_id:
+                continue
+
+            updated_record = record.model_copy(
+                update={
+                    "evidence_status": evidence_status,
+                    "reviewed_by": reviewed_by,
+                    "reviewed_at": reviewed_at,
+                    "review_comment": review_comment,
+                }
+            )
+            self.records[index] = updated_record
+            return updated_record
+
+        raise RuntimeError("not found")
+
 
 class AlgorithmReviewServicePersistenceTest(unittest.IsolatedAsyncioTestCase):
     async def test_should_submit_evidence_record_when_repository_is_configured(self) -> None:
@@ -177,6 +207,34 @@ class AlgorithmReviewServicePersistenceTest(unittest.IsolatedAsyncioTestCase):
             await service.submit_evidence_record(submission=submission)
 
         self.assertEqual(context.exception.status_code, 503)
+
+    async def test_should_review_evidence_record_when_repository_is_configured(self) -> None:
+        repository = FakeEvidenceRepository()
+        service = AlgorithmReviewService(evidence_repository=repository)
+        submission = AlgorithmReviewGateEvidenceSubmission(
+            algorithm_id="technical.momentum",
+            gate_id="validation_evidence",
+            submitted_by="codex_smoke",
+            evidence_type="validation_report",
+            evidence_source="factor_validation/momentum_1d/comparison_report.json",
+            summary="Momentum validation smoke evidence from 101 data.",
+        )
+        submitted_response = await service.submit_evidence_record(submission=submission)
+        review_request = AlgorithmReviewGateEvidenceReviewRequest(
+            reviewed_by="researcher_lead",
+            evidence_status="accepted",
+            review_comment="Evidence accepted.",
+        )
+
+        reviewed_response = await service.review_evidence_record(
+            evidence_id=submitted_response.record.evidence_id,
+            request=review_request,
+        )
+
+        self.assertEqual(reviewed_response.persistence_status, "persisted")
+        self.assertEqual(reviewed_response.record.evidence_status, "accepted")
+        self.assertEqual(reviewed_response.record.reviewed_by, "researcher_lead")
+        self.assertEqual(reviewed_response.record.review_comment, "Evidence accepted.")
 
 
 if __name__ == "__main__":

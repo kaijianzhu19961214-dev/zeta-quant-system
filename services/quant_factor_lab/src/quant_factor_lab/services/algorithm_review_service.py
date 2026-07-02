@@ -6,12 +6,14 @@ from quant_contracts import (
     AlgorithmReviewGate,
     AlgorithmReviewGateEvidenceListResponse,
     AlgorithmReviewGateEvidenceRecord,
+    AlgorithmReviewGateEvidenceReviewRequest,
     AlgorithmReviewGateEvidenceResponse,
     AlgorithmReviewGateEvidenceSubmission,
     AlgorithmSpec,
 )
 
 from quant_factor_lab.algorithms import FactorAlgorithmRegistry, create_default_algorithm_registry
+from quant_factor_lab.repositories.algorithm_review_evidence import AlgorithmReviewEvidenceNotFoundError
 
 
 class AlgorithmReviewServiceError(Exception):
@@ -36,6 +38,17 @@ class AlgorithmReviewEvidenceRepository(Protocol):
         gate_id: str | None = None,
         limit: int = 50,
     ) -> list[AlgorithmReviewGateEvidenceRecord]:
+        raise NotImplementedError
+
+    async def review_evidence(
+        self,
+        *,
+        evidence_id: str,
+        evidence_status: str,
+        reviewed_by: str,
+        reviewed_at: datetime,
+        review_comment: str | None = None,
+    ) -> AlgorithmReviewGateEvidenceRecord:
         raise NotImplementedError
 
 
@@ -131,6 +144,47 @@ class AlgorithmReviewService:
             records=records,
             total_count=len(records),
             persistence_status="persisted",
+        )
+
+    async def review_evidence_record(
+        self,
+        *,
+        evidence_id: str,
+        request: AlgorithmReviewGateEvidenceReviewRequest,
+        reviewed_at: datetime | None = None,
+    ) -> AlgorithmReviewGateEvidenceResponse:
+        if self.evidence_repository is None:
+            raise AlgorithmReviewServiceError(
+                status_code=503,
+                message="algorithm review evidence repository is not configured",
+            )
+
+        effective_reviewed_at = reviewed_at or datetime.now(tz=UTC)
+        try:
+            record = await self.evidence_repository.review_evidence(
+                evidence_id=evidence_id,
+                evidence_status=request.evidence_status,
+                reviewed_by=request.reviewed_by,
+                reviewed_at=effective_reviewed_at,
+                review_comment=request.review_comment,
+            )
+        except AlgorithmReviewEvidenceNotFoundError as error:
+            raise AlgorithmReviewServiceError(
+                status_code=404,
+                message=f"algorithm review evidence not found: {evidence_id}",
+            ) from error
+        except Exception as error:
+            raise AlgorithmReviewServiceError(
+                status_code=502,
+                message="failed to review algorithm review evidence",
+            ) from error
+
+        return AlgorithmReviewGateEvidenceResponse(
+            record=record,
+            persistence_status="persisted",
+            limitations=[
+                "Review decision updates the evidence record; gate status promotion is evaluated separately.",
+            ],
         )
 
     def _build_evidence_record(

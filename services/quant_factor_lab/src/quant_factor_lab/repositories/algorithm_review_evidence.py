@@ -1,6 +1,7 @@
 from __future__ import annotations
 
 from dataclasses import dataclass
+from datetime import datetime
 import re
 from typing import Any, Protocol
 
@@ -18,6 +19,7 @@ from sqlalchemy import (
     func,
     select,
     text,
+    update,
 )
 from sqlalchemy.dialects.postgresql import JSONB, insert as postgresql_insert
 from sqlalchemy.exc import SQLAlchemyError
@@ -61,6 +63,10 @@ algorithm_review_gate_evidence_table = Table(
 
 
 class AlgorithmReviewEvidenceRepositoryError(Exception):
+    pass
+
+
+class AlgorithmReviewEvidenceNotFoundError(AlgorithmReviewEvidenceRepositoryError):
     pass
 
 
@@ -121,6 +127,37 @@ class SqlAlchemyAlgorithmReviewEvidenceRepository:
             raise AlgorithmReviewEvidenceRepositoryError("failed to list algorithm review evidence") from error
 
         return [_build_record_from_row(row=dict(row)) for row in rows]
+
+    async def review_evidence(
+        self,
+        *,
+        evidence_id: str,
+        evidence_status: str,
+        reviewed_by: str,
+        reviewed_at: datetime,
+        review_comment: str | None = None,
+    ) -> AlgorithmReviewGateEvidenceRecord:
+        try:
+            async with self.session_factory() as session:
+                result = await session.execute(
+                    _build_evidence_review_statement(
+                        evidence_id=evidence_id,
+                        evidence_status=evidence_status,
+                        reviewed_by=reviewed_by,
+                        reviewed_at=reviewed_at,
+                        review_comment=review_comment,
+                    )
+                )
+                row = result.mappings().first()
+                if row is None:
+                    raise AlgorithmReviewEvidenceNotFoundError(f"algorithm review evidence not found: {evidence_id}")
+                await session.commit()
+        except AlgorithmReviewEvidenceNotFoundError:
+            raise
+        except SQLAlchemyError as error:
+            raise AlgorithmReviewEvidenceRepositoryError("failed to review algorithm review evidence") from error
+
+        return _build_record_from_row(row=dict(row))
 
 
 def create_algorithm_review_database_engine(
@@ -262,6 +299,28 @@ def _build_evidence_select_statement(
     if gate_id is None:
         return statement
     return statement.where(algorithm_review_gate_evidence_table.c.gate_id == gate_id)
+
+
+def _build_evidence_review_statement(
+    *,
+    evidence_id: str,
+    evidence_status: str,
+    reviewed_by: str,
+    reviewed_at: datetime,
+    review_comment: str | None,
+) -> Any:
+    return (
+        update(algorithm_review_gate_evidence_table)
+        .where(algorithm_review_gate_evidence_table.c.evidence_id == evidence_id)
+        .values(
+            evidence_status=evidence_status,
+            reviewed_by=reviewed_by,
+            reviewed_at=reviewed_at,
+            review_comment=review_comment,
+            updated_at=func.now(),
+        )
+        .returning(algorithm_review_gate_evidence_table)
+    )
 
 
 def _build_record_from_row(*, row: dict[str, Any]) -> AlgorithmReviewGateEvidenceRecord:

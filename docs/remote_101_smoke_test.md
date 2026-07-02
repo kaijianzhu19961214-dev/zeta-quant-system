@@ -121,7 +121,7 @@ evidence_persistence_mode: submit
 - 默认写入本地 `quant_factor_lab` PostgreSQL `algorithm_review_gate_evidence` 表。
 - 不打印明细行情、密码、token、access key。
 - `REAL_FACTOR_FLOW_EVIDENCE_PERSISTENCE_MODE=preview` 时只返回 `not_persisted` record。
-- submit / preview 都不直接修改 gate 状态；gate 状态需要后续显式 review decision。
+- submit / preview 都不直接修改 gate 状态；review decision 只更新 evidence record 为 `accepted` 或 `rejected`，gate promotion 仍由后续规则评估。
 - 输出只包含行数、有效样本数、验证指标摘要和 evidence 摘要。
 
 ---

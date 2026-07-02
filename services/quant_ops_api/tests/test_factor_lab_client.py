@@ -1,6 +1,7 @@
 import unittest
 
 import httpx
+from quant_contracts import AlgorithmReviewGateEvidenceReviewRequest
 
 from quant_ops_api.clients import FactorLabClient, FactorLabClientError
 
@@ -110,6 +111,56 @@ class FactorLabClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(response.persistence_status, "persisted")
         self.assertEqual(response.total_count, 1)
         self.assertEqual(response.records[0].gate_id, "validation_evidence")
+
+    async def test_should_parse_algorithm_review_gate_evidence_review_response(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(
+                str(request.url),
+                "http://quant-factor-lab/api/v1/algorithms/review-gates/evidence/algorithm_gate_evidence_abc123/review",
+            )
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "record": {
+                        "evidence_id": "algorithm_gate_evidence_abc123",
+                        "algorithm_id": "technical.momentum",
+                        "gate_id": "validation_evidence",
+                        "gate_category": "validation",
+                        "gate_title": "Validation evidence",
+                        "previous_gate_status": "satisfied",
+                        "submitted_by": "codex_smoke",
+                        "evidence_type": "validation_report",
+                        "evidence_source": "factor_validation/momentum_1d/comparison_report.json",
+                        "summary": "Momentum validation smoke evidence from 101 data.",
+                        "submitted_at": "2026-07-02T09:30:00+00:00",
+                        "evidence_status": "accepted",
+                        "reviewed_by": "researcher_lead",
+                        "reviewed_at": "2026-07-02T10:30:00+00:00",
+                        "review_comment": "Evidence accepted.",
+                    },
+                    "persistence_status": "persisted",
+                    "limitations": [],
+                },
+            )
+
+        client = FactorLabClient(
+            base_url="http://quant-factor-lab",
+            timeout_seconds=5,
+            transport=httpx.MockTransport(handler),
+        )
+
+        response = await client.review_algorithm_review_gate_evidence(
+            evidence_id="algorithm_gate_evidence_abc123",
+            request=AlgorithmReviewGateEvidenceReviewRequest(
+                reviewed_by="researcher_lead",
+                evidence_status="accepted",
+                review_comment="Evidence accepted.",
+            ),
+        )
+
+        self.assertEqual(response.persistence_status, "persisted")
+        self.assertEqual(response.record.evidence_status, "accepted")
+        self.assertEqual(response.record.reviewed_by, "researcher_lead")
 
 
 if __name__ == "__main__":

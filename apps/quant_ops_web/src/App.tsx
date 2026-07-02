@@ -66,6 +66,12 @@ const ALGORITHM_REVIEW_GATE_STATUS_LABELS: Record<string, string> = {
   not_applicable: bilingualLabel("不适用", "N/A"),
 };
 
+const ALGORITHM_REVIEW_EVIDENCE_STATUS_LABELS: Record<string, string> = {
+  submitted: bilingualLabel("待审核", "Submitted"),
+  accepted: bilingualLabel("已接受", "Accepted"),
+  rejected: bilingualLabel("已驳回", "Rejected"),
+};
+
 const ALGORITHM_REVIEW_GATE_TITLE_LABELS: Record<string, string> = {
   hypothesis_documented: bilingualLabel("假设已记录", "Hypothesis Documented"),
   data_policy_fixed: bilingualLabel("数据口径已固定", "Data Policy Fixed"),
@@ -652,15 +658,25 @@ function AlgorithmReviewGateList({
             <p>{resolveReviewGateBody(gate)}</p>
             {latestRecord !== null ? (
               <div className="review-gate-evidence">
-                <span>
-                  {bilingualLabel("证据", "Evidence")} {gateRecords.length}
+                <span className={`status-pill ${resolveEvidenceStatusPillClass(latestRecord.evidence_status)}`}>
+                  {ALGORITHM_REVIEW_EVIDENCE_STATUS_LABELS[latestRecord.evidence_status] ??
+                    latestRecord.evidence_status}
                 </span>
                 <strong>{latestRecord.evidence_source}</strong>
                 <span>
+                  {bilingualLabel("证据", "Evidence")} {gateRecords.length}
+                  {" · "}
                   {bilingualLabel("提交人", "Submitted by")} {latestRecord.submitted_by}
                   {" · "}
                   {formatDateTime(latestRecord.submitted_at)}
                 </span>
+                {latestRecord.reviewed_by !== null && latestRecord.reviewed_at !== null ? (
+                  <span>
+                    {bilingualLabel("审核人", "Reviewed by")} {latestRecord.reviewed_by}
+                    {" · "}
+                    {formatDateTime(latestRecord.reviewed_at)}
+                  </span>
+                ) : null}
               </div>
             ) : null}
           </div>
@@ -1243,6 +1259,12 @@ function resolveReviewGateClass(status: string): string {
   if (status === "satisfied") return "review-gate-ok";
   if (status === "missing") return "review-gate-warning";
   return "review-gate-muted";
+}
+
+function resolveEvidenceStatusPillClass(status: string): string {
+  if (status === "accepted") return "pill-ok";
+  if (status === "rejected") return "pill-down";
+  return "pill-degraded";
 }
 
 function resolveReviewGateTitle(gate: AlgorithmReviewGate): string {
