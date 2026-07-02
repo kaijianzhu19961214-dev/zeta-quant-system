@@ -1,7 +1,7 @@
 PYTHON ?= python3
 PYTHON_IMAGE ?= python:3.12.13-slim
 
-.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset remote-101-clickhouse-tunnel remote-101-postgres-tunnel remote-101-minio-tunnel remote-101-tunnels remote-101-clickhouse-tunnel-status remote-101-tunnels-status quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check quant-factor-lab-build quant-factor-lab-up quant-factor-lab-down quant-factor-lab-logs quant-factor-lab-check quant-factor-validation-build quant-factor-validation-up quant-factor-validation-down quant-factor-validation-logs quant-factor-validation-check quant-ops-api-build quant-ops-api-up quant-ops-api-down quant-ops-api-logs quant-ops-api-check quant-ops-web-build quant-ops-web-up quant-ops-web-down quant-ops-web-logs quant-ops-web-check quant-ops-101-readonly-up smoke-quant-data-hub-101 smoke-quant-factor-validation-persistence smoke-quant-ops-api-comparison-artifact test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test-quant-data-sdk test-quant-data-sdk-local test-quant-data-sdk-container test-quant-factor-lab test-quant-factor-lab-local test-quant-factor-lab-container test-quant-factor-validation test-quant-factor-validation-local test-quant-factor-validation-container test-quant-ops-api test-quant-ops-api-local test-quant-ops-api-container test-quant-ops-web test-quant-ops-web-container test
+.PHONY: infra-up infra-down infra-ps infra-logs infra-check infra-restart infra-reset remote-101-clickhouse-tunnel remote-101-postgres-tunnel remote-101-minio-tunnel remote-101-tunnels remote-101-clickhouse-tunnel-status remote-101-tunnels-status quant-data-hub-build quant-data-hub-up quant-data-hub-down quant-data-hub-logs quant-data-hub-check quant-factor-lab-build quant-factor-lab-up quant-factor-lab-down quant-factor-lab-logs quant-factor-lab-check quant-factor-validation-build quant-factor-validation-up quant-factor-validation-down quant-factor-validation-logs quant-factor-validation-check quant-ops-api-build quant-ops-api-up quant-ops-api-down quant-ops-api-logs quant-ops-api-check quant-ops-web-build quant-ops-web-up quant-ops-web-down quant-ops-web-logs quant-ops-web-check quant-ops-101-readonly-up smoke-quant-data-hub-101 smoke-real-factor-flow-101 smoke-tushare-factor-sample smoke-quant-factor-validation-persistence smoke-quant-ops-api-comparison-artifact test-quant-contracts test-quant-contracts-local test-quant-contracts-container test-quant-data-hub test-quant-data-hub-local test-quant-data-hub-container test-quant-data-sdk test-quant-data-sdk-local test-quant-data-sdk-container test-quant-factor-lab test-quant-factor-lab-local test-quant-factor-lab-container test-quant-factor-validation test-quant-factor-validation-local test-quant-factor-validation-container test-quant-ops-api test-quant-ops-api-local test-quant-ops-api-container test-quant-ops-web test-quant-ops-web-container test
 
 infra-up:
 	docker compose up -d postgres redis
@@ -125,6 +125,12 @@ quant-ops-101-readonly-up:
 
 smoke-quant-data-hub-101:
 	$(PYTHON) scripts/smoke_quant_data_hub_101.py
+
+smoke-real-factor-flow-101:
+	$(PYTHON) scripts/smoke_real_factor_flow_101.py
+
+smoke-tushare-factor-sample:
+	$(PYTHON) scripts/smoke_tushare_factor_sample.py
 
 smoke-quant-factor-validation-persistence:
 	docker compose exec -T quant_factor_validation python -m quant_factor_validation.tools.persistence_smoke

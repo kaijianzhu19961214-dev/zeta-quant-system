@@ -22,7 +22,7 @@ quant_ops_api = 只读优先的运营聚合 API / BFF
 
 它们不替代 `quant_data_hub`、`quant_factor_lab`、`quant_factor_validation`，也不直接承担数据接入、因子计算或因子验证逻辑。
 
-当前已落地第一版 Overview 与 Factor Validation 页面：
+当前已落地第一版 Overview、Factor Lab、Factor Validation 与 Artifacts 页面：
 
 ```text
 GET /api/v1/overview
@@ -32,7 +32,7 @@ POST /api/v1/factor-validation/external-payloads/compare
 GET /api/v1/artifacts/ledger
 ```
 
-`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview、Alphalens / Qlib / vectorbt payload 对比结果、`factor_comparison_report.v1` 产物引用或对象内容读取结果、artifact 读取状态，以及任务/产物账本预览。
+`quant_ops_web` 通过 `/ops-api` 代理读取 `quant_ops_api`，展示整体状态、服务健康表、Factor Lab algorithm registry、review gates、因子验证 decision、IC / Rank IC 摘要、findings、manifest artifact preview、Alphalens / Qlib / vectorbt payload 对比结果、`factor_comparison_report.v1` 产物引用或对象内容读取结果、artifact 读取状态，以及任务/产物账本预览。当前主要页面文案采用“中文 / English”并存显示，便于研究员、工程和运维协作。
 
 ---
 
@@ -97,6 +97,7 @@ factor-metrics/*/metrics.json
 - Web UI 不能保存真实 token、password、access key。
 - Web UI 不能默认拉取大规模行情数据到浏览器。
 - UI 展示的状态必须带时间戳、来源服务、数据版本或 run_id。
+- 主要导航、页面标题、按钮、表头、状态、空状态和关键指标标签必须采用“中文 / English”并存显示；接口字段名、算法 ID、run_id、schema version、object key 等技术标识保持原值。
 - 监控告警不能只依赖前端轮询，生产阶段应接入日志、指标和告警系统。
 
 ---

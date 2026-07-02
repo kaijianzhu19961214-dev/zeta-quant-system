@@ -641,6 +641,9 @@ GET  /api/v1/adjustments/qfq-batches
 
 - `quant_data_hub` 是第三方原始行情数据进入主链路的唯一入口。
 - 第三方字段映射、证券代码标准化、交易日处理、停复牌处理、复权口径都必须在 `quant_data_hub` 内完成。
+- Tushare 可作为真实测试数据源和后续生产 ingestion source，但 token、订单号、购买权限信息只能通过本机 `.env`、shell 环境变量或部署密钥管理注入，不能进入代码、README、测试 fixture 或 Git 历史。
+- Tushare SDK 只能出现在 `quant_data_hub` ingestion / integration adapter 或本地 smoke 脚本中，不能进入 `quant_factor_lab` 的因子纯函数、算法 adapter 执行路径或 `quant_factor_validation` 的指标函数。
+- 使用 Tushare 做 qfq 测试时必须同时读取并校验 `adj_factor`，缺少复权因子时测试应失败，不能用 raw price 冒充前复权口径。
 - 批量写入必须幂等，同一 `symbol + trade_date` 重复导入不能生成重复记录。
 - 每次导入必须记录 `data_source`、`data_version`、`source_updated_at` 和导入批次。
 - 对外提供数据时必须支持明确的时间范围，后续回测和因子计算不能隐式读取“当前最新全量数据”。
@@ -1720,7 +1723,7 @@ FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。`quant_factor_lab` 已提供 evidence preview 接口，用于校验研究员提交的 gate evidence 并返回标准 record，但当前不持久化、不修改 gate 状态。后续确认输入、参数、诊断指标、验证证据和 `arch` 依赖后再补具体执行层。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport` 和对应 artifact reference。第三方库执行层尚未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。`quant_factor_lab` 已提供 evidence preview 接口，用于校验研究员提交的 gate evidence 并返回标准 record，但当前不持久化、不修改 gate 状态。后续确认输入、参数、诊断指标、验证证据和 `arch` 依赖后再补具体执行层。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport` 和对应 artifact reference。当前已提供 101 ClickHouse 只读真实因子流转 smoke，以及 Tushare SDK 本地真实小样本 smoke 入口。第三方库执行层尚未作为运行依赖接入。
 
 ---
 
@@ -1750,6 +1753,7 @@ quant_factor_lab
     已登记 volatility.egarch / volatility.gjr_garch / volatility.aparch planned specs
     已为算法 registry 输出 hypothesis / data / construction / leakage / validation / operations review gates
     已提供 POST /api/v1/algorithms/review-gates/evidence/preview，校验 evidence 并返回 not_persisted record
+    已通过 101 ClickHouse 真实日线小样本计算 momentum_1d
 
 quant_factor_validation
     已输出 internal validation 结果
@@ -1761,6 +1765,8 @@ quant_factor_validation
     已提供 POST /api/v1/factors/external-payloads/compare
     已输出 score_card.json / comparison_report.json
     已输出透明 score components
+    已通过 101 ClickHouse 真实日线小样本计算 IC / Rank IC / manifest preview
+    已提供 make smoke-tushare-factor-sample，用于有本地 Tushare token 时拉取真实小样本并验证 momentum + IC 流程
     101 节点 PostgreSQL schema + MinIO persisted smoke 已通过
 
 quant_ops_api / quant_ops_web

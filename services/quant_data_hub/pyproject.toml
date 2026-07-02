@@ -19,6 +19,9 @@ dependencies = [
 test = [
   "httpx>=0.27,<1.0",
 ]
+tushare = [
+  "tushare>=1.4,<2.0",
+]
 
 [tool.setuptools.packages.find]
 where = ["src"]

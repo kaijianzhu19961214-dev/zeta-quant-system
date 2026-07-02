@@ -86,7 +86,41 @@ POST /api/v1/market-bars/query qfq 1d sample
 
 ---
 
-## 5. 启动 Ops API / Web 只读产物联调
+## 5. 运行真实因子流转只读验证
+
+```bash
+make smoke-real-factor-flow-101
+```
+
+默认验证内容：
+
+```text
+1. 调用 quant_factor_lab /api/v1/factors/calculate
+2. 从 101 ClickHouse 读取 2026-06-01 至 2026-06-10 的 qfq 日线小样本
+3. 计算 technical.momentum / momentum_1d
+4. 调用 quant_factor_validation /api/v1/factors/validate
+5. 输出 IC / Rank IC / ICIR 和 manifest artifact 数量
+```
+
+默认样本：
+
+```text
+symbols: 000001.SZ,000651.SZ,000333.SZ,600000.SH,600519.SH
+price_mode: qfq
+batch_id: qfq_20260610
+run_id: real_flow_smoke_101
+```
+
+约束：
+
+- 只读查询 101 ClickHouse。
+- 不写 PostgreSQL、ClickHouse 或 MinIO。
+- 不打印明细行情、密码、token、access key。
+- 输出只包含行数、有效样本数和验证指标摘要。
+
+---
+
+## 6. 启动 Ops API / Web 只读产物联调
 
 `quant_ops_api` / `quant_ops_web` 可以通过本地 SSH tunnel 读取 101 节点上的 PostgreSQL task/artifact ledger 和 MinIO `factor_comparison_report.v1` 产物。
 

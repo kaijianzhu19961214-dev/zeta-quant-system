@@ -87,9 +87,38 @@ make smoke-quant-data-hub-101
 - Mac 已打开 `127.0.0.1:18123 -> 101:18123` SSH tunnel。
 - `quant_data_hub` 容器已重启并读取本地 `.env`。
 
+Tushare 真实小样本 smoke test：
+
+```bash
+make smoke-tushare-factor-sample
+```
+
+用途：
+
+- 使用本机环境变量 `TUSHARE_TOKEN` 通过 Tushare SDK 读取一小段真实 A 股日线和 `adj_factor`。
+- 将 Tushare 字段转换为 `quant_contracts.MarketBar`，再复用 `quant_factor_lab` 的 momentum 纯函数和 `quant_factor_validation` 的 IC / Rank IC 指标函数。
+- 默认不落盘、不写 PostgreSQL / ClickHouse / MinIO、不打印明细行情和 token。
+
+本地配置示例：
+
+```bash
+export TUSHARE_TOKEN="<your_local_token>"
+export TUSHARE_SMOKE_SYMBOLS="000001.SZ,000651.SZ,000333.SZ,600000.SH,600519.SH"
+export TUSHARE_SMOKE_START_DATE="20260601"
+export TUSHARE_SMOKE_END_DATE="20260610"
+export TUSHARE_SMOKE_PRICE_MODE="qfq"
+```
+
+说明：
+
+- `TUSHARE_TOKEN` 只能放在本机 shell、`.env` 或部署平台密钥管理中，不能提交到 Git。
+- qfq 模式必须同时读取 `adj_factor`；缺少复权因子时 smoke 会失败，避免用 raw price 冒充前复权数据。
+- 该 smoke 只是本地集成验证入口，生产级 Tushare 入库仍应落在 `quant_data_hub` ingestion adapter，而不是让 `quant_factor_lab` 直接依赖 Tushare SDK。
+
 ## 约束 / Rules
 
 - 默认通过 API 或只读小样本验证，不从 101 全量复制数据到 Mac。
 - 导入任务必须记录数据源、时间范围、版本、批次和产物位置。
 - API 输入输出必须复用 `quant_contracts`。
 - 连接 101 的 smoke test 必须手动触发，并且默认只读或 dry-run。
+- Tushare token、订单号、购买权限信息属于本地私有配置，不能写入 README、代码、测试 fixture 或 Git 历史。
