@@ -653,6 +653,27 @@ quant_ops_web
   Market Data 页面展示 source coverage、重复键检查和存储职责
 ```
 
+当前新增数据导入账本预览链路：
+
+```text
+quant_data_hub
+  GET /api/v1/ingestion/ledger/preview
+  从 ClickHouse source coverage 派生 ingestion run / quality check 预览
+
+quant_ops_api
+  GET /api/v1/market-data/ingestion-ledger/preview
+  只读转发账本预览，并补充 PostgreSQL / ClickHouse / MinIO / Redis 存储职责
+
+quant_ops_web
+  Market Data 页面展示 ingestion ledger preview、quality checks 和 persistence_status
+
+PostgreSQL DDL draft
+  infra/postgres/init/03_create_data_hub_ingestion_ledger.sql
+  定义 ingestion_runs、ingestion_quality_checks、ingestion_artifacts
+```
+
+该链路当前只做协议预览，`persistence_status=not_persisted`。后续正式入库时，由 `quant_data_hub` 在导入任务完成后写 PostgreSQL 控制面；ClickHouse 仍保存行情明细，MinIO 保存原始响应、Parquet 快照或因子产物。
+
 生产查询层采用以下口径：
 
 ```text
@@ -1581,15 +1602,16 @@ quant_contracts
 quant_data_hub
 ```
 
-目标：把标准行情数据稳定存入 PostgreSQL。
+目标：把标准行情数据稳定接入生产存储分层。行情明细进入 ClickHouse，导入批次、任务、血缘和质量检查进入 PostgreSQL，原始响应和 Parquet 快照进入 MinIO。
 
 验收：
 
 ```text
-能批量写入 market_daily_bar
-能按 symbol/date 查询
-能处理重复写入
-能处理非法数据
+能批量写入 ClickHouse raw 行情表
+能按 symbol/date 或 symbol/trade_time 查询
+能用 source coverage 监控数据覆盖与重复键
+能生成 PostgreSQL 导入账本记录和质量检查记录
+能把原始响应或 Parquet 快照登记到 MinIO artifact
 ```
 
 ### 阶段 2：因子计算
@@ -1833,7 +1855,7 @@ FactorScoreCard          # 已落地
 FactorComparisonReport   # 已落地
 ```
 
-当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。`quant_factor_lab` 已提供 evidence preview / submit / list / review 接口，用于校验研究员提交的 gate evidence，并可写入 PostgreSQL `algorithm_review_gate_evidence` 表；review decision 只把证据标记为 `accepted` 或 `rejected`，不直接修改 gate 状态。当前已新增只读 promotion readiness 规则：registry 中已 `satisfied` 的 required gate 直接视为满足，缺失 gate 只有存在 `accepted` evidence 才可视为补齐，最新证据为 `rejected` 且没有 accepted evidence 时保持阻塞；该评估只输出 `promotable` / `blocked`，不会自动修改 `AlgorithmSpec.status`。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare / evidence list / evidence review / promotion readiness 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport`、artifact reference、algorithm review evidence 和 promotion readiness 摘要。Market Data 页面已接入 raw / qfq / hfq 价格口径状态和受控行情小样本预览，用于验证 UI -> BFF -> `quant_data_hub` -> ClickHouse 的真实数据读取链路。Factor Lab 页面已接入 `momentum_1d` 真实因子小样本，用于验证 UI -> BFF -> `quant_factor_lab` -> `quant_data_hub` -> ClickHouse -> factor adapter 链路。当前已提供 101 ClickHouse 只读真实因子流转 smoke，并把 validation artifact 自动映射为 `technical.momentum / validation_evidence` gate evidence submit；Tushare SDK 本地真实小样本 smoke 入口也已预留。第三方库执行层尚未作为运行依赖接入。
+当前代码已经完成上述第一阶段协议的基础落地，并在 `quant_factor_lab` 中建立 `FactorAlgorithmAdapter` / `FactorAlgorithmRegistry` 算法适配层。现有 `technical.momentum` 已作为可运行 adapter 注册；EGARCH、GJR-GARCH、APARCH 已作为 `planned` 波动率算法规格登记，并通过 `AlgorithmReviewGate` 暴露假设、数据、构造、未来函数、验证和运维门槛。`quant_factor_lab` 已提供 evidence preview / submit / list / review 接口，用于校验研究员提交的 gate evidence，并可写入 PostgreSQL `algorithm_review_gate_evidence` 表；review decision 只把证据标记为 `accepted` 或 `rejected`，不直接修改 gate 状态。当前已新增只读 promotion readiness 规则：registry 中已 `satisfied` 的 required gate 直接视为满足，缺失 gate 只有存在 `accepted` evidence 才可视为补齐，最新证据为 `rejected` 且没有 accepted evidence 时保持阻塞；该评估只输出 `promotable` / `blocked`，不会自动修改 `AlgorithmSpec.status`。`quant_factor_validation` 已输出 `internal` 引擎的 `FactorScoreCard`、`FactorEvaluationResult` 和 `FactorComparisonReport`。外部库已落地标准摘要 adapter 入口，并提供 Alphalens / Qlib / vectorbt payload runner 边界；`quant_factor_validation` 已提供多引擎 payload compare API，`quant_ops_api` 已提供 BFF preview / compare / evidence list / evidence review / promotion readiness 代理，并可优先通过只读 object-store adapter 读取 `factor_comparison_report.v1` 标准产物；`quant_ops_web` 已展示标准 `FactorComparisonReport`、artifact reference、algorithm review evidence 和 promotion readiness 摘要。Market Data 页面已接入 raw / qfq / hfq 价格口径状态和受控行情小样本预览，用于验证 UI -> BFF -> `quant_data_hub` -> ClickHouse 的真实数据读取链路。Factor Lab 页面已接入 `momentum_1d` 真实因子小样本，用于验证 UI -> BFF -> `quant_factor_lab` -> `quant_data_hub` -> ClickHouse -> factor adapter 链路。当前已提供 101 ClickHouse 只读真实因子流转 smoke，并把 validation artifact 自动映射为 `technical.momentum / validation_evidence` gate evidence submit；Tushare SDK 本地真实小样本 smoke 入口已预留，且已完成 2024-01-02 ~ 2026-06-30 全市场 A 股日线导入到 101 ClickHouse。`quant_data_hub` 已提供 source coverage 监控和 ingestion ledger preview，用于把真实行情覆盖情况映射为后续 PostgreSQL 控制面账本。第三方库执行层尚未作为运行依赖接入。
 
 ---
 

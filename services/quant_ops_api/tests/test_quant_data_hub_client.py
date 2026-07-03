@@ -142,6 +142,64 @@ class QuantDataHubClientTest(unittest.IsolatedAsyncioTestCase):
         self.assertEqual(coverage[0].row_count, 3244082)
         self.assertEqual(coverage[0].min_date.isoformat(), "2024-01-02")
 
+    async def test_should_parse_ingestion_ledger_preview(self) -> None:
+        def handler(request: httpx.Request) -> httpx.Response:
+            self.assertEqual(
+                str(request.url),
+                "http://quant-data-hub/api/v1/ingestion/ledger/preview?limit=5",
+            )
+            return httpx.Response(
+                status_code=200,
+                json={
+                    "generated_at": "2026-07-02T16:00:00Z",
+                    "persistence_status": "not_persisted",
+                    "run_count": 1,
+                    "quality_check_count": 1,
+                    "runs": [
+                        {
+                            "run_id": "ingestion_tushare_proxy_a_share_1d_1d_2024_01_02_2026_06_30",
+                            "task_type": "market_data_ingestion",
+                            "source_name": "tushare_proxy",
+                            "dataset_code": "a_share_1d",
+                            "timeframe": "1d",
+                            "status": "succeeded",
+                            "storage_target": "clickhouse:market_data_1d_raw",
+                            "start_date": "2024-01-02",
+                            "end_date": "2026-06-30",
+                            "row_count": 3244082,
+                            "symbol_count": 5620,
+                            "trading_day_count": 601,
+                            "duplicate_key_rows": 0,
+                            "output_summary": {},
+                            "finished_at": "2026-07-02T16:00:00Z",
+                        }
+                    ],
+                    "quality_checks": [
+                        {
+                            "check_id": "check_row_count_positive",
+                            "run_id": "ingestion_tushare_proxy_a_share_1d_1d_2024_01_02_2026_06_30",
+                            "check_name": "row_count_positive",
+                            "check_status": "passed",
+                            "expected_condition": "row_count > 0",
+                            "observed_value": "3244082",
+                        }
+                    ],
+                    "limitations": ["preview only"],
+                },
+            )
+
+        client = QuantDataHubClient(
+            base_url="http://quant-data-hub",
+            timeout_seconds=5,
+            transport=httpx.MockTransport(handler),
+        )
+
+        preview = await client.get_ingestion_ledger_preview(limit=5)
+
+        self.assertEqual(preview.persistence_status, "not_persisted")
+        self.assertEqual(preview.runs[0].source_name, "tushare_proxy")
+        self.assertEqual(preview.quality_checks[0].check_status, "passed")
+
 
 if __name__ == "__main__":
     unittest.main()

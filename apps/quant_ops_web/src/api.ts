@@ -10,6 +10,7 @@ import type {
   FactorValidationReviewResponse,
   MarketDataBarsSampleRequest,
   MarketDataBarsSampleResponse,
+  MarketDataIngestionLedgerResponse,
   MarketDataPriceModeOverview,
   MarketDataSourceCoverageResponse,
   OpsOverviewResponse,
@@ -85,6 +86,20 @@ export async function fetchMarketDataSourceCoverage(): Promise<MarketDataSourceC
   }
 
   return (await response.json()) as MarketDataSourceCoverageResponse;
+}
+
+export async function fetchMarketDataIngestionLedger(): Promise<MarketDataIngestionLedgerResponse> {
+  const response = await fetch(`${API_BASE_PATH}/api/v1/market-data/ingestion-ledger/preview`, {
+    headers: {
+      accept: "application/json",
+    },
+  });
+
+  if (!response.ok) {
+    throw new Error(await buildApiErrorMessage(response, "market data ingestion ledger request failed"));
+  }
+
+  return (await response.json()) as MarketDataIngestionLedgerResponse;
 }
 
 export async function fetchMarketDataBarsSample(

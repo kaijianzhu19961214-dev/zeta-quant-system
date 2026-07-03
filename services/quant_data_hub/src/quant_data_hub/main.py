@@ -4,6 +4,7 @@ from contextlib import asynccontextmanager
 from fastapi import FastAPI
 
 from quant_data_hub.api.v1.health import router as health_router
+from quant_data_hub.api.v1.ingestion import router as ingestion_router
 from quant_data_hub.api.v1.market import router as market_router
 from quant_data_hub.core.config import get_settings
 
@@ -18,8 +19,8 @@ def create_app() -> FastAPI:
     app = FastAPI(title=settings.app_name, lifespan=lifespan)
     app.include_router(health_router)
     app.include_router(market_router)
+    app.include_router(ingestion_router)
     return app
 
 
 app = create_app()
-

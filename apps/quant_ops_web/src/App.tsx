@@ -9,6 +9,7 @@ import {
   fetchFactorLabMomentumSample,
   fetchFactorValidationReview,
   fetchMarketDataBarsSample,
+  fetchMarketDataIngestionLedger,
   fetchMarketDataPriceModes,
   fetchMarketDataSourceCoverage,
   fetchOverview,
@@ -30,6 +31,9 @@ import type {
   MarketBar,
   MarketDataBarsSampleRequest,
   MarketDataBarsSampleResponse,
+  MarketDataIngestionLedgerResponse,
+  MarketDataIngestionQualityCheckRecord,
+  MarketDataIngestionRunRecord,
   MarketDataPriceModeOverview,
   MarketDataSourceCoverageItem,
   MarketDataSourceCoverageResponse,
@@ -91,6 +95,29 @@ const ALGORITHM_REVIEW_EVIDENCE_STATUS_LABELS: Record<string, string> = {
 const ALGORITHM_PROMOTION_DECISION_LABELS: Record<string, string> = {
   promotable: bilingualLabel("可晋级", "Promotable"),
   blocked: bilingualLabel("被阻塞", "Blocked"),
+};
+
+const INGESTION_PERSISTENCE_STATUS_LABELS: Record<string, string> = {
+  not_persisted: bilingualLabel("预览未落库", "Preview Only"),
+  persisted: bilingualLabel("已写入账本", "Persisted"),
+};
+
+const INGESTION_RUN_STATUS_LABELS: Record<string, string> = {
+  succeeded: bilingualLabel("成功", "Succeeded"),
+  review_required: bilingualLabel("需复核", "Review Required"),
+  failed: bilingualLabel("失败", "Failed"),
+};
+
+const INGESTION_QUALITY_CHECK_STATUS_LABELS: Record<string, string> = {
+  passed: bilingualLabel("通过", "Passed"),
+  warning: bilingualLabel("警告", "Warning"),
+  failed: bilingualLabel("失败", "Failed"),
+};
+
+const INGESTION_QUALITY_CHECK_LABELS: Record<string, string> = {
+  row_count_positive: bilingualLabel("行数大于 0", "Row Count Positive"),
+  duplicate_key_rows_zero: bilingualLabel("重复键为 0", "No Duplicate Keys"),
+  date_range_present: bilingualLabel("日期范围完整", "Date Range Present"),
 };
 
 const ALGORITHM_REVIEW_GATE_TITLE_LABELS: Record<string, string> = {
@@ -199,6 +226,12 @@ export function App() {
   const [marketDataCoverage, setMarketDataCoverage] = useState<MarketDataSourceCoverageResponse | null>(null);
   const [marketDataCoverageLoadState, setMarketDataCoverageLoadState] = useState<LoadState>("idle");
   const [marketDataCoverageErrorMessage, setMarketDataCoverageErrorMessage] = useState<string | null>(null);
+  const [marketDataIngestionLedger, setMarketDataIngestionLedger] =
+    useState<MarketDataIngestionLedgerResponse | null>(null);
+  const [marketDataIngestionLedgerLoadState, setMarketDataIngestionLedgerLoadState] =
+    useState<LoadState>("idle");
+  const [marketDataIngestionLedgerErrorMessage, setMarketDataIngestionLedgerErrorMessage] =
+    useState<string | null>(null);
   const [marketDataSample, setMarketDataSample] = useState<MarketDataBarsSampleResponse | null>(null);
   const [marketDataSampleLoadState, setMarketDataSampleLoadState] = useState<LoadState>("idle");
   const [marketDataSampleErrorMessage, setMarketDataSampleErrorMessage] = useState<string | null>(null);
@@ -397,6 +430,28 @@ export function App() {
     void loadMarketDataCoverage();
   }, [activeView, loadMarketDataCoverage, marketDataCoverage]);
 
+  const loadMarketDataIngestionLedger = useCallback(async () => {
+    setMarketDataIngestionLedgerLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
+    setMarketDataIngestionLedgerErrorMessage(null);
+
+    try {
+      const response = await fetchMarketDataIngestionLedger();
+      setMarketDataIngestionLedger(response);
+      setMarketDataIngestionLedgerLoadState("ready");
+    } catch (error) {
+      setMarketDataIngestionLedgerErrorMessage(
+        error instanceof Error ? error.message : "market data ingestion ledger request failed",
+      );
+      setMarketDataIngestionLedgerLoadState("error");
+    }
+  }, []);
+
+  useEffect(() => {
+    if (activeView !== "market-data") return;
+    if (marketDataIngestionLedger !== null) return;
+    void loadMarketDataIngestionLedger();
+  }, [activeView, loadMarketDataIngestionLedger, marketDataIngestionLedger]);
+
   const loadMarketDataSample = useCallback(async () => {
     setMarketDataSampleLoadState((currentState) => (currentState === "ready" ? "ready" : "loading"));
     setMarketDataSampleErrorMessage(null);
@@ -426,6 +481,7 @@ export function App() {
     loadFactorAlgorithms,
     loadFactorLabSample,
     loadMarketDataCoverage,
+    loadMarketDataIngestionLedger,
     loadMarketDataOverview,
     loadMarketDataSample,
     loadExternalPayloadComparison,
@@ -517,6 +573,9 @@ export function App() {
               coverageErrorMessage={marketDataCoverageErrorMessage}
               coverageLoadState={marketDataCoverageLoadState}
               errorMessage={marketDataErrorMessage}
+              ingestionLedger={marketDataIngestionLedger}
+              ingestionLedgerErrorMessage={marketDataIngestionLedgerErrorMessage}
+              ingestionLedgerLoadState={marketDataIngestionLedgerLoadState}
               loadState={marketDataLoadState}
               overview={marketDataOverview}
               sample={marketDataSample}
@@ -591,6 +650,9 @@ function MarketDataPanel({
   coverage,
   coverageLoadState,
   coverageErrorMessage,
+  ingestionLedger,
+  ingestionLedgerLoadState,
+  ingestionLedgerErrorMessage,
   loadState,
   errorMessage,
   sample,
@@ -601,6 +663,9 @@ function MarketDataPanel({
   coverage: MarketDataSourceCoverageResponse | null;
   coverageLoadState: LoadState;
   coverageErrorMessage: string | null;
+  ingestionLedger: MarketDataIngestionLedgerResponse | null;
+  ingestionLedgerLoadState: LoadState;
+  ingestionLedgerErrorMessage: string | null;
   loadState: LoadState;
   errorMessage: string | null;
   sample: MarketDataBarsSampleResponse | null;
@@ -655,6 +720,12 @@ function MarketDataPanel({
         coverage={coverage}
         errorMessage={coverageErrorMessage}
         loadState={coverageLoadState}
+      />
+
+      <MarketDataIngestionLedgerPanel
+        errorMessage={ingestionLedgerErrorMessage}
+        ledger={ingestionLedger}
+        loadState={ingestionLedgerLoadState}
       />
 
       <section className="service-panel">
@@ -809,6 +880,139 @@ function MarketDataCoveragePanel({
         ))}
       </div>
     </section>
+  );
+}
+
+function MarketDataIngestionLedgerPanel({
+  ledger,
+  loadState,
+  errorMessage,
+}: {
+  ledger: MarketDataIngestionLedgerResponse | null;
+  loadState: LoadState;
+  errorMessage: string | null;
+}) {
+  if (loadState === "error") {
+    return (
+      <section className="notice error" role="alert">
+        <strong>{bilingualLabel("导入账本暂时不可用", "Ingestion ledger unavailable")}</strong>
+        <span>{errorMessage}</span>
+      </section>
+    );
+  }
+
+  if (ledger === null) {
+    return (
+      <section className="notice">
+        <strong>{bilingualLabel("正在读取导入账本预览", "Loading ingestion ledger preview")}</strong>
+        <span>{bilingualLabel("从 Data Hub 读取只读控制面预览。", "Reading a read-only Data Hub ledger preview.")}</span>
+      </section>
+    );
+  }
+
+  const failedChecks = ledger.quality_checks.filter((check) => check.check_status === "failed").length;
+  const warningChecks = ledger.quality_checks.filter((check) => check.check_status === "warning").length;
+  const latestRun = ledger.runs[0] ?? null;
+
+  return (
+    <section className="service-panel">
+      <div className="section-heading">
+        <div>
+          <p className="eyebrow">{bilingualLabel("导入账本", "Ingestion Ledger")}</p>
+          <h3>{bilingualLabel("PostgreSQL 控制面预览", "PostgreSQL Control Plane Preview")}</h3>
+        </div>
+        <span className={`status-pill ${ledger.status === "ok" ? "pill-ok" : "pill-degraded"}`}>
+          {formatMarketDataServiceStatus(ledger.status)}
+        </span>
+      </div>
+      <div className="metric-grid compact">
+        <MetricTile label={bilingualLabel("导入批次", "Runs")} value={formatCount(ledger.run_count)} />
+        <MetricTile
+          label={bilingualLabel("质量检查", "Checks")}
+          value={`${formatCount(ledger.quality_check_count)} / ${failedChecks} ${bilingualLabel("失败", "failed")}`}
+        />
+        <MetricTile
+          label={bilingualLabel("持久化", "Persistence")}
+          value={formatPersistenceStatus(ledger.persistence_status)}
+        />
+        <MetricTile
+          label={bilingualLabel("最新来源", "Latest Source")}
+          value={latestRun?.source_name ?? "--"}
+        />
+      </div>
+      <div className="source-strip">
+        <span>{bilingualLabel("失败检查", "Failed checks")}: {formatCount(failedChecks)}</span>
+        <span>{bilingualLabel("警告检查", "Warning checks")}: {formatCount(warningChecks)}</span>
+        <span>{bilingualLabel("更新时间", "Updated")}: {formatDateTime(ledger.generated_at)}</span>
+      </div>
+      <MarketDataIngestionRunTable runs={ledger.runs} />
+      <MarketDataQualityCheckList checks={ledger.quality_checks} />
+      <div className="action-list">
+        {ledger.limitations.map((limitation) => (
+          <span key={limitation}>{limitation}</span>
+        ))}
+      </div>
+    </section>
+  );
+}
+
+function MarketDataIngestionRunTable({ runs }: { runs: MarketDataIngestionRunRecord[] }) {
+  if (runs.length === 0) {
+    return (
+      <div className="empty-state">
+        <strong>{bilingualLabel("暂无导入批次", "No Ingestion Runs")}</strong>
+        <span>{bilingualLabel("Data Hub 当前没有返回账本预览。", "Data Hub did not return ledger preview rows.")}</span>
+      </div>
+    );
+  }
+
+  return (
+    <div className="ledger-table">
+      <div className="ledger-row header">
+        <span>{bilingualLabel("状态", "Status")}</span>
+        <span>{bilingualLabel("数据集", "Dataset")}</span>
+        <span>{bilingualLabel("来源", "Source")}</span>
+        <span>{bilingualLabel("范围", "Range")}</span>
+        <span>{bilingualLabel("行数", "Rows")}</span>
+        <span>{bilingualLabel("重复", "Dup")}</span>
+      </div>
+      {runs.map((run) => (
+        <div className="ledger-row" key={run.run_id}>
+          <strong>{formatIngestionRunStatus(run.status)}</strong>
+          <span>{run.dataset_code}</span>
+          <span>{run.source_name}</span>
+          <span>{formatDateRange(run.start_date, run.end_date)}</span>
+          <span>{formatCount(run.row_count)}</span>
+          <span>{formatCount(run.duplicate_key_rows)}</span>
+        </div>
+      ))}
+    </div>
+  );
+}
+
+function MarketDataQualityCheckList({ checks }: { checks: MarketDataIngestionQualityCheckRecord[] }) {
+  if (checks.length === 0) return null;
+
+  return (
+    <div className="quality-check-grid">
+      {checks.map((check) => (
+        <article className="quality-check-card" key={check.check_id}>
+          <div className="price-mode-heading">
+            <div>
+              <p className="eyebrow">{check.check_name}</p>
+              <h4>{formatQualityCheckName(check.check_name)}</h4>
+            </div>
+            <span className={`status-pill ${resolveQualityCheckPillClass(check.check_status)}`}>
+              {formatQualityCheckStatus(check.check_status)}
+            </span>
+          </div>
+          <p className="muted">{check.details ?? check.expected_condition}</p>
+          <div className="source-strip">
+            <span>{bilingualLabel("观测值", "Observed")}: {check.observed_value ?? "--"}</span>
+          </div>
+        </article>
+      ))}
+    </div>
   );
 }
 
@@ -1791,6 +1995,7 @@ function resolveRefreshHandler({
   loadFactorAlgorithms,
   loadFactorLabSample,
   loadMarketDataCoverage,
+  loadMarketDataIngestionLedger,
   loadMarketDataOverview,
   loadMarketDataSample,
   loadExternalPayloadComparison,
@@ -1802,6 +2007,7 @@ function resolveRefreshHandler({
   loadFactorAlgorithms: () => void;
   loadFactorLabSample: () => void;
   loadMarketDataCoverage: () => void;
+  loadMarketDataIngestionLedger: () => void;
   loadMarketDataOverview: () => void;
   loadMarketDataSample: () => void;
   loadExternalPayloadComparison: () => void;
@@ -1812,6 +2018,7 @@ function resolveRefreshHandler({
   if (activeView === "market-data") {
     return () => {
       loadMarketDataCoverage();
+      loadMarketDataIngestionLedger();
       loadMarketDataOverview();
       loadMarketDataSample();
     };
@@ -1837,6 +2044,32 @@ function resolvePageTitle(activeView: DashboardView): string {
   if (activeView === "factor-lab") return bilingualLabel("因子算法适配清单", "Factor Algorithm Adapters");
   if (activeView === "factor-validation") return bilingualLabel("因子验证审核视图", "Factor Validation Review");
   return bilingualLabel("任务与产物账本", "Task and Artifact Ledger");
+}
+
+function formatMarketDataServiceStatus(status: string): string {
+  if (status === "ok") return bilingualLabel("正常", "OK");
+  return bilingualLabel("需关注", "Degraded");
+}
+
+function formatPersistenceStatus(status: string): string {
+  return INGESTION_PERSISTENCE_STATUS_LABELS[status] ?? status;
+}
+
+function formatIngestionRunStatus(status: string): string {
+  return INGESTION_RUN_STATUS_LABELS[status] ?? status;
+}
+
+function formatQualityCheckStatus(status: string): string {
+  return INGESTION_QUALITY_CHECK_STATUS_LABELS[status] ?? status;
+}
+
+function formatQualityCheckName(checkName: string): string {
+  return INGESTION_QUALITY_CHECK_LABELS[checkName] ?? checkName;
+}
+
+function resolveQualityCheckPillClass(status: string): string {
+  if (status === "passed") return "pill-ok";
+  return "pill-degraded";
 }
 
 function resolveOverviewLabel(status: ServiceStatus): string {

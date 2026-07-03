@@ -111,6 +111,21 @@ class MarketQueryRouteTest(unittest.TestCase):
         self.assertEqual(payload["coverage"][0]["row_count"], 3244082)
         self.assertEqual(payload["coverage"][0]["duplicate_key_rows"], 0)
 
+    def test_should_return_ingestion_ledger_preview(self) -> None:
+        response = self.client.get("/api/v1/ingestion/ledger/preview")
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["persistence_status"], "not_persisted")
+        self.assertEqual(payload["run_count"], 1)
+        self.assertEqual(payload["quality_check_count"], 3)
+        self.assertEqual(payload["runs"][0]["source_name"], "tushare_proxy")
+        self.assertEqual(payload["runs"][0]["storage_target"], "clickhouse:market_data_1d_raw")
+        self.assertEqual(
+            [check["check_status"] for check in payload["quality_checks"]],
+            ["passed", "passed", "passed"],
+        )
+
 
 if __name__ == "__main__":
     unittest.main()

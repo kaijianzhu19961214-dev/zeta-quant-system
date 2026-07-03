@@ -7,6 +7,7 @@ from quant_ops_api.clients import QuantDataHubClientError
 from quant_ops_api.schemas import (
     MarketDataBarsSampleRequest,
     MarketDataBarsSampleResponse,
+    MarketDataIngestionLedgerResponse,
     MarketDataPriceModeOverview,
     MarketDataSourceCoverageResponse,
 )
@@ -45,5 +46,16 @@ async def read_market_data_source_coverage(
 ) -> MarketDataSourceCoverageResponse:
     try:
         return await market_data_service.get_source_coverage(limit=limit)
+    except QuantDataHubClientError as error:
+        raise HTTPException(status_code=error.status_code, detail=error.message) from error
+
+
+@router.get("/ingestion-ledger/preview", response_model=MarketDataIngestionLedgerResponse)
+async def read_market_data_ingestion_ledger_preview(
+    market_data_service: Annotated[MarketDataService, Depends(get_market_data_service)],
+    limit: int = Query(default=100, ge=1, le=1000),
+) -> MarketDataIngestionLedgerResponse:
+    try:
+        return await market_data_service.get_ingestion_ledger_preview(limit=limit)
     except QuantDataHubClientError as error:
         raise HTTPException(status_code=error.status_code, detail=error.message) from error

@@ -6,6 +6,8 @@ from quant_ops_api.clients import QuantDataHubClient
 from quant_ops_api.schemas import (
     MarketDataBarsSampleRequest,
     MarketDataBarsSampleResponse,
+    MarketDataIngestionLedgerPreview,
+    MarketDataIngestionLedgerResponse,
     MarketDataPriceModeOverview,
     MarketPriceModeStatus,
     MarketDataSourceCoverageItem,
@@ -39,6 +41,10 @@ class MarketDataService:
                 "MinIO stores raw responses, Parquet snapshots, and artifacts when archival is enabled.",
             ],
         )
+
+    async def get_ingestion_ledger_preview(self, *, limit: int = 100) -> MarketDataIngestionLedgerResponse:
+        preview = await self.quant_data_hub_client.get_ingestion_ledger_preview(limit=limit)
+        return build_ingestion_ledger_response(preview=preview)
 
     async def query_sample_bars(self, *, request: MarketDataBarsSampleRequest) -> MarketDataBarsSampleResponse:
         qfq_batch = await self.find_sample_qfq_batch(request=request)
@@ -167,3 +173,27 @@ def build_market_data_storage_roles() -> list[MarketDataStorageRole]:
             stores_market_bars=False,
         ),
     ]
+
+
+def build_ingestion_ledger_response(
+    *,
+    preview: MarketDataIngestionLedgerPreview,
+) -> MarketDataIngestionLedgerResponse:
+    has_failed_check = any(check.check_status == "failed" for check in preview.quality_checks)
+    has_failed_run = any(run.status == "failed" for run in preview.runs)
+    has_review_required_run = any(run.status == "review_required" for run in preview.runs)
+    status = "degraded" if has_failed_check or has_failed_run or has_review_required_run else "ok"
+    return MarketDataIngestionLedgerResponse(
+        status=status,
+        generated_at=preview.generated_at,
+        persistence_status=preview.persistence_status,
+        run_count=preview.run_count,
+        quality_check_count=preview.quality_check_count,
+        runs=preview.runs,
+        quality_checks=preview.quality_checks,
+        storage_roles=build_market_data_storage_roles(),
+        limitations=[
+            *preview.limitations,
+            "This BFF endpoint is read-only and does not write PostgreSQL, ClickHouse, or MinIO.",
+        ],
+    )

@@ -646,6 +646,67 @@ h4 {
   color: #627068;
 }
 
+.ledger-table {
+  display: grid;
+  overflow-x: auto;
+  border-top: 1px solid #d8ded4;
+}
+
+.ledger-row {
+  display: grid;
+  grid-template-columns:
+    minmax(130px, 0.8fr)
+    minmax(130px, 0.9fr)
+    minmax(150px, 1fr)
+    minmax(190px, 1.2fr)
+    minmax(110px, 0.7fr)
+    minmax(86px, 0.55fr);
+  align-items: center;
+  min-width: 880px;
+  min-height: 50px;
+  gap: 12px;
+  border-bottom: 1px solid #d8ded4;
+  font-size: 13px;
+}
+
+.ledger-row.header {
+  min-height: 42px;
+  color: #627068;
+  font-family: "SF Mono", "Cascadia Code", "Roboto Mono", monospace;
+  font-size: 12px;
+}
+
+.ledger-row span,
+.ledger-row strong {
+  min-width: 0;
+  overflow-wrap: anywhere;
+}
+
+.ledger-row span {
+  color: #627068;
+}
+
+.quality-check-grid {
+  display: grid;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+  gap: 14px;
+}
+
+.quality-check-card {
+  display: grid;
+  align-content: start;
+  gap: 12px;
+  min-width: 0;
+  padding: 16px;
+  border-left: 4px solid #b97916;
+  background: #fbf7ef;
+}
+
+.quality-check-card p {
+  margin-bottom: 0;
+  line-height: 1.45;
+}
+
 .storage-role-grid {
   display: grid;
   grid-template-columns: repeat(4, minmax(0, 1fr));
@@ -1113,6 +1174,10 @@ h4 {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
 
+  .quality-check-grid {
+    grid-template-columns: repeat(2, minmax(0, 1fr));
+  }
+
   .algorithm-meta-grid {
     grid-template-columns: repeat(2, minmax(0, 1fr));
   }
@@ -1188,6 +1253,10 @@ h4 {
   }
 
   .storage-role-grid {
+    grid-template-columns: 1fr;
+  }
+
+  .quality-check-grid {
     grid-template-columns: 1fr;
   }
 

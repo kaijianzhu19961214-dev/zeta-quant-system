@@ -9,6 +9,9 @@ from quant_ops_api.main import create_app
 from quant_ops_api.schemas import (
     MarketDataBarsSampleRequest,
     MarketDataBarsSampleResponse,
+    MarketDataIngestionLedgerResponse,
+    MarketDataIngestionQualityCheckRecord,
+    MarketDataIngestionRunRecord,
     MarketDataPriceModeOverview,
     MarketDataSourceCoverageItem,
     MarketDataSourceCoverageResponse,
@@ -114,6 +117,53 @@ class FakeMarketDataService:
             limitations=[],
         )
 
+    async def get_ingestion_ledger_preview(self, *, limit: int = 100) -> MarketDataIngestionLedgerResponse:
+        run_id = "ingestion_tushare_proxy_a_share_1d_1d_2024_01_02_2026_06_30"
+        return MarketDataIngestionLedgerResponse(
+            status="ok",
+            generated_at=datetime.now(timezone.utc),
+            persistence_status="not_persisted",
+            run_count=1,
+            quality_check_count=1,
+            runs=[
+                MarketDataIngestionRunRecord(
+                    run_id=run_id,
+                    task_type="market_data_ingestion",
+                    source_name="tushare_proxy",
+                    dataset_code="a_share_1d",
+                    timeframe="1d",
+                    status="succeeded",
+                    storage_target="clickhouse:market_data_1d_raw",
+                    start_date=date(2024, 1, 2),
+                    end_date=date(2026, 6, 30),
+                    row_count=3244082,
+                    symbol_count=5620,
+                    trading_day_count=601,
+                    duplicate_key_rows=0,
+                )
+            ],
+            quality_checks=[
+                MarketDataIngestionQualityCheckRecord(
+                    check_id=f"{run_id}_row_count_positive",
+                    run_id=run_id,
+                    check_name="row_count_positive",
+                    check_status="passed",
+                    expected_condition="row_count > 0",
+                    observed_value="3244082",
+                )
+            ],
+            storage_roles=[
+                MarketDataStorageRole(
+                    storage_name="postgresql",
+                    display_name="PostgreSQL",
+                    responsibility="control plane",
+                    current_usage="preview only",
+                    stores_market_bars=False,
+                )
+            ],
+            limitations=[],
+        )
+
 
 class MarketDataRouteTest(unittest.TestCase):
     def setUp(self) -> None:
@@ -162,6 +212,17 @@ class MarketDataRouteTest(unittest.TestCase):
         self.assertEqual(payload["coverage"][0]["source_name"], "tushare_proxy")
         self.assertEqual(payload["coverage"][0]["row_count"], 3244082)
         self.assertEqual(payload["storage_roles"][0]["storage_name"], "clickhouse")
+
+    def test_should_return_market_data_ingestion_ledger_preview(self) -> None:
+        response = self.client.get("/api/v1/market-data/ingestion-ledger/preview")
+        payload = response.json()
+
+        self.assertEqual(response.status_code, 200)
+        self.assertEqual(payload["status"], "ok")
+        self.assertEqual(payload["persistence_status"], "not_persisted")
+        self.assertEqual(payload["runs"][0]["source_name"], "tushare_proxy")
+        self.assertEqual(payload["quality_checks"][0]["check_status"], "passed")
+        self.assertEqual(payload["storage_roles"][0]["storage_name"], "postgresql")
 
 
 if __name__ == "__main__":

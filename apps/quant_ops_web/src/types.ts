@@ -87,6 +87,50 @@ export interface MarketDataSourceCoverageResponse {
   limitations: string[];
 }
 
+export type IngestionPersistenceStatus = "not_persisted" | "persisted";
+export type IngestionRunStatus = "succeeded" | "review_required" | "failed";
+export type IngestionQualityCheckStatus = "passed" | "warning" | "failed";
+
+export interface MarketDataIngestionRunRecord {
+  run_id: string;
+  task_type: string;
+  source_name: string;
+  dataset_code: string;
+  timeframe: TimeframeName;
+  status: IngestionRunStatus;
+  storage_target: string;
+  start_date: string | null;
+  end_date: string | null;
+  row_count: number;
+  symbol_count: number;
+  trading_day_count: number;
+  duplicate_key_rows: number;
+  output_summary: Record<string, number | string | null>;
+  finished_at: string | null;
+}
+
+export interface MarketDataIngestionQualityCheckRecord {
+  check_id: string;
+  run_id: string;
+  check_name: string;
+  check_status: IngestionQualityCheckStatus;
+  expected_condition: string;
+  observed_value: string | null;
+  details: string | null;
+}
+
+export interface MarketDataIngestionLedgerResponse {
+  status: MarketDataServiceStatus;
+  generated_at: string;
+  persistence_status: IngestionPersistenceStatus;
+  run_count: number;
+  quality_check_count: number;
+  runs: MarketDataIngestionRunRecord[];
+  quality_checks: MarketDataIngestionQualityCheckRecord[];
+  storage_roles: MarketDataStorageRole[];
+  limitations: string[];
+}
+
 export interface MarketDataBarsSampleRequest {
   symbol: string;
   timeframe: TimeframeName;
